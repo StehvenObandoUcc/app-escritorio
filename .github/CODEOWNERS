@@ -1,0 +1,11 @@
+# Estos archivos exigen la revisión del responsable del producto.
+/supabase/migrations/   @StehvenObandoUcc
+/supabase/tests/        @StehvenObandoUcc
+/src-tauri/capabilities/ @StehvenObandoUcc
+/src-tauri/tauri.conf.json @StehvenObandoUcc
+/src/bridge/contract.ts @StehvenObandoUcc
+/src/ui/tokens/         @StehvenObandoUcc
+/docs/                  @StehvenObandoUcc
+/prompts/               @StehvenObandoUcc
+/.github/               @StehvenObandoUcc
+/AGENTS.md              @StehvenObandoUcc
