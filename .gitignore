@@ -1,0 +1,13 @@
+node_modules/
+dist/
+*.local
+.env
+.env.*
+!.env.example
+src-tauri/target/
+src-tauri/gen/schemas/
+.DS_Store
+Thumbs.db
+*.log
+supabase/.temp/
+supabase/.branches/

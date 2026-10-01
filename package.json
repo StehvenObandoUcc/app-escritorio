@@ -1,0 +1,59 @@
+{
+  "name": "pulso",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "check:tokens": "node scripts/check-tokens.mjs",
+    "test": "vitest run",
+    "test:ui": "vitest run --project ui",
+    "test:db": "vitest run --project db",
+    "verify": "npm run lint && npm run typecheck && npm run check:tokens && npm run test",
+    "verify:rust": "cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings && cargo test --manifest-path src-tauri/Cargo.toml",
+    "db:link": "npx --yes supabase@2.119.0 link",
+    "db:push": "npx --yes supabase@2.119.0 db push",
+    "db:types": "npx --yes supabase@2.119.0 gen types typescript --linked > src/lib/database.types.ts"
+  },
+  "dependencies": {
+    "@fontsource-variable/bricolage-grotesque": "^5.3.0",
+    "@fontsource-variable/figtree": "^5.3.0",
+    "@tauri-apps/api": "^2.12.1",
+    "lucide-react": "^1.49.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-router": "^8.4.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@eslint/js": "^10.0.1",
+    "@tailwindcss/vite": "^4.3.3",
+    "@tauri-apps/cli": "^2.12.1",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7",
+    "@types/node": "^26.6.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "eslint": "^10.11.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.13.0",
+    "jsdom": "^29.1.1",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.71.0",
+    "vite": "^8.3.2",
+    "vitest": "^5.0.3"
+  },
+  "description": "Pulso: tiempo, tareas y uso de IA de tu equipo (app de escritorio, Tauri v2)",
+  "engines": {
+    "node": ">=22"
+  }
+}
