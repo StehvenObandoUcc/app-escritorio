@@ -1,0 +1,206 @@
+# Plan por fases — entrega el lunes 19 de octubre de 2026
+
+Cada fase termina en algo que se puede **ver funcionar** y tiene una puerta de calidad:
+una lista corta que se comprueba en minutos, sin Docker. No se empieza una fase hasta
+que la anterior pasa su puerta.
+
+## 1. Calendario
+
+| Fase | Fechas | Resultado visible |
+|---|---|---|
+| **F0** Fundaciones | jue 1 – vie 2 | El proyecto arranca, la interfaz base existe y las pruebas corren |
+| **F1** Sensor y *Mi día* | sáb 3 – lun 5 | *Mi día* muestra tu actividad real |
+| **F2** Cuentas, equipos, roles y sincronización | mar 6 – jue 8 | Dos personas en un equipo; los datos llegan a la nube |
+| **F3** Proyectos y tareas | vie 9 – sáb 10 | Tareas en lista y tablero, con tiempo asociado |
+| **F4** IA y reportes | dom 11 – mar 13 | Reporte con IA en los tres modos |
+| **F5** Tableros, privacidad y avisos | mié 14 – jue 15 | Cada rol ve su tablero. **Congelamiento: jueves 15, 23:59** |
+| **F6** Endurecer y entregar | vie 16 – dom 18 | Instalador probado y guion de demo |
+| **Entrega** | lun 19 | |
+| F7–F9 | después | Ver §5 |
+
+Son 18 días para 86 funcionalidades: el calendario es apretado y solo funciona si se
+respetan las puertas y el orden de recorte de §4.
+
+## 2. Cómo se trabaja cada fase
+
+1. Se escribe la spec de la fase en `docs/specs/` a partir de `_PLANTILLA.md` (ya está la de F1).
+2. Tres flujos en paralelo, cada uno en su rama y con sus carpetas:
+   - **A · Rust**: `src-tauri/**`
+   - **B · Datos e IA**: `supabase/**`, `prompts/**`
+   - **C · Interfaz**: `src/**`
+3. Primero los contratos (`src/bridge/contract.ts`, migración SQL); luego el código. Así los tres flujos no se pisan.
+4. Cada cambio entra por un *pull request* pequeño con `npm run verify` en verde.
+   Toda pantalla nueva incluye sus estados de carga, vacío y error (UI-07).
+5. Al final de la fase se recorre su puerta de calidad.
+
+La interfaz no espera a Rust: se construye contra el puente simulado (`npm run dev`) y se
+conecta al comando real cuando el flujo A lo termina.
+
+## 3. Fases
+
+### F0 · Fundaciones (jue 1 – vie 2)
+
+Funcionalidades: UI-01 a UI-06, EQ-04, PS-07 (primera parte) y la base de EQ-01, EQ-05 y EQ-08.
+
+Ya está hecho en este repositorio:
+- Estructura del proyecto, guardianes de calidad y CI.
+- Design tokens, atomic design, tres anchos de ventana, tema claro y oscuro, galería.
+- *Mi día* con datos de ejemplo y el contrato del puente.
+- Núcleo Rust generado con la herramienta oficial de Tauri. Compila y pasa el linter en Linux; en Windows se confirma con tu primer `npm run tauri dev` (tarea 3).
+- Pruebas de permisos sin Docker y la primera migración (equipos y roles).
+
+Te falta a ti (no se delega en agentes):
+
+| # | Tarea | Listo cuando |
+|---|---|---|
+| 1 | Instalar Node 22+, Rust y las C++ Build Tools (`docs/COMO-VERIFICAR.md` §1) | `node -v` y `cargo -V` responden |
+| 2 | `npm install` y `npm run verify` | Todo en verde |
+| 3 | `npm run tauri dev` | Se abre la ventana de Pulso |
+| 4 | Activar la carpeta `.github` (pasos en `README.md`), subir el repositorio a GitHub y proteger `main` | El CI pasa en GitHub (es su primera ejecución: aún no se ha probado) |
+| 5 | Crear el proyecto de Supabase `pulso-dev` y copiar URL y clave pública a `.env` | `.env` existe y no está en Git |
+| 6 | Aplicar la primera migración (`docs/COMO-VERIFICAR.md` §5) | Las tablas aparecen en Supabase |
+| 7 | Crear una clave de DeepSeek **exclusiva de Pulso**, con saldo bajo, y guardarla como secreto de Supabase | La clave no está en ningún archivo |
+
+Pruebas técnicas cortas (un agente cada una; informe en `docs/spikes/`):
+
+| ID | Pregunta | Criterio |
+|---|---|---|
+| S-1 | ¿Cómo leer en Windows la app activa, el título y el tiempo inactivo? Se evalúan las funciones del sistema (`GetForegroundWindow`, `GetWindowTextW`, `GetLastInputInfo`) frente a una librería | Un binario de prueba imprime los tres datos cada 2 s. CPU < 1 % |
+| S-2 | ¿Con qué acierto se detecta la IA por el título de la ventana? | 50 cambios entre ChatGPT, Claude, Gemini, DeepSeek y Copilot en Chrome, Edge y Firefox. Meta: 90 % |
+| S-4 | ¿DeepSeek devuelve JSON válido con el modelo elegido? | 20 llamadas: esquema válido, costo y latencia anotados |
+
+**Puerta G0**
+- [ ] `npm run verify` en verde en tu equipo y en GitHub.
+- [ ] La ventana de Pulso abre con `npm run tauri dev`.
+- [ ] `docs/STACK.lock.md` tiene las librerías de Rust elegidas en S-1 con su versión.
+- [ ] S-1, S-2 y S-4 tienen informe.
+
+### F1 · Sensor y *Mi día* (sáb 3 – lun 5)
+
+Funcionalidades: TA-01 a TA-09, IA-01 a IA-03, PS-03, PS-04, SY-01. Spec: `docs/specs/F1-sensor-y-mi-dia.md`.
+
+| Flujo | Trabajo |
+|---|---|
+| A · Rust | Sensor, clasificador con `rules/default.json`, SQLite local, cifrado de títulos, comandos de F1 |
+| B · Datos | Adelanta F2: migraciones de `activity_blocks`, `time_entries` y `classification_rules` con sus pruebas |
+| C · Interfaz | *Mi día* con datos reales, registro manual de tiempo, ajustes locales |
+
+**Puerta G1**
+- [ ] `npm run verify` y `npm run verify:rust` en verde.
+- [ ] Una hora de uso real sin cierres inesperados.
+- [ ] Abrir VS Code, el navegador con ChatGPT y otra app: *Mi día* muestra los tres bloques con su categoría.
+- [ ] Dejar el equipo quieto más que el umbral: aparece un bloque sin actividad.
+- [ ] Pausar: durante la pausa no se guarda ni app ni título.
+- [ ] Sin red, todo lo anterior sigue funcionando.
+- [ ] El Administrador de tareas muestra menos de 120 MB de memoria.
+
+### F2 · Cuentas, equipos, roles y sincronización (mar 6 – jue 8)
+
+Funcionalidades: CU-01 a CU-04, EQ-01 a EQ-08, EQ-10 (datos), PS-01, PS-02, PS-08, PS-09, SY-02, SY-03, SY-05.
+
+| Flujo | Trabajo |
+|---|---|
+| A · Rust | `session_*`, `sync_pending`, `sync_mark_synced`, `rules_set` |
+| B · Datos | Invitaciones, auditoría, RLS de actividad y tiempo. **Una prueba por cada celda de `docs/ROLES.md` marcada F2** |
+| C · Interfaz | Registro, inicio de sesión, recuperar contraseña, crear equipo, invitar, aceptar con consentimiento, cambiar de equipo, sincronización |
+
+**Puerta G2**
+- [ ] `npm run test:db` cubre todas las filas F0 y F2 de la matriz.
+- [ ] Dos cuentas reales: una crea el equipo e invita; la otra acepta.
+- [ ] La actividad de la segunda cuenta aparece en Supabase **sin títulos**.
+- [ ] 30 minutos sin red y luego con red: llega todo, sin duplicados.
+- [ ] Un `viewer` no ve la lista de miembros; alguien de otro equipo no ve nada.
+
+### F3 · Proyectos y tareas (vie 9 – sáb 10)
+
+Funcionalidades: PT-01 a PT-09, SY-04.
+
+| Flujo | Trabajo |
+|---|---|
+| A · Rust | `tasks_cache_*`; el temporizador acepta una tarea |
+| B · Datos | Proyectos, miembros de proyecto, tareas y sus políticas, con pruebas de la matriz |
+| C · Interfaz | Proyectos, lista con filtros, tablero, detalle de tarea, avance |
+
+**Puerta G3**
+- [ ] Pruebas: un `contributor` no edita la tarea de otra persona; un `lead` sí.
+- [ ] Un temporizador sobre una tarea suma a su tiempo y al avance del proyecto.
+- [ ] Sin red, la lista de tareas sigue visible.
+
+### F4 · IA y reportes (dom 11 – mar 13)
+
+Funcionalidades: RI-01 a RI-10, IA-04. Detalle en `docs/IA.md`.
+
+| Flujo | Trabajo |
+|---|---|
+| A · Rust | `ai_config_*` y `ai_chat` |
+| B · Datos e IA | `get_report_facts`, `save_report`, `consume_ai_trial`, Edge Function `ai-trial`, `prompts/report.v1.md` |
+| C · Interfaz | Validador, *Ajustes → IA*, vista de reporte, modo manual, historial, exportación |
+
+**Puerta G4**
+- [ ] 20 reportes de prueba: ningún número inventado llega a la pantalla.
+- [ ] El sexto reporte gratis del día muestra el aviso de límite.
+- [ ] Una clave propia válida pasa *Probar conexión*; una inválida explica qué pasó.
+- [ ] En modo manual, un texto que no cumple el formato se rechaza con un mensaje claro.
+- [ ] Un `member` no puede generar el reporte del equipo.
+
+### F5 · Tableros, privacidad y avisos (mié 14 – jue 15)
+
+Funcionalidades: DR-01 a DR-07, TA-10, TA-11, IA-02, IA-05, EQ-09, EQ-10 (pantalla), PS-05, PS-06, CU-06, CU-07, NO-01 a NO-03.
+
+**Puerta G5**
+- [ ] Una prueba de punta a punta por rol: cada uno ve exactamente su columna de la matriz.
+- [ ] Las cifras del tablero coinciden con *Mi día* de cada miembro.
+- [ ] Quien oculta sus apps aparece solo con categorías.
+- [ ] **Congelamiento el jueves 15 a las 23:59**: desde aquí solo se corrigen errores.
+
+### F6 · Endurecer y entregar (vie 16 – dom 18)
+
+Funcionalidades: EN-01, EN-02, PS-10, TA-12.
+
+- Checklist de seguridad de `docs/ARQUITECTURA.md` §10, punto por punto.
+- Instalador de Windows (`npm run tauri build`) probado en un equipo limpio.
+- Segundo proyecto de Supabase (`pulso-demo`) con las mismas migraciones y los datos de demostración.
+- Clasificación de errores: **P0** (cierre, fuga de datos, un rol ve lo que no debe) se arregla el mismo día; **P1** (rompe el guion) antes del domingo; **P2** después de la entrega.
+
+**Puerta G6 (criterio de entrega)**: el guion de §6 pasa tres veces seguidas en un Windows limpio.
+
+## 4. Si una fase se atrasa
+
+No se mueve el congelamiento: se recorta. En este orden:
+
+1. Avisos del sistema (NO-01 a NO-03) y preferencias de aviso (CU-06).
+2. Exportación a CSV (DR-06). Queda PDF y Markdown.
+3. Tablero kanban (PT-06). Queda la lista.
+4. Abrir con el sistema e icono en la bandeja (TA-12).
+5. Reporte de proyecto. Quedan el personal y el de equipo.
+
+**No se recortan**: roles completos, permisos en la base de datos, sensor, sincronización ni la IA en sus tres modos.
+
+## 5. Después de la entrega
+
+| Fase | Contenido |
+|---|---|
+| F7 | Tareas desde texto (RI-11), clave de IA del equipo (RI-13), foto de perfil, eliminar cuenta, actualizaciones automáticas, macOS y Linux |
+| F8 | Asistente del equipo (RI-12), alertas para líderes, tiempo real, tareas sin conexión, reglas de IA por rol, extensión de navegador |
+| F9 | Integraciones, API pública y webhooks, plan de ChatGPT, firma de código |
+
+## 6. Guion de demostración (prueba de aceptación final)
+
+1. Instalar Pulso. Crear una cuenta, crear un equipo e invitar a un admin, un member y un viewer.
+2. El member acepta el consentimiento y trabaja cinco minutos: editor de código, ChatGPT en el navegador, una pausa, un temporizador sobre una tarea.
+3. Desconectar la red dos minutos y reconectar: los datos aparecen en el tablero del admin.
+4. El admin ve horas y uso de IA por miembro, sin títulos. El viewer solo ve totales. El lead solo ve su proyecto.
+5. Generar un reporte en modo Gratis: las cifras coinciden. El sexto intento del día muestra el límite.
+6. Conectar un proveedor propio, generar otro reporte y exportarlo a Markdown y PDF.
+
+## 7. Riesgos
+
+| Riesgo | Respuesta |
+|---|---|
+| El sensor en Rust se atasca | S-1 antes de F1. Alcance cerrado en `docs/ARQUITECTURA.md` §6. Un agente escribe, una persona revisa |
+| La detección de IA por título falla | S-2 con meta medible. Mientras tanto, las reglas se pueden editar |
+| Un error de permisos expone datos | Una prueba por celda de la matriz; ninguna migración entra sin su prueba |
+| Fuga de la clave de DeepSeek | Clave exclusiva con saldo bajo, solo en el servidor, interruptor de apagado |
+| Supabase limita los correos de verificación en el plan gratuito | Para la demo se crean las cuentas con antelación; las invitaciones no envían correos |
+| Supabase pausa los proyectos gratuitos sin uso | Abrir el proyecto el día anterior a la demo |
+| Windows advierte que el instalador no está firmado | Es esperado sin certificado de pago; se explica en la demo |
