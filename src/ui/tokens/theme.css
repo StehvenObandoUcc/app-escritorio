@@ -1,0 +1,81 @@
+/*
+ * PUENTE TOKENS → TAILWIND
+ * Tailwind solo genera utilidades para lo que se declara aquí. La paleta por
+ * defecto queda desactivada: clases como bg-blue-500 no existen en Pulso.
+ */
+@import 'tailwindcss';
+
+@theme {
+  --color-*: initial;
+  --text-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --breakpoint-*: initial;
+
+  /* Responsive: 3 tamaños de ventana (docs/DISENO.md §Responsive) */
+  --breakpoint-md: 40rem; /* ≥ 640 px: navegación en riel */
+  --breakpoint-lg: 64rem; /* ≥ 1024 px: navegación expandida */
+}
+
+@theme inline {
+  --color-canvas: var(--sem-canvas);
+  --color-surface: var(--sem-surface);
+  --color-sunken: var(--sem-sunken);
+  --color-line: var(--sem-line);
+  --color-line-strong: var(--sem-line-strong);
+  --color-fg: var(--sem-fg);
+  --color-fg-muted: var(--sem-fg-muted);
+  --color-on-accent: var(--sem-on-accent);
+  --color-accent: var(--sem-accent);
+  --color-accent-hover: var(--sem-accent-hover);
+  --color-accent-soft: var(--sem-accent-soft);
+  --color-accent-text: var(--sem-accent-text);
+  --color-focus: var(--sem-focus);
+  --color-danger: var(--sem-danger);
+  --color-danger-soft: var(--sem-danger-soft);
+  --color-cat-productive: var(--sem-cat-productive);
+  --color-cat-neutral: var(--sem-cat-neutral);
+  --color-cat-distraction: var(--sem-cat-distraction);
+  --color-cat-ai: var(--sem-cat-ai);
+  --color-cat-break: var(--sem-cat-break);
+  --color-cat-idle: var(--sem-cat-idle);
+  --color-cat-paused: var(--sem-cat-paused);
+
+  --font-sans: var(--prim-font-body);
+  --font-display: var(--prim-font-display);
+
+  --text-xs: var(--prim-size-12);
+  --text-xs--line-height: 1rem;
+  --text-sm: var(--prim-size-13);
+  --text-sm--line-height: 1.25rem;
+  --text-base: var(--prim-size-15);
+  --text-base--line-height: 1.5rem;
+  --text-lg: var(--prim-size-18);
+  --text-lg--line-height: 1.625rem;
+  --text-xl: var(--prim-size-22);
+  --text-xl--line-height: 1.75rem;
+  --text-2xl: var(--prim-size-28);
+  --text-2xl--line-height: 2.125rem;
+  --text-display: var(--prim-size-44);
+  --text-display--line-height: 1;
+
+  --spacing: var(--prim-space-unit);
+  --spacing-nav: var(--cmp-nav-width);
+  --spacing-rail: var(--cmp-rail-width);
+  --spacing-control: var(--cmp-control-height);
+  --spacing-control-sm: var(--cmp-control-height-sm);
+  --spacing-touch: var(--cmp-touch-target);
+  --spacing-strip: var(--cmp-strip-height);
+  --spacing-content: var(--cmp-content-max);
+
+  --radius-xs: var(--prim-radius-4);
+  --radius-sm: var(--prim-radius-6);
+  --radius-md: var(--prim-radius-8);
+  --radius-lg: var(--prim-radius-12);
+  --radius-full: var(--prim-radius-pill);
+
+  --shadow-overlay: var(--sem-shadow-overlay);
+
+  --default-transition-duration: var(--prim-duration-fast);
+  --default-transition-timing-function: var(--prim-ease-out);
+}

@@ -1,0 +1,23 @@
+/*
+ * CAPA 3 — TOKENS DE COMPONENTE
+ * Medidas propias de piezas concretas. Si un número se repite en dos
+ * componentes, se convierte en token aquí.
+ */
+:root {
+  --cmp-nav-width: 13.5rem; /* navegación expandida */
+  --cmp-rail-width: 4rem; /* navegación en riel (solo iconos) */
+  --cmp-control-height: 2.25rem; /* botones y campos */
+  --cmp-control-height-sm: 1.75rem;
+  --cmp-touch-target: 2.75rem; /* mínimo cómodo para clic/tacto */
+  --cmp-strip-height: 5.5rem; /* franja de pulso del día */
+  --cmp-content-max: 68rem; /* ancho máximo de lectura de una página */
+}
+
+/* Trama para "seguimiento en pausa": no depende solo del color. */
+.pattern-paused {
+  background-image: repeating-linear-gradient(
+    135deg,
+    var(--sem-cat-paused) 0 2px,
+    transparent 2px 6px
+  );
+}

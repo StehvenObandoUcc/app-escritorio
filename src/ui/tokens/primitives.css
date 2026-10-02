@@ -1,0 +1,73 @@
+/*
+ * CAPA 1 — PRIMITIVOS
+ * Valores crudos, sin significado. Es el ÚNICO archivo del proyecto donde se
+ * escriben colores en hexadecimal. Nadie los usa directamente en componentes:
+ * los consume semantic.css.
+ */
+:root {
+  /* Tinta: neutros fríos (azul pizarra) */
+  --prim-ink-0: #ffffff;
+  --prim-ink-50: #f5f7fa;
+  --prim-ink-100: #ebeff5;
+  --prim-ink-200: #dce2ec;
+  --prim-ink-300: #c5ccd9;
+  --prim-ink-400: #9aa5b8;
+  --prim-ink-500: #7c8aa5;
+  --prim-ink-600: #586580;
+  --prim-ink-700: #3a455c;
+  --prim-ink-800: #273044;
+  --prim-ink-850: #1c2433;
+  --prim-ink-900: #141a26;
+  --prim-ink-950: #0e131c;
+
+  /* Pulso: frambuesa (marca) */
+  --prim-pulse-50: #fdeef3;
+  --prim-pulse-300: #f6a3be;
+  --prim-pulse-400: #f06595;
+  --prim-pulse-500: #d6336c;
+  --prim-pulse-600: #b8245a;
+  --prim-pulse-700: #931a47;
+  --prim-pulse-900: #3d0f22;
+
+  /* Tonos de categoría: 600 para fondo claro, 400 para fondo oscuro */
+  --prim-teal-400: #3cc3b0;
+  --prim-teal-600: #12776a;
+  --prim-amber-400: #f0ae4a;
+  --prim-amber-600: #a8620a;
+  --prim-violet-400: #9c85ff;
+  --prim-violet-600: #6243d9;
+  --prim-sky-400: #63b3ed;
+  --prim-sky-600: #1f74b3;
+  --prim-red-50: #fdeeec;
+  --prim-red-400: #f2766b;
+  --prim-red-600: #bd3026;
+  --prim-red-900: #3f1411;
+
+  /* Tipografía */
+  --prim-font-body: 'Figtree Variable', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+  --prim-font-display: 'Bricolage Grotesque Variable', 'Figtree Variable', 'Segoe UI', system-ui, sans-serif;
+
+  /* Escala tipográfica (base de 15 px: densidad de app de escritorio) */
+  --prim-size-12: 0.75rem;
+  --prim-size-13: 0.8125rem;
+  --prim-size-15: 0.9375rem;
+  --prim-size-18: 1.125rem;
+  --prim-size-22: 1.375rem;
+  --prim-size-28: 1.75rem;
+  --prim-size-44: 2.75rem;
+
+  /* Espacio: todo múltiplo de 4 px */
+  --prim-space-unit: 0.25rem;
+
+  /* Radios */
+  --prim-radius-4: 0.25rem;
+  --prim-radius-6: 0.375rem;
+  --prim-radius-8: 0.5rem;
+  --prim-radius-12: 0.75rem;
+  --prim-radius-pill: 999px;
+
+  /* Movimiento */
+  --prim-duration-fast: 120ms;
+  --prim-duration-base: 200ms;
+  --prim-ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+}

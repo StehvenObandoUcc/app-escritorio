@@ -1,0 +1,35 @@
+/* Orden obligatorio: fuentes → primitivos → semánticos → componentes → Tailwind */
+@import '@fontsource-variable/figtree';
+@import '@fontsource-variable/bricolage-grotesque';
+@import './primitives.css';
+@import './semantic.css';
+@import './components.css';
+@import './theme.css';
+
+@layer base {
+  html {
+    font-family: var(--prim-font-body);
+    font-size: 100%;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    margin: 0;
+    background: var(--sem-canvas);
+    color: var(--sem-fg);
+    font-size: var(--prim-size-15);
+    line-height: 1.5rem;
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible {
+    outline: 2px solid var(--sem-focus);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

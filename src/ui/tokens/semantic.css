@@ -1,0 +1,101 @@
+/*
+ * CAPA 2 — SEMÁNTICOS
+ * Dan significado a los primitivos ("fondo", "texto", "acento", "categoría IA").
+ * Aquí vive el tema claro/oscuro. Los componentes solo conocen esta capa
+ * (a través de las utilidades de Tailwind definidas en theme.css).
+ */
+:root {
+  color-scheme: light;
+
+  --sem-canvas: var(--prim-ink-50);
+  --sem-surface: var(--prim-ink-0);
+  --sem-sunken: var(--prim-ink-100);
+  --sem-line: var(--prim-ink-200);
+  --sem-line-strong: var(--prim-ink-300);
+
+  --sem-fg: var(--prim-ink-900);
+  --sem-fg-muted: var(--prim-ink-600);
+  --sem-on-accent: var(--prim-ink-0);
+
+  --sem-accent: var(--prim-pulse-500);
+  --sem-accent-hover: var(--prim-pulse-600);
+  --sem-accent-soft: var(--prim-pulse-50);
+  --sem-accent-text: var(--prim-pulse-600);
+  --sem-focus: var(--prim-pulse-500);
+
+  --sem-danger: var(--prim-red-600);
+  --sem-danger-soft: var(--prim-red-50);
+
+  /* Categorías de actividad (docs/ARQUITECTURA.md §Glosario) */
+  --sem-cat-productive: var(--prim-teal-600);
+  --sem-cat-neutral: var(--prim-ink-500);
+  --sem-cat-distraction: var(--prim-amber-600);
+  --sem-cat-ai: var(--prim-violet-600);
+  --sem-cat-break: var(--prim-sky-600);
+  --sem-cat-idle: var(--prim-ink-300);
+  --sem-cat-paused: var(--prim-ink-400);
+
+  --sem-shadow-overlay: 0 12px 32px -12px color-mix(in srgb, var(--prim-ink-900) 35%, transparent);
+}
+
+/* Tema oscuro: por preferencia del sistema o forzado con data-theme="dark" */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+
+    --sem-canvas: var(--prim-ink-900);
+    --sem-surface: var(--prim-ink-850);
+    --sem-sunken: var(--prim-ink-950);
+    --sem-line: var(--prim-ink-800);
+    --sem-line-strong: var(--prim-ink-700);
+
+    --sem-fg: var(--prim-ink-100);
+    --sem-fg-muted: var(--prim-ink-400);
+
+    --sem-accent-soft: var(--prim-pulse-900);
+    --sem-accent-text: var(--prim-pulse-300);
+    --sem-focus: var(--prim-pulse-400);
+
+    --sem-danger: var(--prim-red-400);
+    --sem-danger-soft: var(--prim-red-900);
+
+    --sem-cat-productive: var(--prim-teal-400);
+    --sem-cat-neutral: var(--prim-ink-500);
+    --sem-cat-distraction: var(--prim-amber-400);
+    --sem-cat-ai: var(--prim-violet-400);
+    --sem-cat-break: var(--prim-sky-400);
+    --sem-cat-idle: var(--prim-ink-700);
+    --sem-cat-paused: var(--prim-ink-600);
+
+    --sem-shadow-overlay: 0 12px 32px -12px var(--prim-ink-950);
+  }
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --sem-canvas: var(--prim-ink-900);
+  --sem-surface: var(--prim-ink-850);
+  --sem-sunken: var(--prim-ink-950);
+  --sem-line: var(--prim-ink-800);
+  --sem-line-strong: var(--prim-ink-700);
+
+  --sem-fg: var(--prim-ink-100);
+  --sem-fg-muted: var(--prim-ink-400);
+
+  --sem-accent-soft: var(--prim-pulse-900);
+  --sem-accent-text: var(--prim-pulse-300);
+  --sem-focus: var(--prim-pulse-400);
+
+  --sem-danger: var(--prim-red-400);
+  --sem-danger-soft: var(--prim-red-900);
+
+  --sem-cat-productive: var(--prim-teal-400);
+  --sem-cat-neutral: var(--prim-ink-500);
+  --sem-cat-distraction: var(--prim-amber-400);
+  --sem-cat-ai: var(--prim-violet-400);
+  --sem-cat-break: var(--prim-sky-400);
+  --sem-cat-idle: var(--prim-ink-700);
+  --sem-cat-paused: var(--prim-ink-600);
+
+  --sem-shadow-overlay: 0 12px 32px -12px var(--prim-ink-950);
+}
