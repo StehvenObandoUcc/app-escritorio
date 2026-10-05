@@ -96,7 +96,8 @@ Comandos (nombres exactos; `src/bridge/contract.ts` es su espejo en TypeScript):
 | F1 | `timer_start(task_id?)` · `timer_stop()` | `SensorStatus` |
 | F1 | `break_start()` · `break_end()` | `SensorStatus` |
 | F1 | `privacy_pause(minutes)` · `privacy_resume()` | `SensorStatus` |
-| F1 | `time_entry_add(start, end, task_id?)` · `time_entry_update(id, …)` · `time_entry_delete(id)` | entrada |
+| F1 | `time_entry_add(start, end, task_id?)` · `time_entry_update(id, start, end, task_id?)` · `time_entry_delete(id)` | entrada (`add`) · nada (`update`, `delete`) |
+| F1 | `time_entries(date)` (ADR-0005) | entradas de tiempo del día local |
 | F1 | `settings_get()` · `settings_set(patch)` | ajustes locales (umbral de inactividad, ocultar apps) |
 | F2 | `session_get()` · `session_set(json)` · `session_clear()` | sesión de Supabase |
 | F2 | `sync_pending(limit)` | bloques y entradas sin subir, **sin títulos** |
