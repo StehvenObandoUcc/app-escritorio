@@ -2,7 +2,7 @@
 //! Todo recibe `now` como argumento: los comandos pasan la hora real y las pruebas una simulada.
 //! La interfaz solo ve estas operaciones (a través de `commands`), nunca SQL ni secretos.
 
-use crate::classifier::{self, Rule};
+use crate::classifier::{self, Category, Rule};
 use crate::crypto::TitleCipher;
 use crate::sensor::ActiveWindow;
 use crate::sensor::engine::{Change, Draft, Engine, Mode, Observation};
@@ -171,14 +171,22 @@ impl Inner {
 
   fn observe(&self, w: &ActiveWindow) -> Observation {
     let hidden = self.settings.hidden_apps.iter().any(|a| a.eq_ignore_ascii_case(&w.process));
-    let (app_name, title) = if hidden {
-      (HIDDEN_APP_NAME.to_string(), None)
-    } else {
-      (w.process.clone(), Some(w.title.clone()).filter(|t| !t.is_empty()))
-    };
-    // Una app oculta se clasifica solo por proceso: su título no se mira.
-    let c = classifier::classify(&self.team_rules, &self.default_rules, &w.process, if hidden { "" } else { &w.title });
-    Observation { app_name, title, category: c.category, ai_tool: c.ai_tool }
+    if hidden {
+      // AC-20: una app oculta no se clasifica (ni por proceso ni por título): siempre neutral.
+      return Observation {
+        app_name: HIDDEN_APP_NAME.to_string(),
+        title: None,
+        category: Category::Neutral,
+        ai_tool: None,
+      };
+    }
+    let c = classifier::classify(&self.team_rules, &self.default_rules, &w.process, &w.title);
+    Observation {
+      app_name: w.process.clone(),
+      title: Some(w.title.clone()).filter(|t| !t.is_empty()),
+      category: c.category,
+      ai_tool: c.ai_tool,
+    }
   }
 
   fn status(&mut self, now: DateTime<Utc>) -> Result<SensorStatus> {
@@ -413,7 +421,6 @@ impl Tracker {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::classifier::Category;
   use chrono::FixedOffset;
 
   fn tracker() -> Tracker {
@@ -588,6 +595,25 @@ mod tests {
     let d = day(&t, at(12, 0, 31));
     assert_eq!(d.blocks[0].app_name, "App oculta");
     assert_eq!(d.blocks[0].title, None);
+  }
+
+  #[test]
+  fn hidden_app_is_always_neutral_and_not_retroactive() {
+    // AC-20: sin importar la categoría que le daría el clasificador; el tiempo cuenta en la jornada;
+    // solo desde que se activa, no hacia atrás; se compara sin distinguir mayúsculas.
+    let t = tracker();
+    feed(&t, 0, 20, win("Code", "main.rs")); // productiva, aún visible
+    t.settings_set(SettingsPatch { hidden_apps: Some(vec!["code".into(), "chrome".into()]), ..Default::default() }).unwrap();
+    feed(&t, 22, 40, win("Code", "main.rs"));
+    feed(&t, 42, 60, win("chrome", "ChatGPT - Google Chrome")); // se clasificaría como IA
+    let d = day(&t, at(12, 1, 1));
+    let kinds: Vec<_> = d.blocks.iter().map(|b| (b.app_name.as_str(), b.category)).collect();
+    assert_eq!(kinds, [("Code", Category::Productive), ("App oculta", Category::Neutral)], "{kinds:?}");
+    assert!(d.blocks.iter().all(|b| b.ai_tool.is_none()));
+    assert_eq!(d.blocks[1].title, None);
+    assert_eq!(d.totals["ai"], 0);
+    assert!(d.totals["neutral"] >= 36, "cuenta como tiempo de trabajo");
+    assert!(d.workday_start.is_some());
   }
 
   #[test]
