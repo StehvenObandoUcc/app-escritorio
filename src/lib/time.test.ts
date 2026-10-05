@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { formatClock, formatDuration, formatHour, localDate, minutesOfDay } from './time';
+import {
+  formatClock,
+  formatDuration,
+  formatHour,
+  localDate,
+  localDateTimeToIso,
+  minutesOfDay,
+} from './time';
 
 describe('formatDuration', () => {
   it('muestra solo minutos por debajo de una hora', () => {
@@ -31,5 +38,17 @@ describe('fechas locales', () => {
   });
   it('devuelve el día local AAAA-MM-DD', () => {
     expect(localDate(new Date('2026-10-01T23:30:00'))).toBe('2026-10-01');
+  });
+});
+
+describe('localDateTimeToIso', () => {
+  it('interpreta día y hora como hora local y devuelve un instante ISO', () => {
+    const iso = localDateTimeToIso('2026-10-01', '09:30');
+    expect(iso).toMatch(/Z$/);
+    expect(formatHour(iso)).toBe('09:30');
+    expect(localDate(new Date(iso))).toBe('2026-10-01');
+  });
+  it('lanza si la fecha no es válida', () => {
+    expect(() => localDateTimeToIso('', '09:30')).toThrow(RangeError);
   });
 });

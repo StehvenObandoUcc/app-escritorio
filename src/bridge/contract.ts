@@ -57,6 +57,42 @@ export const SensorStatusSchema = z.object({
 });
 export type SensorStatus = z.infer<typeof SensorStatusSchema>;
 
+/** Entrada de tiempo: de un temporizador o registrada a mano. `endedAt` es null mientras corre. */
+export const TimeEntrySchema = z.object({
+  id: z.uuid(),
+  startedAt: z.iso.datetime({ offset: true }),
+  endedAt: z.iso.datetime({ offset: true }).nullable(),
+  taskId: z.uuid().nullable(),
+  source: z.enum(['timer', 'manual']),
+});
+export type TimeEntry = z.infer<typeof TimeEntrySchema>;
+
+/** Totales por día y categoría (segundos) de un rango de fechas. */
+export const RangeViewSchema = z.object({
+  from: z.iso.date(),
+  to: z.iso.date(),
+  days: z.array(
+    z.object({
+      date: z.iso.date(),
+      totals: z.record(CategorySchema, z.number().int().nonnegative()),
+    }),
+  ),
+});
+export type RangeView = z.infer<typeof RangeViewSchema>;
+
+export const IDLE_MINUTES_MIN = 3;
+export const IDLE_MINUTES_MAX = 15;
+
+/** Ajustes locales de este equipo. */
+export const SettingsSchema = z.object({
+  /** Minutos sin teclado ni ratón para considerar inactividad */
+  idleMinutes: z.number().int().min(IDLE_MINUTES_MIN).max(IDLE_MINUTES_MAX),
+  /** Procesos cuyo nombre y título no se registran */
+  hiddenApps: z.array(z.string()),
+});
+export type Settings = z.infer<typeof SettingsSchema>;
+export type SettingsPatch = Partial<Settings>;
+
 export interface Bridge {
   /** "mock" = datos de ejemplo; "tauri" = sensor real. La interfaz lo muestra al usuario. */
   readonly source: 'mock' | 'tauri';
@@ -72,4 +108,16 @@ export interface Bridge {
 
   privacyPause(minutes: number): Promise<SensorStatus>;
   privacyResume(): Promise<SensorStatus>;
+
+  /** Totales por día entre dos fechas AAAA-MM-DD (ambas incluidas). */
+  rangeView(from: string, to: string): Promise<RangeView>;
+
+  /** Entradas de tiempo del día local (ADR-0005). */
+  timeEntries(date: string): Promise<TimeEntry[]>;
+  timeEntryAdd(start: string, end: string, taskId?: string): Promise<TimeEntry>;
+  timeEntryUpdate(id: string, start: string, end: string, taskId?: string): Promise<void>;
+  timeEntryDelete(id: string): Promise<void>;
+
+  settingsGet(): Promise<Settings>;
+  settingsSet(patch: SettingsPatch): Promise<Settings>;
 }

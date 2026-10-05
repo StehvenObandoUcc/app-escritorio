@@ -3,6 +3,7 @@ import { HashRouter, Navigate, Route, Routes } from 'react-router';
 import { bridge } from '@/bridge';
 import { GaleriaPage } from '@/dev/GaleriaPage';
 import { useTheme } from '@/lib/theme';
+import { AjustesPage } from '@/pages/ajustes/AjustesPage';
 import { MiDiaPage } from '@/pages/mi-dia/MiDiaPage';
 import { PendingPage } from '@/pages/PendingPage';
 import { ThemeToggle } from '@/ui/molecules';
@@ -55,16 +56,7 @@ export function App() {
               />
             }
           />
-          <Route
-            path="/ajustes"
-            element={
-              <PendingPage
-                title="Ajustes"
-                phase="F2"
-                what="Perfil, privacidad, proveedor de IA y preferencias de notificación."
-              />
-            }
-          />
+          <Route path="/ajustes" element={<AjustesPage bridge={bridge} />} />
           {import.meta.env.DEV && <Route path="/dev/galeria" element={<GaleriaPage />} />}
           <Route path="*" element={<Navigate to="/mi-dia" replace />} />
         </Routes>
