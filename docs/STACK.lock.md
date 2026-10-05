@@ -73,11 +73,11 @@ Están aprobadas pero aún no instaladas. Quien las instale anota aquí la versi
 |---|---|---|---|
 | `@supabase/supabase-js` | F2 | Sesión y datos en la nube | pendiente |
 | `@tanstack/react-query` | F2 | Caché y estados de carga de datos remotos | pendiente |
-| Lectura de ventana activa e inactividad en Windows | F1 | La elige la prueba S-1: funciones del sistema mediante el crate `windows`, o una librería | pendiente |
-| `rusqlite` (con SQLite incluido) | F1 | Base local | pendiente |
-| `aes-gcm` | F1 | Cifrado de títulos | pendiente |
-| `keyring` | F1 | Almacén seguro del sistema | pendiente |
-| `uuid`, `chrono` | F1 | Identificadores y fechas | pendiente |
+| `windows` (solo Windows) | F1 | Ventana activa e inactividad. Elegido en S-1 (`docs/spikes/S-1-sensor-windows.md`) | 0.62.2 |
+| `rusqlite` (con SQLite incluido) | F1 | Base local | 0.40.2 |
+| `aes-gcm` | F1 | Cifrado de títulos | 0.11.1 |
+| `keyring` | F1 | Almacén seguro del sistema (modo `v1`; trae `keyring-core` 1.0.0 y `windows-native-keyring-store` 1.1.0) | 4.2.0 |
+| `uuid`, `chrono` | F1 | Identificadores y fechas | 1.27.0 · 0.4.45 |
 | `reqwest` (TLS con rustls) | F4 | Llamada a la IA con clave propia | pendiente |
 | `tauri-plugin-notification` | F5 | Avisos del sistema | pendiente |
 | `tauri-plugin-autostart` | F6 | Abrir con el sistema | pendiente |
