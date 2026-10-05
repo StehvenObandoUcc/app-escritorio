@@ -48,6 +48,7 @@ Privacidad
 - AC-9 El título se guarda cifrado (`title_enc`); abrir el archivo SQLite con otra herramienta no muestra títulos legibles.
 - AC-10 La clave de cifrado se crea en el primer arranque y vive en el almacén seguro del sistema, no en un archivo.
 - AC-11 La pausa termina sola al cumplirse los minutos.
+- AC-20 Apps ocultas (ajuste local): la persona define una lista de apps por nombre de proceso, sin distinguir mayúsculas. Mientras una de ellas está en primer plano, el bloque se guarda con `app_name = "App oculta"`, sin título y con categoría `neutral`; el tiempo cuenta en la jornada. Se aplica antes de clasificar y solo desde que se activa, no hacia atrás. No es lo mismo que «No compartir nombres de apps» (PS-05, F5), que solo afecta a lo que se sube a la nube.
 
 Tiempo
 - AC-12 `timer_start` crea una entrada abierta; `timer_stop` la cierra. Con un temporizador ya en marcha, `timer_start` devuelve un error claro.
@@ -61,7 +62,7 @@ Tiempo
 - AC-18 Todo lo anterior funciona sin conexión a internet.
 
 Rendimiento
-- AC-19 Tras una hora de uso: memoria total por debajo de 120 MB y CPU media por debajo del 1 %.
+- AC-19 Tras una hora de uso: la memoria privada (suma de Pulso y sus procesos de WebView2, medida tras 5 minutos en reposo, ADR-0006) por debajo de 120 MB y la CPU media por debajo del 1 %. El conjunto de trabajo se anota solo como dato.
 
 ## Trabajo por flujo
 

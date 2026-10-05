@@ -11,5 +11,6 @@ decisión de `docs/ARQUITECTURA.md` §3 o cambiar una celda de `docs/ROLES.md`.
 | [0003](./0003-pruebas-de-base-de-datos-sin-docker.md) | Pruebas de base de datos con PGlite, sin Docker | Aceptado |
 | [0004](./0004-invitaciones-sin-envio-de-correos.md) | Invitaciones sin envío de correos | Aceptado |
 | [0005](./0005-comando-time-entries.md) | Comando `time_entries(date)` para leer entradas de tiempo | Aceptado |
+| [0006](./0006-metrica-de-memoria.md) | Métrica de memoria: privada, suma de Pulso y WebView2, tras 5 min en reposo | Aceptado |
 
 Plantilla: copia cualquiera de los anteriores. Numeración consecutiva de cuatro dígitos.
