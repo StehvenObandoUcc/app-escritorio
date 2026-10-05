@@ -75,6 +75,9 @@ pub struct Engine {
   tail: Vec<Draft>,
   open: bool,
   last_tick: Option<DateTime<Utc>>,
+  /// Nada puede empezar antes de este instante: lo anterior ya está registrado (otra sesión o antes
+  /// de una suspensión). Evita que «sin actividad» retroceda sobre bloques existentes.
+  floor: Option<DateTime<Utc>>,
 }
 
 fn special(app: &str, category: Category) -> Observation {
@@ -82,6 +85,11 @@ fn special(app: &str, category: Category) -> Observation {
 }
 
 impl Engine {
+  /// `floor`: fin del último bloque ya guardado (al abrir la app), si lo hay.
+  pub fn set_floor(&mut self, floor: Option<DateTime<Utc>>) {
+    self.floor = floor;
+  }
+
   pub fn new() -> Self {
     Self::default()
   }
@@ -101,6 +109,7 @@ impl Engine {
       && now - last > MAX_GAP
     {
       self.close_open_at(last, &mut out);
+      self.floor = Some(self.floor.map_or(last, |f| f.max(last)));
       self.tail.clear();
     }
     self.last_tick = Some(now);
@@ -124,7 +133,7 @@ impl Engine {
     if same {
       self.extend_open(now, &mut out);
     } else {
-      let floor = self.open_draft().map_or(at, |c| c.started_at);
+      let floor = self.open_draft().map_or_else(|| self.floor.unwrap_or(at), |c| c.started_at);
       self.transition(at.max(floor).min(now), now, desired, &mut out);
     }
     out
@@ -134,6 +143,8 @@ impl Engine {
   pub fn close_open(&mut self, now: DateTime<Utc>) -> Vec<Change> {
     let mut out = Vec::new();
     self.close_open_at(now, &mut out);
+    // Lo que sigue empieza desde aquí: una inactividad no puede retroceder sobre el bloque cerrado.
+    self.floor = Some(self.floor.map_or(now, |f| f.max(now)));
     out
   }
 
@@ -431,6 +442,43 @@ mod tests {
     let a = obs("code", Category::Productive);
     run(&mut e, &mut d, 0, 40, Some(&a), 0);
     assert_eq!(d.sorted()[0].ended_at, at(0, 40));
+  }
+
+  #[test]
+  fn idle_after_a_long_gap_does_not_go_back_over_existing_blocks() {
+    // Suspensión: el último bloque llegó hasta 0:20. Al despertar el equipo lleva 1 h sin uso.
+    let (mut e, mut d) = (Engine::new(), Disk::default());
+    let a = obs("code", Category::Productive);
+    run(&mut e, &mut d, 0, 20, Some(&a), 0);
+    d.apply(e.tick(at(40, 0), Some(&a), 3000, Mode::Tracking, IDLE_LIMIT));
+    let blocks = d.sorted();
+    assert_eq!(blocks.len(), 2, "{blocks:#?}");
+    assert_eq!(blocks[1].category, Category::Idle);
+    assert_eq!(blocks[1].started_at, blocks[0].ended_at, "sin solaparse ni dejar hueco");
+  }
+
+  #[test]
+  fn idle_at_startup_starts_after_the_floor() {
+    // Reinicio de la app: lo guardado llega hasta 0:30; el equipo lleva 10 min sin uso.
+    let (mut e, mut d) = (Engine::new(), Disk::default());
+    e.set_floor(Some(at(0, 30)));
+    d.apply(e.tick(at(10, 0), None, 600, Mode::Tracking, IDLE_LIMIT));
+    assert_eq!(d.sorted()[0].started_at, at(0, 30));
+  }
+
+  #[test]
+  fn idle_after_a_break_or_pause_starts_when_it_ended() {
+    let (mut e, mut d) = (Engine::new(), Disk::default());
+    let a = obs("code", Category::Productive);
+    for s in (0..=20).step_by(2) {
+      d.apply(e.tick(at(0, s), Some(&a), 0, Mode::Break, IDLE_LIMIT));
+    }
+    d.apply(e.close_open(at(0, 22)));
+    d.apply(e.tick(at(6, 0), Some(&a), 400, Mode::Tracking, IDLE_LIMIT));
+    let blocks = d.sorted();
+    assert_eq!(blocks[0].category, Category::Break);
+    assert_eq!(blocks[1].category, Category::Idle);
+    assert!(blocks[1].started_at >= blocks[0].ended_at);
   }
 
   #[test]
