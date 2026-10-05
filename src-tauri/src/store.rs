@@ -142,6 +142,15 @@ impl Store {
     tx.commit().map_err(db)
   }
 
+  /// Fin del último bloque guardado, para que una sesión nueva no se solape con la anterior.
+  pub fn latest_block_end(&self) -> Result<Option<DateTime<Utc>>> {
+    let max: Option<String> = self
+      .conn
+      .query_row("SELECT MAX(ended_at) FROM activity_blocks_local", [], |r| r.get(0))
+      .map_err(db)?;
+    max.as_deref().map(parse).transpose()
+  }
+
   /// Bloques que se solapan con `[from, to)`, en orden cronológico.
   pub fn blocks_between(&self, from: DateTime<Utc>, to: DateTime<Utc>) -> Result<Vec<BlockRow>> {
     let mut stmt = self

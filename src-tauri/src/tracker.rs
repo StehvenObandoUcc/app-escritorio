@@ -212,13 +212,15 @@ impl Inner {
 impl Tracker {
   pub fn new(store: Store, cipher: TitleCipher) -> Result<Self> {
     let settings = Inner::load_settings(&store)?;
+    let mut engine = Engine::new();
+    engine.set_floor(store.latest_block_end()?);
     Ok(Self {
       inner: Mutex::new(Inner {
         store,
         cipher,
         default_rules: classifier::default_rules(),
         team_rules: Vec::new(),
-        engine: Engine::new(),
+        engine,
         pause_until: None,
         on_break: false,
         pending: HashMap::new(),
@@ -611,6 +613,29 @@ mod tests {
     assert_eq!(d.blocks.last().unwrap().category, Category::Idle);
     assert_eq!(d.blocks[0].ended_at, "2026-10-05T12:00:10Z");
     assert_eq!(d.totals["idle"], 190);
+  }
+
+  #[test]
+  fn a_new_session_does_not_overlap_the_previous_one() {
+    // Reproduce el fallo visto con la app real: se reabre con el equipo ya inactivo.
+    let store = Store::open_in_memory().unwrap();
+    store
+      .insert_block(&BlockRow {
+        id: Uuid::new_v4().to_string(),
+        started_at: at(11, 50, 0),
+        ended_at: at(12, 0, 0),
+        app_name: "code".into(),
+        title_enc: None,
+        category: Category::Productive,
+        ai_tool: None,
+      })
+      .unwrap();
+    let t = Tracker::new(store, TitleCipher::new(&TitleCipher::generate_key())).unwrap();
+    t.tick(at(12, 10, 0), win("code", "a.rs"), Some(900)).unwrap(); // sin uso desde 11:55
+    let d = day(&t, at(12, 10, 1));
+    assert_eq!(d.blocks.len(), 2);
+    assert_eq!(d.blocks[1].category, Category::Idle);
+    assert_eq!(d.blocks[1].started_at, "2026-10-05T12:00:00Z", "empieza donde acabó la sesión anterior");
   }
 
   #[test]
