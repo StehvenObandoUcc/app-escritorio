@@ -1,9 +1,9 @@
 import type { Bridge, Category } from '@/bridge/contract';
 import { WORK_CATEGORIES } from '@/lib/categories';
-import { formatDuration, formatHour, formatLongDate, localDate } from '@/lib/time';
+import { formatDuration, formatHour, formatLongDate, localDate, localDateTimeToIso } from '@/lib/time';
 import { Badge, Heading, Surface } from '@/ui/atoms';
-import { CategoryBreakdown, EmptyState, TimerControl } from '@/ui/molecules';
-import { ActivityList, PulseStrip } from '@/ui/organisms';
+import { CategoryBreakdown, EmptyState, TimeEntryForm, TimerControl } from '@/ui/molecules';
+import { ActivityList, PulseStrip, TimeEntryList } from '@/ui/organisms';
 import { PageLayout } from '@/ui/templates';
 import { useDay } from './useDay';
 import { useElapsed } from './useElapsed';
@@ -12,7 +12,7 @@ const BREAKDOWN: Category[] = ['productive', 'ai', 'neutral', 'distraction', 'br
 const PAUSE_MINUTES = 15;
 
 export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date?: string }) {
-  const { state, run } = useDay(bridge, date);
+  const { state, run, reload } = useDay(bridge, date);
   const status = state.phase === 'ready' ? state.status : null;
   const elapsed = useElapsed(status?.timer.startedAt ?? null);
 
@@ -39,7 +39,7 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
     );
   }
 
-  const { day } = state;
+  const { day, entries } = state;
   const worked = WORK_CATEGORIES.reduce((sum, c) => sum + day.totals[c], 0);
   const summary =
     day.workdayStart && day.workdayEnd
@@ -77,6 +77,41 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
           <CategoryBreakdown totals={day.totals} categories={BREAKDOWN} />
         </Surface>
       </div>
+
+      <section className="flex flex-col gap-3">
+        <Heading level={2}>Registro de tiempo</Heading>
+        <Surface as="section" aria-label="Añadir tiempo manualmente">
+          <TimeEntryForm
+            initial={{ date, start: '', end: '' }}
+            submitLabel="Guardar entrada"
+            clearOnSuccess
+            onSubmit={async (v) => {
+              await bridge.timeEntryAdd(localDateTimeToIso(v.date, v.start), localDateTimeToIso(v.date, v.end));
+              reload();
+            }}
+          />
+        </Surface>
+        {entries.length === 0 ? (
+          <EmptyState
+            title="Sin entradas de tiempo"
+            description="Inicia el temporizador o añade una entrada con su día, inicio y fin."
+          />
+        ) : (
+          <Surface padding="flush">
+            <TimeEntryList
+              entries={entries}
+              onUpdate={async (id, start, end) => {
+                await bridge.timeEntryUpdate(id, start, end);
+                reload();
+              }}
+              onDelete={async (id) => {
+                await bridge.timeEntryDelete(id);
+                reload();
+              }}
+            />
+          </Surface>
+        )}
+      </section>
 
       <section className="flex flex-col gap-3">
         <Heading level={2}>Actividad</Heading>

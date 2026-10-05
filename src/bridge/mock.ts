@@ -2,15 +2,23 @@
  * Puente simulado: permite desarrollar y probar la interfaz en el navegador
  * (`npm run dev`) sin compilar Rust. Los datos son deterministas.
  */
+import { localDate } from '@/lib/time';
 import {
   CATEGORIES,
   DayViewSchema,
+  IDLE_MINUTES_MAX,
+  IDLE_MINUTES_MIN,
+  RangeViewSchema,
   SensorStatusSchema,
+  SettingsSchema,
+  TimeEntrySchema,
   type ActivityBlock,
   type Bridge,
   type Category,
   type DayView,
   type SensorStatus,
+  type Settings,
+  type TimeEntry,
 } from './contract';
 
 type Sample = [from: string, to: string, app: string, title: string, category: Category, ai?: string];
@@ -64,12 +72,25 @@ export function sampleDay(date: string): DayView {
   });
 }
 
+const MAX_ENTRY_MS = 24 * 3_600_000;
+
+/** Mismas reglas que Rust (AC-13): fin posterior al inicio, máximo 24 h, nada en el futuro. */
+function validateRange(start: string, end: string, now: Date): void {
+  const [s, e] = [Date.parse(start), Date.parse(end)];
+  if (Number.isNaN(s) || Number.isNaN(e)) throw new Error('Fecha y hora inválidas.');
+  if (e <= s) throw new Error('El fin debe ser posterior al inicio.');
+  if (e - s > MAX_ENTRY_MS) throw new Error('Una entrada no puede durar más de 24 horas.');
+  if (e > now.getTime()) throw new Error('No se puede registrar tiempo en el futuro.');
+}
+
 export function createMockBridge(now: () => Date = () => new Date()): Bridge {
   let status: SensorStatus = {
     state: 'tracking',
     pausedUntil: null,
     timer: { running: false, startedAt: null, taskId: null },
   };
+  let entries: TimeEntry[] = [];
+  let settings: Settings = { idleMinutes: 5, hiddenApps: [] };
   const set = (next: SensorStatus) => {
     status = SensorStatusSchema.parse(next);
     return status;
@@ -79,13 +100,76 @@ export function createMockBridge(now: () => Date = () => new Date()): Bridge {
     source: 'mock',
     sensorStatus: async () => status,
     dayView: async (date) => sampleDay(date),
-    timerStart: async (taskId) =>
-      set({
-        ...status,
-        timer: { running: true, startedAt: now().toISOString(), taskId: taskId ?? null },
-      }),
-    timerStop: async () =>
-      set({ ...status, timer: { running: false, startedAt: null, taskId: null } }),
+    timerStart: async (taskId) => {
+      if (status.timer.running) {
+        throw new Error('Ya hay un temporizador en marcha. Deténlo antes de iniciar otro.');
+      }
+      const startedAt = now().toISOString();
+      entries.push({
+        id: crypto.randomUUID(),
+        startedAt,
+        endedAt: null,
+        taskId: taskId ?? null,
+        source: 'timer',
+      });
+      return set({ ...status, timer: { running: true, startedAt, taskId: taskId ?? null } });
+    },
+    timerStop: async () => {
+      if (!status.timer.running) throw new Error('No hay un temporizador en marcha.');
+      const endedAt = now().toISOString();
+      entries = entries.map((e) => (e.source === 'timer' && e.endedAt === null ? { ...e, endedAt } : e));
+      return set({ ...status, timer: { running: false, startedAt: null, taskId: null } });
+    },
+    rangeView: async (from, to) => {
+      if (to < from) throw new Error('El fin del rango es anterior al inicio.');
+      const days = [];
+      for (let d = new Date(`${from}T12:00:00`); localDate(d) <= to; d.setDate(d.getDate() + 1)) {
+        days.push({ date: localDate(d), totals: sampleDay(localDate(d)).totals });
+      }
+      return RangeViewSchema.parse({ from, to, days });
+    },
+    timeEntries: async (date) =>
+      entries
+        .filter((e) => localDate(new Date(e.startedAt)) === date)
+        .sort((a, b) => a.startedAt.localeCompare(b.startedAt)),
+    timeEntryAdd: async (start, end, taskId) => {
+      validateRange(start, end, now());
+      const entry = TimeEntrySchema.parse({
+        id: crypto.randomUUID(),
+        startedAt: new Date(start).toISOString(),
+        endedAt: new Date(end).toISOString(),
+        taskId: taskId ?? null,
+        source: 'manual',
+      });
+      entries.push(entry);
+      return entry;
+    },
+    timeEntryUpdate: async (id, start, end, taskId) => {
+      validateRange(start, end, now());
+      const current = entries.find((e) => e.id === id && e.endedAt !== null);
+      if (!current) throw new Error('La entrada no existe o sigue en marcha.');
+      Object.assign(current, {
+        startedAt: new Date(start).toISOString(),
+        endedAt: new Date(end).toISOString(),
+        taskId: taskId ?? null,
+      });
+    },
+    timeEntryDelete: async (id) => {
+      if (!entries.some((e) => e.id === id)) throw new Error('La entrada no existe.');
+      entries = entries.filter((e) => e.id !== id);
+    },
+    settingsGet: async () => settings,
+    settingsSet: async (patch) => {
+      const next = { ...settings, ...patch };
+      if (next.idleMinutes < IDLE_MINUTES_MIN || next.idleMinutes > IDLE_MINUTES_MAX) {
+        throw new Error(
+          `El umbral de inactividad debe estar entre ${IDLE_MINUTES_MIN} y ${IDLE_MINUTES_MAX} minutos.`,
+        );
+      }
+      const apps = next.hiddenApps.map((a) => a.trim().toLowerCase()).filter(Boolean);
+      settings = SettingsSchema.parse({ ...next, hiddenApps: [...new Set(apps)] });
+      return settings;
+    },
     breakStart: async () => set({ ...status, state: 'break' }),
     breakEnd: async () => set({ ...status, state: 'tracking' }),
     privacyPause: async (minutes) =>

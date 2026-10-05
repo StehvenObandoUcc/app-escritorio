@@ -1,40 +1,57 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { Bridge, DayView, SensorStatus } from '@/bridge/contract';
+import type { Bridge, DayView, SensorStatus, TimeEntry } from '@/bridge/contract';
+
+/** Cada cuánto se actualiza Mi día mientras la ventana está visible (AC-17). */
+export const REFRESH_MS = 30_000;
 
 type State =
   | { phase: 'loading' }
   | { phase: 'error'; message: string }
-  | { phase: 'ready'; day: DayView; status: SensorStatus };
+  | { phase: 'ready'; day: DayView; status: SensorStatus; entries: TimeEntry[] };
 
-/** Carga el día y el estado del sensor, y expone las acciones del temporizador. */
+const describe = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause));
+
+/** Carga el día, el estado del sensor y las entradas de tiempo; se actualiza solo cada 30 s. */
 export function useDay(bridge: Bridge, date: string) {
   const [state, setState] = useState<State>({ phase: 'loading' });
+  const [version, setVersion] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([bridge.dayView(date), bridge.sensorStatus()])
-      .then(([day, status]) => {
-        if (!cancelled) setState({ phase: 'ready', day, status });
-      })
-      .catch((cause: unknown) => {
-        if (!cancelled) {
-          const detail = cause instanceof Error ? cause.message : String(cause);
-          setState({ phase: 'error', message: detail });
-        }
-      });
+    const refresh = () =>
+      Promise.all([bridge.dayView(date), bridge.sensorStatus(), bridge.timeEntries(date)])
+        .then(([day, status, entries]) => {
+          if (!cancelled) setState({ phase: 'ready', day, status, entries });
+        })
+        .catch((cause: unknown) => {
+          // Un fallo al actualizar no borra lo que ya se estaba mostrando.
+          if (!cancelled) setState((s) => (s.phase === 'ready' ? s : { phase: 'error', message: describe(cause) }));
+        });
+    const refreshIfVisible = () => {
+      if (document.visibilityState === 'visible') void refresh();
+    };
+
+    void refresh();
+    const id = setInterval(refreshIfVisible, REFRESH_MS);
+    document.addEventListener('visibilitychange', refreshIfVisible);
     return () => {
       cancelled = true;
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', refreshIfVisible);
     };
-  }, [bridge, date]);
+  }, [bridge, date, version]);
+
+  /** Vuelve a cargar ahora mismo (p. ej. tras guardar una entrada). */
+  const reload = useCallback(() => setVersion((v) => v + 1), []);
 
   const run = useCallback((action: () => Promise<SensorStatus>) => {
     action()
-      .then((status) => setState((s) => (s.phase === 'ready' ? { ...s, status } : s)))
-      .catch((cause: unknown) => {
-        const detail = cause instanceof Error ? cause.message : String(cause);
-        setState({ phase: 'error', message: detail });
-      });
+      .then((status) => {
+        setState((s) => (s.phase === 'ready' ? { ...s, status } : s));
+        setVersion((v) => v + 1); // el temporizador crea o cierra una entrada de tiempo
+      })
+      .catch((cause: unknown) => setState({ phase: 'error', message: describe(cause) }));
   }, []);
 
-  return { state, run };
+  return { state, run, reload };
 }
