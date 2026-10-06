@@ -1,7 +1,7 @@
 # Spec F1 · Sensor y *Mi día*
 
 Funcionalidades: TA-01 a TA-09, IA-01 a IA-03, PS-03, PS-04, SY-01
-Estado: borrador (pendiente de aprobar tras la prueba S-1)
+Estado: aprobada (por StehvenObando, 2026-10-05). Evidencia de cada criterio en `docs/spikes/F1-medicion-app-real.md`.
 
 ## Objetivo
 Al terminar, Pulso registra en Windows la actividad real del usuario y *Mi día* la muestra,
