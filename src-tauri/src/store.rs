@@ -36,6 +36,8 @@ pub struct BlockRow {
   pub ai_tool: Option<String>,
   /// Equipo activo cuando empezó el bloque (F2). `None`: nunca se sube.
   pub team_id: Option<String>,
+  /// Dominio del sitio, solo en navegadores (ADR-0009).
+  pub domain: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -72,6 +74,7 @@ pub struct PendingBlock {
   pub app_name: String,
   pub category: Category,
   pub ai_tool: Option<String>,
+  pub domain: Option<String>,
 }
 
 /// Entrada de tiempo pendiente de subir, incluidas las borradas (para propagar el borrado).
@@ -158,6 +161,8 @@ impl Store {
        CREATE TABLE app_closures_local (
          id TEXT PRIMARY KEY, team_id TEXT NULL, closed_at TEXT NOT NULL,
          reopened_at TEXT NOT NULL, synced_at TEXT NULL);",
+      // ADR-0009: dominio del sitio en los bloques de navegador.
+      "ALTER TABLE activity_blocks_local ADD COLUMN domain TEXT NULL;",
     ];
     let current: i64 = self.conn.pragma_query_value(None, "user_version", |r| r.get(0)).map_err(db)?;
     for (i, sql) in MIGRATIONS.iter().enumerate().skip(current as usize) {
@@ -174,9 +179,9 @@ impl Store {
       .conn
       .execute(
         "INSERT INTO activity_blocks_local
-           (id, started_at, ended_at, app_name, title_enc, category, ai_tool, team_id)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-        params![b.id, fmt(b.started_at), fmt(b.ended_at), b.app_name, b.title_enc, b.category.as_str(), b.ai_tool, b.team_id],
+           (id, started_at, ended_at, app_name, title_enc, category, ai_tool, team_id, domain)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+        params![b.id, fmt(b.started_at), fmt(b.ended_at), b.app_name, b.title_enc, b.category.as_str(), b.ai_tool, b.team_id, b.domain],
       )
       .map_err(db)?;
     Ok(())
@@ -192,14 +197,14 @@ impl Store {
     conn
       .execute(
         "INSERT INTO activity_blocks_local
-           (id, started_at, ended_at, app_name, title_enc, category, ai_tool, team_id)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+           (id, started_at, ended_at, app_name, title_enc, category, ai_tool, team_id, domain)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
          ON CONFLICT(id) DO UPDATE SET
            started_at = excluded.started_at, ended_at = excluded.ended_at,
            app_name = excluded.app_name, title_enc = excluded.title_enc,
-           category = excluded.category, ai_tool = excluded.ai_tool, synced_at = NULL",
+           category = excluded.category, ai_tool = excluded.ai_tool, domain = excluded.domain, synced_at = NULL",
         // team_id no se actualiza: una fila no cambia de equipo (el servidor también lo impide).
-        params![b.id, fmt(b.started_at), fmt(b.ended_at), b.app_name, b.title_enc, b.category.as_str(), b.ai_tool, b.team_id],
+        params![b.id, fmt(b.started_at), fmt(b.ended_at), b.app_name, b.title_enc, b.category.as_str(), b.ai_tool, b.team_id, b.domain],
       )
       .map_err(db)?;
     Ok(())
@@ -231,7 +236,7 @@ impl Store {
     let mut stmt = self
       .conn
       .prepare(
-        "SELECT id, started_at, ended_at, app_name, title_enc, category, ai_tool, team_id
+        "SELECT id, started_at, ended_at, app_name, title_enc, category, ai_tool, team_id, domain
          FROM activity_blocks_local WHERE started_at < ?2 AND ended_at > ?1
          ORDER BY started_at",
       )
@@ -383,7 +388,7 @@ impl Store {
     let mut stmt = self
       .conn
       .prepare(
-        "SELECT id, team_id, started_at, ended_at, app_name, category, ai_tool
+        "SELECT id, team_id, started_at, ended_at, app_name, category, ai_tool, domain
          FROM activity_blocks_local
          WHERE synced_at IS NULL AND team_id = ?1 AND ended_at <= ?2
          ORDER BY started_at LIMIT ?3",
@@ -497,6 +502,7 @@ fn block_from_row(r: &Row) -> rusqlite::Result<Result<BlockRow>> {
   let category: String = r.get(5)?;
   let (start, end): (String, String) = (r.get(1)?, r.get(2)?);
   let team_id: Option<String> = r.get(7)?;
+  let domain: Option<String> = r.get(8)?;
   Ok((|| {
     Ok(BlockRow {
       id: r.get(0).map_err(db)?,
@@ -507,6 +513,7 @@ fn block_from_row(r: &Row) -> rusqlite::Result<Result<BlockRow>> {
       category: Category::parse(&category).ok_or_else(|| db(format!("categoría desconocida: {category}")))?,
       ai_tool: r.get(6).map_err(db)?,
       team_id,
+      domain,
     })
   })())
 }
@@ -522,6 +529,7 @@ fn pending_block_from_row(r: &Row) -> rusqlite::Result<Result<PendingBlock>> {
       app_name: r.get(4).map_err(db)?,
       category: Category::parse(&category).ok_or_else(|| db(format!("categoría desconocida: {category}")))?,
       ai_tool: r.get(6).map_err(db)?,
+      domain: r.get(7).map_err(db)?,
     })
   })())
 }
@@ -589,6 +597,7 @@ mod tests {
       category: Category::Productive,
       ai_tool: None,
       team_id: None,
+      domain: None,
     }
   }
 

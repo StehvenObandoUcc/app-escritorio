@@ -16,6 +16,8 @@ pub struct SyncBlock {
   pub app_name: String,
   pub category: &'static str,
   pub ai_tool: Option<String>,
+  /// Solo el dominio (ADR-0009): nunca la ruta ni la búsqueda.
+  pub domain: Option<String>,
 }
 
 #[derive(Debug, Serialize, PartialEq, Eq)]
@@ -59,6 +61,7 @@ impl From<&PendingBlock> for SyncBlock {
       app_name: b.app_name.clone(),
       category: b.category.as_str(),
       ai_tool: b.ai_tool.clone(),
+      domain: b.domain.clone(),
     }
   }
 }

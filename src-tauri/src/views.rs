@@ -34,6 +34,8 @@ pub struct BlockView {
   pub title: Option<String>,
   pub category: Category,
   pub ai_tool: Option<String>,
+  /// Dominio del sitio (solo navegadores, ADR-0009).
+  pub domain: Option<String>,
 }
 
 #[derive(Debug, Serialize, PartialEq, Eq)]
@@ -147,6 +149,7 @@ pub fn build_day_view(
       title,
       category: b.category,
       ai_tool: b.ai_tool,
+      domain: b.domain,
     });
   }
 
@@ -204,6 +207,7 @@ mod tests {
       category,
       ai_tool: None,
       team_id: None,
+      domain: None,
     }
   }
 
