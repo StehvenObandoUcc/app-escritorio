@@ -21,7 +21,7 @@ export interface VisibilityRow {
 export const VISIBILITY: VisibilityRow[] = [
   { row: 12, what: 'Tu actividad con títulos de ventana (solo en tu equipo)', owner: 'S', admin: 'S', lead: 'S', member: 'S', viewer: '—', phase: 'F1' },
   { row: 7, what: 'Lista de miembros', owner: '✔', admin: '✔', lead: '✔', member: '✔', viewer: 'solo su fila', phase: 'F0' },
-  { row: 13, what: 'Actividad por miembro: categorías, apps y horas', owner: '✔', admin: '✔', lead: 'P (solo tiempo de sus proyectos)', member: '—', viewer: '—', phase: 'F2' },
+  { row: 13, what: 'Actividad por miembro: categorías, apps, sitios (dominio) y horas', owner: '✔', admin: '✔', lead: 'P (solo tiempo de sus proyectos)', member: '—', viewer: '—', phase: 'F2' },
   { row: 14, what: 'Uso de IA por miembro', owner: '✔', admin: '✔', lead: 'P', member: '—', viewer: '—', phase: 'F2' },
   { row: 26, what: 'Cierres de Pulso dentro de la jornada', owner: '✔', admin: '✔', lead: 'S', member: 'S', viewer: '—', phase: 'F2' },
   { row: 9, what: 'Registro de auditoría', owner: '✔', admin: '✔', lead: '—', member: '—', viewer: '—', phase: 'F2' },

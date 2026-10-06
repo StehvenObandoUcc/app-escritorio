@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { Bridge, Category } from '@/bridge/contract';
-import { aiToolTotals, appTotals, buildTimeline } from '@/lib/activity';
+import { useOptionalSession } from '@/app/session';
+import { aiToolTotals, appTotals, buildTimeline, domainTotals } from '@/lib/activity';
 import { HIDDEN_APP } from '@/lib/apps';
 import { WORK_CATEGORIES } from '@/lib/categories';
 import { formatDuration, formatHour, formatLongDate, formatShortDuration, localDate, localDateTimeToIso } from '@/lib/time';
@@ -14,9 +15,10 @@ import { useElapsed } from './useElapsed';
 const BREAKDOWN: Category[] = ['productive', 'ai', 'neutral', 'distraction', 'break'];
 const PAUSE_MINUTES = 15;
 
-type ActivityView = 'resumen' | 'linea' | 'detalle';
+type ActivityView = 'resumen' | 'sitios' | 'linea' | 'detalle';
 const VIEWS: { value: ActivityView; label: string }[] = [
   { value: 'resumen', label: 'Por app' },
+  { value: 'sitios', label: 'Por sitio' },
   { value: 'linea', label: 'Línea de tiempo' },
   { value: 'detalle', label: 'Detalle' },
 ];
@@ -37,6 +39,9 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
   const totalsByApp = useMemo(() => (blocks ? appTotals(blocks) : []), [blocks]);
   const timeline = useMemo(() => (blocks ? buildTimeline(blocks) : []), [blocks]);
   const aiTools = useMemo(() => (allBlocks ? aiToolTotals(allBlocks) : []), [allBlocks]);
+  const totalsBySite = useMemo(() => (blocks ? domainTotals(blocks) : []), [blocks]);
+  const session = useOptionalSession();
+  const notAllowed = useMemo(() => new Set(session?.notAllowedDomains ?? []), [session?.notAllowedDomains]);
 
   const sampleTag = bridge.source === 'mock' && <Badge tone="accent">Datos de ejemplo</Badge>;
 
@@ -169,6 +174,15 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
                 <AppSummary totals={totalsByApp} />
               ) : (
                 <p className="p-4 text-fg-muted md:p-5">Hoy solo hay inactividad, pausas o descansos.</p>
+              ))}
+            {view === 'sitios' &&
+              (totalsBySite.length ? (
+                <AppSummary totals={totalsBySite} kind="site" flagged={notAllowed} />
+              ) : (
+                <p className="p-4 text-fg-muted md:p-5">
+                  Aún no hay sitios web registrados hoy. Pulso lee el dominio de la barra de direcciones de Brave, Chrome, Edge, Opera,
+                  Vivaldi y Firefox; nunca la página ni lo que buscas.
+                </p>
               ))}
             {view === 'linea' && <ActivityTimeline rows={timeline} />}
             {view === 'detalle' && <ActivityList blocks={blocks ?? []} />}

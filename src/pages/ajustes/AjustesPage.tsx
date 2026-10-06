@@ -6,6 +6,7 @@ import { Badge, Button, Heading, Surface } from '@/ui/atoms';
 import { EmptyState, FormField } from '@/ui/molecules';
 import { HiddenAppsPicker, type AppCandidate } from '@/ui/organisms';
 import { PageLayout } from '@/ui/templates';
+import { useOptionalSession } from '@/app/session';
 import { PerfilSection } from './PerfilSection';
 
 /** Días hacia atrás de los que se sacan las apps candidatas a ocultar. */
@@ -40,6 +41,8 @@ const describe = (cause: unknown) => (cause instanceof Error ? cause.message : S
 export function AjustesPage({ bridge }: { bridge: Bridge }) {
   const [saved, setSaved] = useState<Settings | null>(null);
   const [minutes, setMinutes] = useState('');
+  const session = useOptionalSession();
+  const teamForbidsHidden = session?.activeTeam ? !session.activeTeam.allowHiddenApps : false;
   const [hidden, setHidden] = useState<string[]>([]);
   const [recent, setRecent] = useState<AppCandidate[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -122,7 +125,13 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
               onChange={(e) => setMinutes(e.target.value)}
               hint={`Entre ${IDLE_MINUTES_MIN} y ${IDLE_MINUTES_MAX}. Sin teclado ni ratón durante ese tiempo, el bloque se cierra en tu última acción y empieza uno sin actividad.`}
             />
-            <HiddenAppsPicker candidates={candidates} selected={hidden} onChange={setHidden} />
+            {teamForbidsHidden && (
+              <p role="note" className="rounded-md bg-sunken p-3 text-sm text-fg">
+                Tu equipo ({session?.activeTeam?.name}) no permite ocultar apps: se registran con su nombre mientras trabajes en él. Tu lista se
+                conserva y vuelve a aplicarse si el equipo lo permite.
+              </p>
+            )}
+            <HiddenAppsPicker candidates={candidates} selected={hidden} onChange={setHidden} disabled={teamForbidsHidden} />
             {formError && (
               <p role="alert" className="text-sm text-danger">
                 {formError}

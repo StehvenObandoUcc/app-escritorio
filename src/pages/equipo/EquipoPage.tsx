@@ -10,6 +10,7 @@ import { Badge, Button, Heading, Select, Surface } from '@/ui/atoms';
 import { EmptyState, FormField, SyncStatus } from '@/ui/molecules';
 import { ConsentPanel, MemberList } from '@/ui/organisms';
 import { PageLayout } from '@/ui/templates';
+import { SitiosYPoliticas } from './SitiosYPoliticas';
 
 const describe = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause));
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -232,11 +233,12 @@ function TeamView({ team }: { team: MyTeam }) {
   const consent = useAction();
   const [creating, setCreating] = useState(false);
 
-  if (!team.consentAt) {
+  // Sin consentimiento, o con el de una versión anterior (ADR-0009), se pide antes de subir nada.
+  if (!team.consentAt || team.consentVersion !== CONSENT_VERSION) {
     return (
       <ConsentPanel
         teamName={team.name}
-        acceptLabel="Aceptar y empezar a compartir"
+        acceptLabel={team.consentAt ? 'Aceptar la versión nueva' : 'Aceptar y empezar a compartir'}
         busy={consent.busy}
         error={consent.error}
         onAccept={() =>
@@ -268,6 +270,7 @@ function TeamView({ team }: { team: MyTeam }) {
       </Surface>
       <Members team={team} />
       {invitableRoles(team.role).length > 0 && <Invitations team={team} />}
+      {(team.role === 'owner' || team.role === 'admin') && <SitiosYPoliticas team={team} />}
       <LeaveTeam team={team} />
       {creating ? (
         <CreateTeam onDone={() => setCreating(false)} />

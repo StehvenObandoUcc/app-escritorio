@@ -44,6 +44,8 @@ export const MyTeamSchema = z.object({
   consentAt: z.string().nullable(),
   consentVersion: z.string().nullable(),
   workday: WorkdaySchema,
+  /** Política del equipo (ADR-0009): si cada persona puede ocultar apps. Por defecto, sí. */
+  allowHiddenApps: z.boolean(),
 });
 export type MyTeam = z.infer<typeof MyTeamSchema>;
 
@@ -75,6 +77,23 @@ export const MyInvitationSchema = z.object({
   expiresAt: z.string(),
 });
 export type MyInvitation = z.infer<typeof MyInvitationSchema>;
+
+/** Regla del equipo por dominio (ADR-0009). `notAllowed`: sitio marcado como no permitido. */
+export const DomainRuleSchema = z.object({
+  id: z.uuid(),
+  domain: z.string(),
+  notAllowed: z.boolean(),
+});
+export type DomainRule = z.infer<typeof DomainRuleSchema>;
+
+/** Tiempo por sitio y persona (`team_domain_summary`, solo owner y admin). */
+export const DomainUsageSchema = z.object({
+  userId: z.uuid(),
+  domain: z.string(),
+  category: z.string(),
+  seconds: z.number(),
+});
+export type DomainUsage = z.infer<typeof DomainUsageSchema>;
 
 /** Error con un mensaje para la persona (qué pasó y qué hacer) y una clase para decidir qué hacer. */
 export class CloudError extends Error {
@@ -135,6 +154,14 @@ export interface Cloud {
   /** Exige el código de la invitación (ADR-0008). Devuelve el id del equipo. */
   acceptInvitation(id: string, code: string, consentVersion: string): Promise<string>;
   declineInvitation(id: string): Promise<void>;
+
+  // ---- Sitios y políticas (ADR-0009, solo owner y admin escriben) ----
+  setTeamPolicy(teamId: string, allowHiddenApps: boolean): Promise<void>;
+  domainRules(teamId: string): Promise<DomainRule[]>;
+  /** Marca un dominio como no permitido (cuenta como distracción). */
+  addNotAllowedDomain(teamId: string, domain: string): Promise<void>;
+  removeDomainRule(ruleId: string): Promise<void>;
+  teamDomainSummary(teamId: string, from: string, to: string): Promise<DomainUsage[]>;
 
   // ---- Reglas y sincronización (SY-02, SY-03) ----
   teamRules(teamId: string): Promise<TeamRule[]>;
