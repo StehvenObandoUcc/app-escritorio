@@ -238,7 +238,7 @@ Lo de arriba es el plan original y sigue vigente. Esta sección añade lo acorda
 |---|---|---|
 | F0 · Fundaciones | Hecha | G0 incompleta: faltan los informes S-2 (detección de IA por título) y S-4 (DeepSeek) |
 | **F1 · Sensor y *Mi día*** | **Hecha. Spec aprobada el 5 oct** | **G1 pasa** (evidencia en `docs/spikes/F1-medicion-app-real.md`) |
-| F2 · Cuentas, equipos y sincronización | Por empezar (6–8 oct). Migración de actividad y tiempo adelantada en F1 | — |
+| F2 · Cuentas, equipos y sincronización | En curso (rama `feat/f2-cuentas-equipos-sync`): migración, Rust e interfaz hechos con pruebas; falta aplicar la migración en `pulso-dev`, configurar el correo de Supabase y la prueba con dos cuentas reales | G2 pendiente |
 | F3 a F6 | Por empezar | — |
 
 Funcionalidades antes de la entrega (`docs/FUNCIONALIDADES.md`): **86**.
@@ -259,3 +259,15 @@ previsto, sin margen: F2 empieza el martes 6.
 | A-1 | **Cierres de Pulso dentro de la jornada.** Cerrar Pulso detiene el registro (hecho en F1), pero si ocurre dentro de la jornada laboral debe quedar reportado. | Definir qué es la jornada (¿horas de `teams.settings`, EQ-09?), qué se guarda (¿un evento «Pulso cerrado» con hora?), quién lo ve (¿la persona, owner y admin?) y si exige una fila nueva en `docs/ROLES.md`. **Acordado: se define en la spec de F2, junto con los roles.** |
 | A-2 | Conexiones de WebView2 a servidores de Microsoft vistas en la prueba real (`52.96.185.210:443`) | Revisar en F6 con la CSP: qué las origina y si se pueden desactivar sin dependencias nuevas. |
 | A-3 | La regla de salida de equipo (D2: se borran `activity_blocks`, se conservan `time_entries` como «Exmiembro», queda en `audit_log`) contradice la migración `20261005000001`, que hoy borra también `time_entries` y solo al salir por cuenta propia | Corregir con una migración nueva en F2, con sus pruebas. |
+
+### 8.5 Avance de F2 (6 de octubre)
+
+| Parte | Estado |
+|---|---|
+| Spec `docs/specs/F2-cuentas-equipos-sync.md` | Borrador con A-1 y A-3 resueltos; pendiente de aprobación formal |
+| Migración `20261006000001` (invitaciones, auditoría, consentimiento, cierres, regla A-3) | Hecha; 95 pruebas de permisos en verde. **Falta `db:push` en `pulso-dev`** |
+| Rust: sesión cifrada, `active_team_set` (ADR-0007), `sync_pending`, `sync_mark_synced`, `rules_set`, cierres | Hecho; 80 pruebas en verde |
+| Interfaz: acceso con código, equipos, invitaciones, consentimiento, perfil, privacidad, sincronización | Hecha contra la nube simulada; falta probarla con Supabase real |
+| Puerta G2 | Pendiente: dos cuentas reales, 30 min sin red, viewer y persona de otro equipo |
+
+Decisión abierta: **A-4** · Supabase envía el código de verificación y el de recuperación con las plantillas de correo del proyecto. Deben usar `{{ .Token }}` y la longitud del código debe ser 6 (CU-01).
