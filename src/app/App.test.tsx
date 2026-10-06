@@ -1,7 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import { MOCK_CODE } from '@/cloud/mock';
 import { App } from './App';
 
 describe('puerta de entrada', () => {
@@ -16,8 +15,6 @@ describe('puerta de entrada', () => {
     await userEvent.type(screen.getByLabelText('Correo'), 'ana@pulso.test');
     await userEvent.type(screen.getByLabelText('Contraseña'), 'secreto-123');
     await userEvent.click(screen.getByRole('button', { name: 'Crear cuenta' }));
-    await userEvent.type(await screen.findByLabelText('Código'), MOCK_CODE);
-    await userEvent.click(screen.getByRole('button', { name: 'Verificar correo' }));
 
     const nav = await screen.findByRole('navigation', { name: 'Principal' });
     expect(nav).toBeInTheDocument();

@@ -20,7 +20,7 @@ const MIN_PASSWORD = 8;
 
 const TITLES: Record<Mode, { title: string; subtitle: string }> = {
   entrar: { title: 'Hola de nuevo', subtitle: 'Entra para ver tu día y trabajar con tu equipo.' },
-  registro: { title: 'Crea tu cuenta', subtitle: 'Toma un minuto. Te enviaremos un código para confirmar tu correo.' },
+  registro: { title: 'Crea tu cuenta', subtitle: 'Toma un minuto. Para unirte a un equipo, pide el código de invitación.' },
   verificar: { title: 'Revisa tu correo', subtitle: 'Escribe el código de 6 dígitos que te enviamos.' },
   recuperar: { title: '¿Olvidaste tu contraseña?', subtitle: 'Te enviaremos un código para crear una nueva.' },
   'nueva-clave': { title: 'Crea una contraseña nueva', subtitle: 'Escribe el código del correo y tu contraseña nueva.' },
@@ -104,15 +104,18 @@ export function AccesoPage() {
           try {
             await cloud.signUp(mail, password, name.trim());
           } catch (cause) {
-            // Un 5xx al registrarse casi siempre es el envío del correo de verificación.
+            // Un 5xx al registrarse suele ser el correo de confirmación (si sigue activado en Supabase).
             if (cause instanceof CloudError && cause.kind === 'network') {
-              throw new CloudError(
-                `No pudimos enviarte el código: ${cause.message} Si la cuenta ya quedó creada, ve a «Iniciar sesión» y te pediremos el código.`,
-                'network',
-              );
+              throw new CloudError(`No pudimos crear la cuenta: ${cause.message} Si la cuenta ya quedó creada, ve a «Iniciar sesión».`, 'network');
             }
             throw cause;
           }
+          // Sin confirmación de correo (ADR-0008) la sesión ya empezó: directo a Equipo.
+          if (await cloud.currentUser()) {
+            navigate('/equipo');
+            return;
+          }
+          // Si el proyecto de Supabase aún exige confirmar el correo, se pide el código.
           go('verificar');
           setNotice(`Enviamos un código a ${mail}. Puede tardar un minuto; revisa también el correo no deseado.`);
         },

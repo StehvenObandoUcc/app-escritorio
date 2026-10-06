@@ -12,8 +12,19 @@ const ruta = () => screen.getByTestId('ruta').textContent;
 const LONG = 20_000;
 
 describe('Acceso (CU-01 a CU-03)', () => {
-  it('registra una cuenta, pide el código de 6 dígitos y entra (AC-1)', async () => {
+  it('registra una cuenta y entra al instante, sin esperar un correo (AC-1, ADR-0008)', async () => {
     const { cloud } = renderWithSession(<AccesoPage />, { path: '/' });
+    await userEvent.click(await screen.findByRole('tab', { name: 'Crear cuenta' }));
+    await userEvent.type(screen.getByLabelText('Nombre visible'), 'Caro Díaz');
+    await userEvent.type(screen.getByLabelText('Correo'), 'caro@pulso.test');
+    await userEvent.type(screen.getByLabelText('Contraseña'), 'secreto-123');
+    await userEvent.click(screen.getByRole('button', { name: 'Crear cuenta' }));
+    await waitFor(() => expect(ruta()).toBe('/equipo'));
+    expect((await cloud.currentUser())?.email).toBe('caro@pulso.test');
+  }, LONG);
+
+  it('si Supabase aún exige confirmar el correo, pide el código y entra al verificarlo', async () => {
+    const { cloud } = renderWithSession(<AccesoPage />, { path: '/', cloud: createMockCloud(undefined, { confirmEmail: true }) });
     await userEvent.click(await screen.findByRole('tab', { name: 'Crear cuenta' }));
     await userEvent.type(screen.getByLabelText('Nombre visible'), 'Caro Díaz');
     await userEvent.type(screen.getByLabelText('Correo'), 'caro@pulso.test');
@@ -63,7 +74,7 @@ describe('Acceso (CU-01 a CU-03)', () => {
     await userEvent.type(screen.getByLabelText('Contraseña'), 'secreto-123');
     await userEvent.click(screen.getByRole('button', { name: 'Crear cuenta' }));
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('No pudimos enviarte el código');
+    expect(alert).toHaveTextContent('No pudimos crear la cuenta');
     expect(alert).toHaveTextContent('error 504');
     expect(alert).not.toHaveTextContent(/^HTTP 504$/);
   }, LONG);
@@ -93,8 +104,8 @@ describe('Acceso (CU-01 a CU-03)', () => {
     expect(field).toHaveAttribute('type', 'password');
   });
 
-  it('con el correo sin verificar, pasa a escribir el código', async () => {
-    const cloud = createMockCloud();
+  it('con el correo sin verificar (proyecto que exige confirmarlo), pasa a escribir el código', async () => {
+    const cloud = createMockCloud(undefined, { confirmEmail: true });
     await cloud.signUp('beto@pulso.test', 'secreto-123', 'Beto');
     renderWithSession(<AccesoPage />, { cloud });
     await userEvent.type(await screen.findByLabelText('Correo'), 'beto@pulso.test');

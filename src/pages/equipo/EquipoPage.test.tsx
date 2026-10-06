@@ -55,11 +55,16 @@ describe('Equipo (EQ-01 a EQ-08, PS-02)', () => {
     await userEvent.type(within(form).getByLabelText('Correo'), 'Beto@Pulso.test');
     await userEvent.selectOptions(within(form).getByLabelText('Rol'), 'admin');
     await userEvent.click(within(form).getByRole('button', { name: 'Invitar' }));
-    expect(await within(form).findByRole('status')).toHaveTextContent('beto@pulso.test');
-    expect(await within(form).findByText('beto@pulso.test')).toBeInTheDocument();
+    const created = await within(form).findByRole('status');
+    expect(created).toHaveTextContent('beto@pulso.test');
+    // El código para compartir se ve al crear la invitación y en la lista de pendientes (ADR-0008).
+    const [pending] = await cloud.teamInvitations((await cloud.myTeams())[0]!.id);
+    expect(created).toHaveTextContent(pending!.code!);
+    expect(within(form).getByLabelText(`Código ${pending!.code}`)).toBeInTheDocument();
+    expect(await within(form).findByText('beto@pulso.test', { selector: 'li p' })).toBeInTheDocument();
 
     await userEvent.click(within(form).getByRole('button', { name: 'Revocar' }));
-    await waitFor(() => expect(within(form).queryByText('beto@pulso.test')).not.toBeInTheDocument());
+    await waitFor(() => expect(within(form).queryByText('beto@pulso.test', { selector: 'li p' })).not.toBeInTheDocument());
   });
 
   it('el admin solo puede invitar member o viewer; el member no ve el formulario', async () => {
@@ -86,7 +91,7 @@ describe('Equipo (EQ-01 a EQ-08, PS-02)', () => {
     const ana = cloud.debug.addAccount('ana@pulso.test', 'secreto-123', 'Ana');
     const team = cloud.debug.addTeam('Equipo A', ana);
     cloud.debug.addAccount('fran@pulso.test', 'secreto-123', 'Fran');
-    cloud.debug.invite(team, 'fran@pulso.test', 'member', ana);
+    const invitation = cloud.debug.invite(team, 'fran@pulso.test', 'member', ana);
     await cloud.signIn('fran@pulso.test', 'secreto-123');
     renderWithSession(<EquipoPage />, { path: '/equipo', cloud });
 
@@ -94,7 +99,16 @@ describe('Equipo (EQ-01 a EQ-08, PS-02)', () => {
     expect(invitations).toHaveTextContent('Equipo A');
     expect(invitations).toHaveTextContent('Ana te invitó como Miembro');
     await userEvent.click(within(invitations).getByRole('button', { name: 'Ver y responder' }));
+
+    // Sin el código correcto no entra (ADR-0008).
+    await userEvent.type(screen.getByLabelText('Código de invitación'), 'AAAA-AAAA');
     await acceptConsent('Aceptar y unirme');
+    expect(await screen.findByRole('alert')).toHaveTextContent('El código no coincide');
+
+    await userEvent.clear(screen.getByLabelText('Código de invitación'));
+    // Se acepta en minúsculas y sin guion.
+    await userEvent.type(screen.getByLabelText('Código de invitación'), cloud.debug.codeOf(invitation).replace('-', '').toLowerCase());
+    await userEvent.click(screen.getByRole('button', { name: 'Aceptar y unirme' }));
 
     expect(await screen.findByRole('list', { name: 'Miembros del equipo' })).toHaveTextContent('Fran (tú)');
     expect(screen.queryByRole('region', { name: 'Invitaciones recibidas' })).not.toBeInTheDocument();

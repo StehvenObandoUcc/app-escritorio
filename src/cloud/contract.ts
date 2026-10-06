@@ -61,6 +61,8 @@ export const TeamInvitationSchema = z.object({
   email: z.string(),
   role: TeamRoleSchema,
   expiresAt: z.string(),
+  /** Código que quien invita comparte con la persona (ADR-0008). */
+  code: z.string().nullable(),
 });
 export type TeamInvitation = z.infer<typeof TeamInvitationSchema>;
 
@@ -86,6 +88,10 @@ export class CloudError extends Error {
   }
 }
 
+/** Mensaje cuando el código de invitación no coincide (accept_invitation devuelve null). */
+export const WRONG_INVITATION_CODE =
+  'El código no coincide o la invitación ya venció. Revísalo con quien te invitó: tras 5 intentos la invitación se anula.';
+
 export interface Cloud {
   /** "mock" = datos de ejemplo en memoria; "supabase" = proyecto real. */
   readonly source: 'mock' | 'supabase';
@@ -94,7 +100,10 @@ export interface Cloud {
   currentUser(): Promise<CloudUser | null>;
   /** Avisa cuando se inicia o se cierra la sesión. Devuelve la función para dejar de escuchar. */
   onUserChange(listener: (user: CloudUser | null) => void): () => void;
-  /** Crea la cuenta y envía el código de 6 dígitos al correo. */
+  /**
+   * Crea la cuenta. Sin verificación de correo (ADR-0008) la sesión empieza al instante; si el
+   * proyecto de Supabase aún exige confirmar el correo, envía el código y no hay sesión hasta verificarlo.
+   */
   signUp(email: string, password: string, displayName: string): Promise<void>;
   verifySignUp(email: string, code: string): Promise<void>;
   resendSignUpCode(email: string): Promise<void>;
@@ -119,10 +128,12 @@ export interface Cloud {
 
   // ---- Invitaciones (EQ-02, EQ-03) ----
   teamInvitations(teamId: string): Promise<TeamInvitation[]>;
-  invite(teamId: string, email: string, role: TeamRole): Promise<void>;
+  /** Devuelve el código que hay que compartir con la persona invitada. */
+  invite(teamId: string, email: string, role: TeamRole): Promise<{ code: string }>;
   revokeInvitation(id: string): Promise<void>;
   myInvitations(): Promise<MyInvitation[]>;
-  acceptInvitation(id: string, consentVersion: string): Promise<string>;
+  /** Exige el código de la invitación (ADR-0008). Devuelve el id del equipo. */
+  acceptInvitation(id: string, code: string, consentVersion: string): Promise<string>;
   declineInvitation(id: string): Promise<void>;
 
   // ---- Reglas y sincronización (SY-02, SY-03) ----
