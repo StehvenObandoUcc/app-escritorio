@@ -74,7 +74,7 @@ La interfaz muestra la etiqueta "Datos de ejemplo" siempre que usa el puente sim
 - Capas y reglas: `docs/DISENO.md`. ESLint impide que una capa importe de otra superior.
 - Solo `src/pages`, `src/app` y `src/dev` usan el puente; los componentes de `src/ui` reciben datos por props.
 - Todo dato que llega del puente o de Supabase se valida con zod antes de usarse.
-- Rutas (HashRouter): `/mi-dia`, `/tareas`, `/equipo`, `/reportes`, `/ajustes`, `/dev/galeria` (solo desarrollo).
+- Rutas (HashRouter): `/acceso` (registro, inicio de sesión y recuperar contraseña; F2), `/mi-dia`, `/tareas`, `/equipo`, `/reportes`, `/ajustes`, `/dev/galeria` (solo desarrollo).
 
 ## 6. Núcleo Rust: módulos y comandos (lista cerrada)
 
@@ -101,8 +101,9 @@ Comandos (nombres exactos; `src/bridge/contract.ts` es su espejo en TypeScript):
 | F1 | `time_entries(date)` (ADR-0005) | entradas de tiempo del día local |
 | F1 | `settings_get()` · `settings_set(patch)` | ajustes locales (umbral de inactividad, ocultar apps) |
 | F2 | `session_get()` · `session_set(json)` · `session_clear()` | sesión de Supabase |
-| F2 | `sync_pending(limit)` | bloques y entradas sin subir, **sin títulos** |
-| F2 | `sync_mark_synced(kind, ids)` | — |
+| F2 | `active_team_set(team_id?)` (ADR-0007) | — (equipo al que se asignan las filas nuevas) |
+| F2 | `sync_pending(limit)` | bloques, entradas y cierres del equipo activo sin subir, **sin títulos** |
+| F2 | `sync_mark_synced(kind, ids)` | — (`kind`: `blocks` · `entries` · `closures`) |
 | F2 | `rules_set(json)` | — (reglas del equipo para el clasificador) |
 | F3 | `tasks_cache_put(json)` · `tasks_cache_get()` | copia local de tareas |
 | F4 | `ai_config_set(base_url, model, key)` · `ai_config_get()` · `ai_config_clear()` | `ai_config_get` devuelve `{base_url, model, has_key}`, **nunca la clave** |
@@ -147,7 +148,7 @@ Reglas de toda migración (ya aplicadas en la primera, que sirve de modelo):
 
 ### 7.2 En el equipo (SQLite, solo Rust)
 
-`activity_blocks_local` (con `title_enc` y `synced_at`), `time_entries_local`, `tasks_cache`, `kv_settings`.
+`activity_blocks_local` (con `title_enc`, `team_id` y `synced_at`), `time_entries_local` (con `team_id`), `app_closures_local`, `tasks_cache`, `kv_settings` (ajustes, equipo activo, reglas del equipo y la sesión cifrada).
 
 ### 7.3 Sincronización (TypeScript)
 
