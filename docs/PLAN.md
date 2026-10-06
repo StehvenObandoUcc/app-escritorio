@@ -268,7 +268,9 @@ previsto, sin margen: F2 empieza el martes 6.
 | Migración `20261006000001` (invitaciones, auditoría, consentimiento, cierres, regla A-3) | Hecha; 95 pruebas de permisos en verde. **Falta `db:push` en `pulso-dev`** |
 | Rust: sesión cifrada, `active_team_set` (ADR-0007), `sync_pending`, `sync_mark_synced`, `rules_set`, cierres | Hecho; 80 pruebas en verde |
 | Interfaz: acceso con código, equipos, invitaciones, consentimiento, perfil, privacidad, sincronización | Hecha contra la nube simulada; falta probarla con Supabase real |
-| Puerta G2 | Pendiente: dos cuentas reales, 30 min sin red, viewer y persona de otro equipo |
+| Registro sin verificar el correo y código de invitación (ADR-0008) | Hecho y aplicado en `pulso-dev` |
+| Sitios por dominio, sitios no permitidos y política de apps ocultas (ADR-0009, S-5) | Hecho con pruebas; falta aplicar `20261007000001` y probar en la app real |
+| Puerta G2 | Pendiente (jueves 8): dos cuentas reales, 30 min sin red, viewer y persona de otro equipo |
 
 Decisiones abiertas:
 - **A-4** · *Olvidé mi contraseña* necesita que Supabase envíe correos: hoy responde 504. Hay que revisar o configurar el SMTP del proyecto. El registro ya no depende del correo (ADR-0008).
