@@ -110,6 +110,13 @@ mod tests {
       ("Gemini", "Gemini"),
       ("DeepSeek Chat", "DeepSeek"),
       ("Microsoft Copilot", "Copilot"),
+      ("Cómo funciona RLS - Perplexity - Brave", "Perplexity"),
+      ("Le Chat - Mistral AI", "Mistral"),
+      ("Grok", "Grok"),
+      ("Mi cuaderno - NotebookLM", "NotebookLM"),
+      ("Meta AI", "Meta AI"),
+      ("Qwen Chat", "Qwen"),
+      ("Phind", "Phind"),
     ] {
       let c = run("chrome", title);
       assert_eq!(c.category, Category::Ai, "{title}");
