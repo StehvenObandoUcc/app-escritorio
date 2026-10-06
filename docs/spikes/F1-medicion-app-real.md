@@ -98,7 +98,7 @@ Pruebas Rust: `cargo test` en `src-tauri` (62). Pruebas de interfaz: `vitest` (1
 | AC-15 `day_view`: bloques del día local, totales y jornada | Cumple | Pruebas `views::tests::totals_workday_and_all_categories_present`, `local_day_bounds_use_the_time_zone`, `block_crossing_midnight_is_clipped_to_each_day`, `empty_day_has_no_workday`. App real: *Mi día* mostró «Jornada de 16:53 a 17:24» con la franja y el reparto |
 | AC-16 Con el sensor real, datos reales y sin «Datos de ejemplo» | Cumple | Prueba de interfaz `con el sensor real desaparece la etiqueta «Datos de ejemplo» (AC-16)`. App real: captura de la ventana con la jornada real del día (no la de ejemplo, 08:12–16:31). La etiqueta no aparece en la captura |
 | AC-17 *Mi día* se actualiza cada 30 s con la ventana visible | Cumple (solo pruebas) | Pruebas de interfaz `vuelve a leer el día cada 30 s mientras la ventana está visible`, `no actualiza mientras la ventana está oculta`, `un fallo al actualizar no borra lo que ya se mostraba`. **No verificado en la app real** |
-| AC-18 Todo funciona sin internet | No verificado | No se cortó la red. Pulso no tiene código de red en F1, pero sus procesos WebView2 abrieron 2 conexiones a `52.96.185.210:443` (Microsoft) durante la prueba; en la hora de medición, 2 de 60 muestras tenían alguna conexión externa. Pendiente: prueba con la red cortada o con una regla de firewall para `pulso.exe` y WebView2 |
+| AC-18 Todo funciona sin internet | Cumple | App real con reglas temporales de firewall que bloquean entrada y salida de `pulso.exe` y `msedgewebview2.exe` (2026-10-06, 02:25–02:35Z): Ajustes guardados, descanso, pausa, cierre y reapertura por UI Automation, y luego uso normal de VS Code, Claude en Brave y Firefox. 0 conexiones establecidas en 34 muestras de 6 min, 0 solapes, bloques y *Mi día* correctos (§8). Con red, en cambio, WebView2 abrió 2 conexiones a `52.96.185.210:443` (Microsoft): decisión abierta A-2 de `docs/PLAN.md` |
 | AC-19 Una hora: memoria privada < 120 MB y CPU < 1 % | Cumple | §2 y `docs/spikes/F1-medicion-1h.csv` |
 | AC-20 Apps ocultas: «App oculta», sin título, `neutral`, hacia delante | Cumple | Pruebas `tracker::tests::hidden_app_is_always_neutral_and_not_retroactive`, `hidden_apps_are_not_recorded_by_name_or_title`, interfaz `guarda el umbral y las apps ocultas, y las normaliza`. App real: Ajustes por UI Automation guardó `["windowsterminal"]`; 25 bloques `App oculta` `neutral` sin título; los 5 bloques de `WindowsTerminal` anteriores conservan su nombre |
 
@@ -106,7 +106,6 @@ Pruebas Rust: `cargo test` en `src-tauri` (62). Pruebas de interfaz: `vitest` (1
 
 - Los tres casos de solapamiento combinados con inactividad real, y que el sensor use 3 min y no 5: exigen no tocar el
   equipo durante el umbral; se cubren con pruebas automáticas.
-- AC-18 sin red: no se cortó la conexión ni se crearon reglas de firewall.
 - AC-6, AC-11, AC-13 y AC-17 en la app real (ver tabla).
 - La causa exacta del proceso que siguió vivo tras cerrar (§4).
 
@@ -123,3 +122,22 @@ Pruebas Rust: `cargo test` en `src-tauri` (62). Pruebas de interfaz: `vitest` (1
 | **Formato de fecha** | **Fallo corregido:** el campo «Día» mostraba `10/05/2026` (mes/día, idioma de WebView2 en inglés). Se fijó el idioma de WebView2 con `additionalBrowserArgs: --lang=es-CO` en `tauri.conf.json`, conservando los argumentos por defecto de wry. Ahora muestra `05/10/2026` y horas de 24 h |
 
 No revisado: uso solo con teclado (UI-06, revisión de F6).
+
+## 8. Sin red y con tres apps reales (puerta G1)
+
+Reglas temporales de firewall (grupo `Pulso-AC18-temporal`, creadas y quitadas por el responsable con
+permisos de administrador) que bloquean `pulso.exe` y `msedgewebview2.exe`. Con la red bloqueada se repitió la
+fase A y el responsable usó VS Code, Claude en Brave y Firefox.
+
+| App | Categoría guardada | Tiempo | En *Mi día* (leído de la ventana por UI Automation) |
+|---|---|---|---|
+| VS Code (`Code`) | `productive` | 186 s | «Welcome - book-nestjs - Visual Studio Code · Productivo» |
+| Claude en Brave | `ai`, `ai_tool = Claude` | 110 s | «… - Claude - Brave · Claude · Con IA» |
+| Firefox | `neutral` | 12 s | «Mozilla Firefox · Neutro» |
+
+- Conexiones de Pulso y WebView2: 0 en 34 muestras de 6 minutos.
+- Consulta de solapamiento de §3 desde las 02:25Z: 0 filas.
+- `Pulso.log`: «inicio», «cierre: ventana cerrada; se detiene el sensor», «salida completa».
+- Se usó Claude en lugar de ChatGPT (el responsable no usa ChatGPT); la regla de ChatGPT está cubierta por
+  `classifier::tests::ai_titles_set_category_and_tool`.
+- Firefox estuvo en primer plano menos del minuto previsto (12 s registrados).
