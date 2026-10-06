@@ -221,6 +221,7 @@ export function AccesoPage() {
         )}
         {(mode === 'entrar' || mode === 'registro' || mode === 'nueva-clave') && (
           <PasswordField
+            key={mode}
             label={mode === 'nueva-clave' ? 'Contraseña nueva' : 'Contraseña'}
             autoComplete={mode === 'entrar' ? 'current-password' : 'new-password'}
             value={password}
