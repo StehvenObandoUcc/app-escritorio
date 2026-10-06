@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router';
 import { useOptionalSession, type SessionValue } from '@/app/session';
 import { Avatar, Button, Heading, Surface } from '@/ui/atoms';
 import { FormField } from '@/ui/molecules';
@@ -15,7 +14,7 @@ const validTimezone = (tz: string) => {
   }
 };
 
-/** Perfil (CU-04) y cuenta (CU-02). Sin proveedor de sesión (p. ej. en pruebas de F1) no se muestra. */
+/** Perfil (CU-04) y cerrar sesión (CU-02). Sin proveedor de sesión (p. ej. en pruebas de F1) no se muestra. */
 export function PerfilSection() {
   const session = useOptionalSession();
   if (!session) return null;
@@ -24,20 +23,8 @@ export function PerfilSection() {
 
 function Perfil({ session }: { session: SessionValue }) {
   const { user, profile } = session;
-  const navigate = useNavigate();
 
-  if (user === undefined) return null;
-  if (user === null) {
-    return (
-      <Surface as="section" aria-label="Cuenta" className="flex flex-col items-start gap-2">
-        <Heading level={2}>Cuenta</Heading>
-        <p className="text-fg-muted">No has iniciado sesión. Pulso registra tu actividad solo en este equipo.</p>
-        <Button variant="primary" onClick={() => navigate('/acceso')}>
-          Iniciar sesión o crear cuenta
-        </Button>
-      </Surface>
-    );
-  }
+  if (!user) return null;
   if (!profile) {
     return (
       <p role="status" className="text-fg-muted">

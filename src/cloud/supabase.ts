@@ -75,10 +75,16 @@ const AUTH_MESSAGES: Record<string, string> = {
 const isNetwork = (message: string) => /fetch|network|failed to fetch|networkerror|load failed/i.test(message);
 
 /** Traduce un error de Supabase a un mensaje para la persona. */
-export function toCloudError(error: { message: string; code?: string | null }): CloudError {
+export function toCloudError(error: { message: string; code?: string | null; status?: number }): CloudError {
   const code = error.code ?? '';
   const authMessage = AUTH_MESSAGES[code];
   if (authMessage) return new CloudError(authMessage, 'auth');
+  // 5xx: el servidor (o un servicio suyo, como el de correo) no respondió a tiempo.
+  // supabase-js los entrega como «HTTP 504» sin más; aquí se explican.
+  if ((error.status ?? 0) >= 500 || /^HTTP 5\d\d$/.test(error.message)) {
+    const status = error.status || Number(error.message.slice(5));
+    return new CloudError(`El servidor no respondió a tiempo (error ${status}). Espera un minuto e inténtalo de nuevo.`, 'network');
+  }
   if (isNetwork(error.message)) {
     return new CloudError('Sin conexión con el servidor. Tus datos siguen guardados en este equipo.', 'network');
   }
@@ -96,7 +102,7 @@ const toUser = (u: User | null | undefined): CloudUser | null =>
   u ? { id: u.id, email: u.email ?? '', emailVerified: Boolean(u.email_confirmed_at) } : null;
 
 /** Lanza `CloudError` si la respuesta trae error; si no, devuelve los datos. */
-type ErrorLike = { message: string; code?: string | null };
+type ErrorLike = { message: string; code?: string | null; status?: number };
 async function run<R extends { data: unknown; error: ErrorLike | null }>(request: PromiseLike<R>): Promise<R['data']> {
   let result: R;
   try {

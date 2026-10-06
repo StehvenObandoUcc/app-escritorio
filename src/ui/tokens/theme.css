@@ -67,6 +67,7 @@
   --spacing-touch: var(--cmp-touch-target);
   --spacing-strip: var(--cmp-strip-height);
   --spacing-content: var(--cmp-content-max);
+  --spacing-auth: var(--cmp-auth-width);
 
   --radius-xs: var(--prim-radius-4);
   --radius-sm: var(--prim-radius-6);

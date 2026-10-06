@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ShieldCheck, UserPlus } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link } from 'react-router';
 import { useSession } from '@/app/session';
 import type { MyInvitation, MyTeam } from '@/cloud/contract';
 import { CONSENT_VERSION } from '@/lib/consent';
@@ -39,34 +39,10 @@ function useAction() {
 export function EquipoPage() {
   const session = useSession();
   const { cloud, user, teams, teamsLoading, teamsError, activeTeam } = session;
-  const navigate = useNavigate();
   const sampleTag = cloud.source === 'mock' && <Badge tone="accent">Datos de ejemplo</Badge>;
 
-  if (user === undefined) {
-    return (
-      <PageLayout title="Equipo" actions={sampleTag}>
-        <p role="status" className="text-fg-muted">
-          Comprobando tu sesión…
-        </p>
-      </PageLayout>
-    );
-  }
-
-  if (user === null) {
-    return (
-      <PageLayout title="Equipo" subtitle="Trabaja con otras personas" actions={sampleTag}>
-        <EmptyState
-          title="Inicia sesión para trabajar en equipo"
-          description="Sin cuenta, Pulso registra tu actividad solo en este equipo. Con una cuenta puedes crear un equipo o aceptar una invitación; tus datos se suben solo cuando aceptas el consentimiento."
-          action={
-            <Button variant="primary" onClick={() => navigate('/acceso')}>
-              Iniciar sesión o crear cuenta
-            </Button>
-          }
-        />
-      </PageLayout>
-    );
-  }
+  // La app solo se muestra con sesión (Gate en App.tsx); esto cubre el instante en que se cierra.
+  if (!user) return null;
 
   return (
     <PageLayout

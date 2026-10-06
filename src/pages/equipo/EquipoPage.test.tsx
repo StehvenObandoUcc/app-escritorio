@@ -25,12 +25,6 @@ const acceptConsent = async (button: string) => {
 };
 
 describe('Equipo (EQ-01 a EQ-08, PS-02)', () => {
-  it('sin sesión invita a iniciar sesión', async () => {
-    renderWithSession(<EquipoPage />, { path: '/equipo' });
-    await userEvent.click(await screen.findByRole('button', { name: 'Iniciar sesión o crear cuenta' }));
-    expect(screen.getByTestId('ruta')).toHaveTextContent('/acceso');
-  });
-
   it('crea un equipo, pide el consentimiento y solo entonces activa la subida (AC-6, AC-13)', async () => {
     const { cloud } = await signedIn();
     const bridge = createMockBridge();
