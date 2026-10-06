@@ -46,6 +46,7 @@ export type Database = {
           app_name: string
           category: string
           created_at: string
+          domain: string | null
           ended_at: string
           id: string
           started_at: string
@@ -58,6 +59,7 @@ export type Database = {
           app_name: string
           category: string
           created_at?: string
+          domain?: string | null
           ended_at: string
           id: string
           started_at: string
@@ -70,6 +72,7 @@ export type Database = {
           app_name?: string
           category?: string
           created_at?: string
+          domain?: string | null
           ended_at?: string
           id?: string
           started_at?: string
@@ -167,6 +170,7 @@ export type Database = {
           created_by: string
           id: string
           match_type: string
+          not_allowed: boolean
           pattern: string
           priority: number
           team_id: string
@@ -178,6 +182,7 @@ export type Database = {
           created_by: string
           id?: string
           match_type: string
+          not_allowed?: boolean
           pattern: string
           priority: number
           team_id: string
@@ -189,6 +194,7 @@ export type Database = {
           created_by?: string
           id?: string
           match_type?: string
+          not_allowed?: boolean
           pattern?: string
           priority?: number
           team_id?: string
@@ -205,9 +211,11 @@ export type Database = {
       }
       invitations: {
         Row: {
+          code: string | null
           created_at: string
           email: string
           expires_at: string
+          failed_attempts: number
           id: string
           invited_by: string | null
           responded_at: string | null
@@ -216,9 +224,11 @@ export type Database = {
           team_id: string
         }
         Insert: {
+          code?: string | null
           created_at?: string
           email: string
           expires_at?: string
+          failed_attempts?: number
           id?: string
           invited_by?: string | null
           responded_at?: string | null
@@ -227,9 +237,11 @@ export type Database = {
           team_id: string
         }
         Update: {
+          code?: string | null
           created_at?: string
           email?: string
           expires_at?: string
+          failed_attempts?: number
           id?: string
           invited_by?: string | null
           responded_at?: string | null
@@ -380,9 +392,10 @@ export type Database = {
     }
     Functions: {
       accept_invitation: {
-        Args: { p_consent_version: string; p_id: string }
+        Args: { p_code: string; p_consent_version: string; p_id: string }
         Returns: string
       }
+      caller_email: { Args: never; Returns: string }
       create_team: { Args: { p_name: string }; Returns: string }
       decline_invitation: { Args: { p_id: string }; Returns: undefined }
       give_consent: {
@@ -396,7 +409,10 @@ export type Database = {
       }
       invite_member: {
         Args: { p_email: string; p_role: string; p_team: string }
-        Returns: string
+        Returns: {
+          code: string
+          id: string
+        }[]
       }
       leave_team: { Args: { p_team: string }; Returns: undefined }
       my_invitations: {
@@ -410,6 +426,7 @@ export type Database = {
           team_name: string
         }[]
       }
+      new_invitation_code: { Args: never; Returns: string }
       remove_member: {
         Args: { p_team: string; p_user: string }
         Returns: undefined
@@ -417,6 +434,10 @@ export type Database = {
       revoke_invitation: { Args: { p_id: string }; Returns: undefined }
       set_member_role: {
         Args: { p_role: string; p_team: string; p_user: string }
+        Returns: undefined
+      }
+      set_team_policy: {
+        Args: { p_allow_hidden_apps: boolean; p_team: string }
         Returns: undefined
       }
       shares_team_with: { Args: { p_user: string }; Returns: boolean }
@@ -431,6 +452,15 @@ export type Database = {
           user_id: string
         }[]
       }
+      team_domain_summary: {
+        Args: { p_from: string; p_team: string; p_to: string }
+        Returns: {
+          category: string
+          domain: string
+          seconds: number
+          user_id: string
+        }[]
+      }
       team_role: { Args: { p_team: string }; Returns: string }
       team_time_summary: {
         Args: { p_from: string; p_team: string; p_to: string }
@@ -440,7 +470,6 @@ export type Database = {
           user_id: string
         }[]
       }
-      verified_email: { Args: never; Returns: string }
       write_audit: {
         Args: {
           p_action: string
