@@ -8,6 +8,12 @@ export function formatDuration(totalSeconds: number): string {
   return h === 0 ? `${m} min` : `${h} h ${String(m).padStart(2, '0')} min`;
 }
 
+/** Como formatDuration, pero lo que dura menos de un minuto se dice en segundos: 45 → "45 s". */
+export function formatShortDuration(totalSeconds: number): string {
+  const s = Math.max(0, Math.round(totalSeconds));
+  return s < 60 ? `${s} s` : formatDuration(s);
+}
+
 /** 3725 → "01:02:05" */
 export function formatClock(totalSeconds: number): string {
   const s = Math.max(0, Math.floor(totalSeconds));

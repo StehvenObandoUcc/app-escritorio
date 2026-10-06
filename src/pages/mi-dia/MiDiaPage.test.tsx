@@ -16,8 +16,14 @@ describe('Mi día', () => {
     expect(screen.getByRole('img', { name: /Jornada de 08:12/ })).toBeInTheDocument();
     expect(screen.getByText('Datos de ejemplo')).toBeInTheDocument();
 
+    // Por defecto, el tiempo por app; el detalle conserva todos los bloques.
+    const byApp = screen.getByRole('list', { name: 'Tiempo por app' });
+    expect(within(byApp).getAllByRole('listitem')[0]).toHaveTextContent('Visual Studio Code');
+    await userEvent.click(screen.getByRole('tab', { name: 'Detalle' }));
     const list = screen.getByRole('list', { name: 'Bloques de actividad' });
     expect(within(list).getAllByRole('listitem')).toHaveLength(11);
+    await userEvent.click(screen.getByRole('tab', { name: 'Línea de tiempo' }));
+    expect(screen.getByRole('list', { name: 'Línea de tiempo' })).toBeInTheDocument();
   });
 
   it('inicia y detiene el temporizador', async () => {

@@ -4,8 +4,9 @@ import { CATEGORIES, type TimeEntry } from '@/bridge/contract';
 import { sampleDay } from '@/bridge/mock';
 import { CATEGORY_STYLE } from '@/lib/categories';
 import { Avatar, Badge, Button, CategoryMark, Heading, Input, ProgressBar, Select, Surface } from '@/ui/atoms';
-import { CategoryBreakdown, EmptyState, FormField, PasswordField, SyncStatus, TimeEntryForm, TimerControl } from '@/ui/molecules';
-import { ActivityList, ConsentPanel, MemberList, PulseStrip, TimeEntryList } from '@/ui/organisms';
+import { CategoryBreakdown, EmptyState, FormField, PasswordField, SegmentedControl, SyncStatus, TimeEntryForm, TimerControl } from '@/ui/molecules';
+import { appTotals, buildTimeline } from '@/lib/activity';
+import { ActivityList, ActivityTimeline, AppSummary, ConsentPanel, MemberList, PulseStrip, TimeEntryList } from '@/ui/organisms';
 import { AuthLayout, PageLayout } from '@/ui/templates';
 
 const SWATCHES = [
@@ -127,6 +128,7 @@ export function GaleriaPage() {
             onSubmit={() => Promise.reject(new Error('El fin debe ser posterior al inicio.'))}
           />
         </div>
+        <SegmentedControl label="Vista de ejemplo" options={VIEW_OPTIONS} value="resumen" onChange={() => {}} />
         <PasswordField label="Contraseña de ejemplo" hint="Al menos 8 caracteres." defaultValue="secreto-123" />
         <div className="flex flex-wrap items-center gap-2">
           <Select aria-label="Rol de ejemplo" options={ROLE_OPTIONS} defaultValue="member" />
@@ -149,6 +151,12 @@ export function GaleriaPage() {
       <Section title="Organismos">
         <PulseStrip blocks={day.blocks} summary="Franja de pulso de ejemplo" />
         <Surface padding="flush">
+          <AppSummary totals={appTotals(day.blocks)} />
+        </Surface>
+        <Surface padding="flush">
+          <ActivityTimeline rows={buildTimeline(day.blocks)} />
+        </Surface>
+        <Surface padding="flush">
           <ActivityList blocks={day.blocks.slice(0, 4)} />
         </Surface>
         <Surface padding="flush">
@@ -169,6 +177,12 @@ export function GaleriaPage() {
     </PageLayout>
   );
 }
+
+const VIEW_OPTIONS = [
+  { value: 'resumen', label: 'Por app' },
+  { value: 'linea', label: 'Línea de tiempo' },
+  { value: 'detalle', label: 'Detalle' },
+];
 
 const ROLE_OPTIONS = [
   { value: 'admin', label: 'Administrador' },

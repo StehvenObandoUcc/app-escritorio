@@ -5,3 +5,5 @@ export * from './TimeEntryList';
 export * from './pulseLayout';
 export * from './ConsentPanel';
 export * from './MemberList';
+export * from './ActivityTimeline';
+export * from './AppSummary';
