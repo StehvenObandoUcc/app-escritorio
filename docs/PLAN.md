@@ -236,6 +236,6 @@ Lo de arriba es el plan original y sigue vigente. Esta sección añade lo acorda
 
 | # | Tema | Necesita |
 |---|---|---|
-| A-1 | **Cierres de Pulso dentro de la jornada.** Cerrar Pulso detiene el registro (hecho en F1), pero si ocurre dentro de la jornada laboral debe quedar reportado. | Definir qué es la jornada (¿horas de `teams.settings`, EQ-09?), qué se guarda (¿un evento «Pulso cerrado» con hora?), quién lo ve (¿la persona, owner y admin?) y si exige una fila nueva en `docs/ROLES.md`. Spec propia antes de implementarlo. |
+| A-1 | **Cierres de Pulso dentro de la jornada.** Cerrar Pulso detiene el registro (hecho en F1), pero si ocurre dentro de la jornada laboral debe quedar reportado. | Definir qué es la jornada (¿horas de `teams.settings`, EQ-09?), qué se guarda (¿un evento «Pulso cerrado» con hora?), quién lo ve (¿la persona, owner y admin?) y si exige una fila nueva en `docs/ROLES.md`. **Acordado: se define en la spec de F2, junto con los roles.** |
 | A-2 | Conexiones de WebView2 a servidores de Microsoft vistas en la prueba real (`52.96.185.210:443`) | Revisar en F6 con la CSP: qué las origina y si se pueden desactivar sin dependencias nuevas. |
 | A-3 | La regla de salida de equipo (D2: se borran `activity_blocks`, se conservan `time_entries` como «Exmiembro», queda en `audit_log`) contradice la migración `20261005000001`, que hoy borra también `time_entries` y solo al salir por cuenta propia | Corregir con una migración nueva en F2, con sus pruebas. |
