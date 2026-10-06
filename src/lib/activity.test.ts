@@ -1,15 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import type { ActivityBlock, Category } from '@/bridge/contract';
-import { aiToolTotals, appTotals, buildTimeline, groupConsecutive } from './activity';
+import { aiToolTotals, appTotals, buildTimeline, domainTotals, groupConsecutive } from './activity';
 import { appColor, cleanTitle, displayAppName } from './apps';
 import { formatShortDuration } from './time';
 
 let n = 0;
 /** Bloque de prueba: minutos desde las 10:00 UTC. */
-function block(app: string, from: number, to: number, category: Category = 'neutral', title: string | null = null, aiTool: string | null = null): ActivityBlock {
+function block(
+  app: string,
+  from: number,
+  to: number,
+  category: Category = 'neutral',
+  title: string | null = null,
+  aiTool: string | null = null,
+  domain: string | null = null,
+): ActivityBlock {
   const at = (m: number) => new Date(Date.UTC(2026, 9, 6, 10, 0, 0) + m * 60_000).toISOString();
   n += 1;
-  return { id: `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`, startedAt: at(from), endedAt: at(to), appName: app, title, category, aiTool };
+  return { id: `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`, startedAt: at(from), endedAt: at(to), appName: app, title, category, aiTool, domain };
 }
 
 const total = (xs: { seconds: number }[]) => xs.reduce((s, x) => s + x.seconds, 0);
@@ -57,6 +65,21 @@ describe('agrupar la actividad', () => {
     ]);
     expect(totals.map((t) => t.appName)).toEqual(['brave', 'code']);
     expect(totals[0]).toMatchObject({ seconds: 14 * 60, mainCategory: 'neutral', aiTools: ['Claude'], byCategory: { neutral: 600, ai: 240 } });
+  });
+});
+
+describe('tiempo por sitio (ADR-0009)', () => {
+  it('suma por dominio y deja fuera lo que no es un sitio web', () => {
+    const totals = domainTotals([
+      block('brave', 0, 5, 'ai', 'Buscar', 'Perplexity', 'perplexity.ai'),
+      block('chrome', 5, 7, 'ai', 'Otra', 'Perplexity', 'perplexity.ai'),
+      block('brave', 7, 8, 'distraction', 'Video', null, 'youtube.com'),
+      block('code', 8, 20, 'productive'),
+    ]);
+    expect(totals.map((t) => [t.appName, t.seconds])).toEqual([
+      ['perplexity.ai', 420],
+      ['youtube.com', 60],
+    ]);
   });
 });
 

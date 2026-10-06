@@ -8,6 +8,8 @@ import type { Bridge, SyncBlock, SyncClosure, SyncEntry, TeamRule } from '@/brid
 import {
   CloudError,
   DEFAULT_WORKDAY,
+  DomainRuleSchema,
+  DomainUsageSchema,
   MemberSchema,
   MyInvitationSchema,
   MyTeamSchema,
@@ -220,6 +222,7 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
         .parse(rows)
         .map((r) => {
           const workday = WorkdaySchema.safeParse(r.teams.settings?.workday);
+          const policies = z.object({ allow_hidden_apps: z.boolean() }).partial().safeParse(r.teams.settings?.policies);
           return MyTeamSchema.parse({
             id: r.team_id,
             name: r.teams.name,
@@ -227,6 +230,7 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
             consentAt: r.consent_at,
             consentVersion: r.consent_version,
             workday: workday.success ? workday.data : DEFAULT_WORKDAY,
+            allowHiddenApps: policies.success ? (policies.data.allow_hidden_apps ?? true) : true,
           });
         })
         .sort((a, b) => a.name.localeCompare(b.name, 'es'));
@@ -327,7 +331,7 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
       const rows = z
         .array(
           z.object({
-            match_type: z.enum(['process', 'title']),
+            match_type: z.enum(['process', 'title', 'domain']),
             pattern: z.string(),
             category: z.enum(['productive', 'neutral', 'distraction', 'ai']),
             ai_tool: z.string().nullable(),
@@ -343,6 +347,47 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
           ),
         );
       return rows.map((r): TeamRule => ({ match: r.match_type, pattern: r.pattern, category: r.category, ai_tool: r.ai_tool }));
+    },
+    setTeamPolicy: async (teamId, allowHiddenApps) => {
+      await rpc('set_team_policy', { p_team: teamId, p_allow_hidden_apps: allowHiddenApps });
+    },
+    domainRules: async (teamId) => {
+      const rows = z
+        .array(z.object({ id: z.uuid(), pattern: z.string(), not_allowed: z.boolean() }))
+        .parse(
+          await run(
+            client
+              .from('classification_rules')
+              .select('id, pattern, not_allowed')
+              .eq('team_id', teamId)
+              .eq('match_type', 'domain')
+              .order('pattern'),
+          ),
+        );
+      return rows.map((r) => DomainRuleSchema.parse({ id: r.id, domain: r.pattern, notAllowed: r.not_allowed }));
+    },
+    addNotAllowedDomain: async (teamId, domain) => {
+      const user = await requireUser();
+      await run(
+        client.from('classification_rules').insert({
+          team_id: teamId,
+          priority: 0,
+          match_type: 'domain',
+          pattern: domain,
+          category: 'distraction',
+          not_allowed: true,
+          created_by: user.id,
+        }),
+      );
+    },
+    removeDomainRule: async (ruleId) => {
+      await run(client.from('classification_rules').delete().eq('id', ruleId));
+    },
+    teamDomainSummary: async (teamId, from, to) => {
+      const rows = z
+        .array(z.object({ user_id: z.uuid(), domain: z.string(), category: z.string(), seconds: z.coerce.number() }))
+        .parse(await rpc('team_domain_summary', { p_team: teamId, p_from: from, p_to: to }));
+      return rows.map((r) => DomainUsageSchema.parse({ userId: r.user_id, domain: r.domain, category: r.category, seconds: r.seconds }));
     },
     upsertBlocks: async (userId, rows) => {
       await run(client.from('activity_blocks').upsert(rows.map((b) => blockRow(userId, b)), { onConflict: 'id' }));
@@ -366,6 +411,7 @@ export const blockRow = (userId: string, b: SyncBlock) => ({
   app_name: b.appName,
   category: b.category,
   ai_tool: b.aiTool,
+  domain: b.domain,
 });
 
 export const entryRow = (userId: string, e: SyncEntry) => ({

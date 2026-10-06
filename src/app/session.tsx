@@ -12,6 +12,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { Bridge } from '@/bridge/contract';
 import type { Cloud, CloudUser, MyTeam, Profile } from '@/cloud/contract';
+import { CONSENT_VERSION } from '@/lib/consent';
 import { SyncEngine, type SyncState } from '@/sync/engine';
 
 const TEAM_KEY = 'pulso.equipo-activo';
@@ -56,6 +57,10 @@ export interface SessionValue {
   refresh: () => Promise<void>;
   sync: SyncState;
   syncNow: () => void;
+  /** Dominios que el equipo activo marcó como no permitidos (ADR-0009). */
+  notAllowedDomains: string[];
+  /** El equipo activo pide aceptar una versión nueva del consentimiento. */
+  needsNewConsent: boolean;
 }
 
 const SessionContext = createContext<SessionValue | null>(null);
@@ -122,7 +127,19 @@ export function SessionProvider({
     return teams.find((t) => t.id === chosenTeam) ?? teams.find((t) => t.consentAt) ?? teams[0] ?? null;
   }, [teams, chosenTeam]);
 
-  const consented = activeTeam?.consentAt ? activeTeam : null;
+  // Un consentimiento de una versión anterior no vale: la subida se pausa hasta aceptar la nueva (ADR-0009).
+  const consented = activeTeam?.consentAt && activeTeam.consentVersion === CONSENT_VERSION ? activeTeam : null;
+  const needsNewConsent = Boolean(activeTeam?.consentAt) && !consented;
+
+  const domainRulesQuery = useQuery({
+    queryKey: ['domain-rules', activeTeam?.id],
+    queryFn: () => cloud.domainRules(activeTeam!.id),
+    enabled: Boolean(activeTeam),
+  });
+  const notAllowedDomains = useMemo(
+    () => (domainRulesQuery.data ?? []).filter((r) => r.notAllowed).map((r) => r.domain),
+    [domainRulesQuery.data],
+  );
   const profile = profileQuery.data ?? null;
 
   // Equipo activo en Rust + reglas del equipo para el clasificador.
@@ -135,6 +152,8 @@ export function SessionProvider({
     if (!teamsQuery.isSuccess) return; // sin red: se conserva el último equipo conocido
     const teamId = consented?.id ?? null;
     void bridge.activeTeamSet(teamId).catch(() => {});
+    // La política se aplica aunque no haya consentimiento: ocultar o no es un ajuste local.
+    void bridge.teamPolicySet({ allowHiddenApps: activeTeam?.allowHiddenApps ?? true }).catch(() => {});
     if (!teamId) return;
     cloud
       .teamRules(teamId)
@@ -142,7 +161,7 @@ export function SessionProvider({
       .catch(() => {
         // Sin red se siguen usando las reglas guardadas la última vez.
       });
-  }, [bridge, cloud, user, teamsQuery.isSuccess, consented?.id]);
+  }, [bridge, cloud, user, teamsQuery.isSuccess, consented?.id, activeTeam?.allowHiddenApps]);
 
   // Contexto del motor de sincronización.
   useEffect(() => {
@@ -188,6 +207,8 @@ export function SessionProvider({
     refresh,
     sync,
     syncNow: () => void engine.syncNow(),
+    notAllowedDomains,
+    needsNewConsent,
   };
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

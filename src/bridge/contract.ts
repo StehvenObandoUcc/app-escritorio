@@ -32,6 +32,8 @@ export const ActivityBlockSchema = z.object({
   category: CategorySchema,
   /** Herramienta de IA detectada (p. ej. "ChatGPT"). Solo si category = "ai". */
   aiTool: z.string().nullable(),
+  /** Dominio del sitio, solo en navegadores (ADR-0009). Nunca la ruta ni la búsqueda. */
+  domain: z.string().nullable().default(null),
 });
 export type ActivityBlock = z.infer<typeof ActivityBlockSchema>;
 
@@ -104,6 +106,11 @@ export const SyncBlockSchema = z.strictObject({
   appName: z.string().min(1),
   category: CategorySchema,
   aiTool: z.string().nullable(),
+  /** Solo el dominio (ADR-0009): el formato no admite rutas ni búsquedas. */
+  domain: z
+    .string()
+    .regex(/^[a-z0-9.-]{1,253}$/)
+    .nullable(),
 });
 export type SyncBlock = z.infer<typeof SyncBlockSchema>;
 
@@ -139,11 +146,17 @@ export type SyncKind = 'blocks' | 'entries' | 'closures';
 
 /** Regla de clasificación del equipo, con la forma de `rules/default.json`. */
 export const TeamRuleSchema = z.object({
-  match: z.enum(['process', 'title']),
+  match: z.enum(['process', 'title', 'domain']),
   pattern: z.string().min(1).max(120),
   category: z.enum(['productive', 'neutral', 'distraction', 'ai']),
   ai_tool: z.string().nullable(),
 });
+
+/** Política del equipo activo que aplica Rust (ADR-0009). */
+export interface TeamPolicy {
+  /** `false`: la lista personal de apps ocultas no se aplica en este equipo. */
+  allowHiddenApps: boolean;
+}
 export type TeamRule = z.infer<typeof TeamRuleSchema>;
 
 export interface Bridge {
@@ -188,4 +201,6 @@ export interface Bridge {
   syncMarkSynced(kind: SyncKind, ids: string[]): Promise<void>;
   /** Reglas de clasificación del equipo activo. */
   rulesSet(rules: TeamRule[]): Promise<void>;
+  /** Política del equipo activo (ADR-0009). */
+  teamPolicySet(policy: TeamPolicy): Promise<void>;
 }

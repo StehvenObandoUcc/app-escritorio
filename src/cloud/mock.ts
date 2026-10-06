@@ -5,6 +5,7 @@
  * El código de verificación y de recuperación siempre es MOCK_CODE.
  */
 import type { SyncBlock, SyncClosure, SyncEntry, TeamRule } from '@/bridge/contract';
+import { CONSENT_VERSION } from '@/lib/consent';
 import {
   CloudError,
   DEFAULT_WORKDAY,
@@ -88,7 +89,12 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
   const invitations: MockInvitation[] = [];
   const uploaded = { blocks: [] as SyncBlock[], entries: [] as SyncEntry[], closures: [] as SyncClosure[] };
   const rules = new Map<string, TeamRule[]>();
+  const policies = new Map<string, boolean>();
+  const domainRules: { id: string; teamId: string; domain: string; notAllowed: boolean }[] = [];
+  const canManage = (teamId: string, userId: string) => ['owner', 'admin'].includes(roleIn(teamId, userId) ?? '');
   let offline = false;
+  const blockOwner = new Map<string, string>();
+  const membersOf = (teamId: string) => members.filter((m) => m.teamId === teamId).map((m) => m.userId);
   let current: string | null = null;
   const listeners = new Set<(u: CloudUser | null) => void>();
 
@@ -153,7 +159,7 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
       addTeam,
       addMember: (teamId, userId, role, consent = true) => {
         const at = consent ? now().toISOString() : null;
-        members.push({ teamId, userId, role, consentAt: at, consentVersion: consent ? 'v1' : null, joinedAt: now().toISOString() });
+        members.push({ teamId, userId, role, consentAt: at, consentVersion: consent ? CONSENT_VERSION : null, joinedAt: now().toISOString() });
       },
       invite: addInvitation,
       codeOf: (id) => invitations.find((i) => i.id === id)?.code ?? '',
@@ -236,6 +242,7 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
             consentAt: m.consentAt,
             consentVersion: m.consentVersion,
             workday: DEFAULT_WORKDAY,
+            allowHiddenApps: policies.get(m.teamId) ?? true,
           }),
         )
         .sort((x, y) => x.name.localeCompare(y.name, 'es'));
@@ -364,10 +371,49 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
       inv!.status = 'declined';
     },
 
-    teamRules: async (teamId) => rules.get(teamId) ?? [],
+    teamRules: async (teamId) => [
+      ...domainRules
+        .filter((r) => r.teamId === teamId)
+        .map((r): TeamRule => ({ match: 'domain', pattern: r.domain, category: 'distraction', ai_tool: null })),
+      ...(rules.get(teamId) ?? []),
+    ],
+    setTeamPolicy: async (teamId, allowHiddenApps) => {
+      if (!canManage(teamId, me().id)) fail('No permitido');
+      policies.set(teamId, allowHiddenApps);
+    },
+    domainRules: async (teamId) =>
+      roleIn(teamId, me().id)
+        ? domainRules.filter((r) => r.teamId === teamId).map(({ id, domain, notAllowed }) => ({ id, domain, notAllowed }))
+        : [],
+    addNotAllowedDomain: async (teamId, domain) => {
+      if (!canManage(teamId, me().id)) fail('No tienes permiso para esta acción.');
+      if (!/^[a-z0-9.-]{1,253}$/.test(domain)) fail('Escribe solo el dominio, por ejemplo youtube.com.', 'invalid');
+      domainRules.push({ id: crypto.randomUUID(), teamId, domain, notAllowed: true });
+    },
+    removeDomainRule: async (ruleId) => {
+      const i = domainRules.findIndex((r) => r.id === ruleId);
+      if (i < 0 || !canManage(domainRules[i]!.teamId, me().id)) fail('No tienes permiso para esta acción.');
+      domainRules.splice(i, 1);
+    },
+    teamDomainSummary: async (teamId, from, to) => {
+      if (!canManage(teamId, me().id)) fail('No permitido');
+      const totals = new Map<string, { userId: string; domain: string; category: string; seconds: number }>();
+      const members = new Set(membersOf(teamId));
+      for (const b of uploaded.blocks) {
+        if (b.teamId !== teamId || !b.domain || b.endedAt <= from || b.startedAt >= to) continue;
+        const owner = blockOwner.get(b.id);
+        if (!owner || !members.has(owner)) continue;
+        const key = `${owner}|${b.domain}|${b.category}`;
+        const t = totals.get(key) ?? { userId: owner, domain: b.domain, category: b.category, seconds: 0 };
+        t.seconds += Math.round((Date.parse(b.endedAt) - Date.parse(b.startedAt)) / 1000);
+        totals.set(key, t);
+      }
+      return [...totals.values()];
+    },
     upsertBlocks: async (userId, rows) => {
       checkConsent(userId, rows.map((r) => r.teamId));
       upload(uploaded.blocks, rows, (r) => r.id);
+      for (const r of rows) blockOwner.set(r.id, userId);
     },
     upsertEntries: async (userId, rows) => {
       checkConsent(userId, rows.map((r) => r.teamId));

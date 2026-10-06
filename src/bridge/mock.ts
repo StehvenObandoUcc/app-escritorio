@@ -40,6 +40,13 @@ const SAMPLE_DAY: Sample[] = [
   ['15:53', '16:31', 'Slack', 'equipo-pulso', 'neutral'],
 ];
 
+/** Dominio de ejemplo de los bloques de navegador (ADR-0009). */
+const SAMPLE_DOMAINS: Record<string, string> = {
+  ChatGPT: 'chatgpt.com',
+  YouTube: 'youtube.com',
+  Claude: 'claude.ai',
+};
+
 function at(date: string, hhmm: string): string {
   return new Date(`${date}T${hhmm}:00`).toISOString();
 }
@@ -57,6 +64,7 @@ export function sampleDay(date: string): DayView {
     title: title === '' ? null : title,
     category,
     aiTool: ai ?? null,
+    domain: SAMPLE_DOMAINS[title] ?? null,
   }));
 
   const totals = Object.fromEntries(CATEGORIES.map((c) => [c, 0])) as Record<Category, number>;
@@ -215,5 +223,6 @@ export function createMockBridge(now: () => Date = () => new Date()): Bridge {
     rulesSet: async (rules) => {
       rules.forEach((r) => TeamRuleSchema.parse(r));
     },
+    teamPolicySet: async () => {},
   };
 }

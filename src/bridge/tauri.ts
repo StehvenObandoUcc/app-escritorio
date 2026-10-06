@@ -58,5 +58,8 @@ export function createTauriBridge(): Bridge {
     rulesSet: async (rules) => {
       await invoke('rules_set', { json: JSON.stringify(rules) });
     },
+    teamPolicySet: async (policy) => {
+      await invoke('team_policy_set', { policy });
+    },
   };
 }

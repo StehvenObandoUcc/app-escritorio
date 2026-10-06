@@ -102,6 +102,11 @@ export interface AppTotal {
   aiTools: string[];
 }
 
+/** Tiempo por sitio web (dominio, ADR-0009), de más a menos. Mismo cálculo que `appTotals`. */
+export function domainTotals(blocks: ActivityBlock[]): AppTotal[] {
+  return appTotals(blocks.filter((b) => b.domain).map((b) => ({ ...b, appName: b.domain! })));
+}
+
 /** Tiempo por herramienta de IA (Claude, Gemini, Perplexity…), de más a menos. */
 export function aiToolTotals(blocks: ActivityBlock[]): { tool: string; seconds: number }[] {
   const map = new Map<string, number>();

@@ -141,7 +141,7 @@ describe('motor de sincronización', () => {
 
   it('una fila inválida se descarta sin bloquear a las demás', async () => {
     const { cloud, ctx } = setup();
-    const good = { id: '66666666-6666-4666-8666-666666666666', teamId: ctx.teamId, startedAt: '2026-10-05T14:00:00Z', endedAt: '2026-10-05T15:00:00Z', appName: 'code', category: 'productive' as const, aiTool: null };
+    const good = { id: '66666666-6666-4666-8666-666666666666', teamId: ctx.teamId, startedAt: '2026-10-05T14:00:00Z', endedAt: '2026-10-05T15:00:00Z', appName: 'code', category: 'productive' as const, aiTool: null, domain: null };
     const bad = { ...good, id: '77777777-7777-4777-8777-777777777777' };
     const { bridge, marked } = fakeBridge({ blocks: [good, bad] });
     const upsert = cloud.upsertBlocks.bind(cloud);
@@ -160,7 +160,7 @@ describe('motor de sincronización', () => {
   it('ninguna fila enviada a Supabase lleva título (AC-18)', () => {
     const userId = '88888888-8888-4888-8888-888888888888';
     const rows = [
-      blockRow(userId, { id: TEAM, teamId: TEAM, startedAt: 'a', endedAt: 'b', appName: 'chrome', category: 'ai', aiTool: 'ChatGPT' }),
+      blockRow(userId, { id: TEAM, teamId: TEAM, startedAt: 'a', endedAt: 'b', appName: 'chrome', category: 'ai', aiTool: 'ChatGPT', domain: 'chatgpt.com' }),
       entryRow(userId, { id: TEAM, teamId: TEAM, startedAt: 'a', endedAt: null, taskId: null, source: 'timer', updatedAt: 'a', deletedAt: null }),
       closureRow(userId, { id: TEAM, teamId: TEAM, closedAt: 'a', reopenedAt: 'b' }),
     ];

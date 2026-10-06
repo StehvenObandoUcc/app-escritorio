@@ -47,7 +47,7 @@ describe('Equipo (EQ-01 a EQ-08, PS-02)', () => {
 
   it('el owner invita con un rol y puede revocar la invitación (AC-7, AC-9)', async () => {
     const { cloud, id } = await signedIn();
-    await cloud.giveConsent(cloud.debug.addTeam('Equipo A', id), 'v1');
+    await cloud.giveConsent(cloud.debug.addTeam('Equipo A', id), CONSENT_VERSION);
     renderWithSession(<EquipoPage />, { path: '/equipo', cloud });
 
     const form = await screen.findByRole('region', { name: 'Invitar personas' });
@@ -144,7 +144,7 @@ describe('Equipo (EQ-01 a EQ-08, PS-02)', () => {
   it('expulsar pide confirmación y avisa qué se borra (AC-12)', async () => {
     const { cloud, id } = await signedIn();
     const team = cloud.debug.addTeam('Equipo A', id);
-    await cloud.giveConsent(team, 'v1');
+    await cloud.giveConsent(team, CONSENT_VERSION);
     cloud.debug.addMember(team, cloud.debug.addAccount('caro@pulso.test', 'secreto-123', 'Caro'), 'member');
     renderWithSession(<EquipoPage />, { path: '/equipo', cloud });
     const list = await screen.findByRole('list', { name: 'Miembros del equipo' });
@@ -160,7 +160,7 @@ describe('Equipo (EQ-01 a EQ-08, PS-02)', () => {
   it('el owner cede la propiedad: nombra a otro owner y deja de serlo (AC-10)', async () => {
     const { cloud, id } = await signedIn();
     const team = cloud.debug.addTeam('Equipo A', id);
-    await cloud.giveConsent(team, 'v1');
+    await cloud.giveConsent(team, CONSENT_VERSION);
     cloud.debug.addMember(team, cloud.debug.addAccount('beto@pulso.test', 'secreto-123', 'Beto'), 'admin');
     renderWithSession(<EquipoPage />, { path: '/equipo', cloud });
     expect(await screen.findByText(/Para ceder la propiedad/)).toBeInTheDocument();
@@ -172,7 +172,7 @@ describe('Equipo (EQ-01 a EQ-08, PS-02)', () => {
 
   it('el último owner no puede salir: se explica por qué', async () => {
     const { cloud, id } = await signedIn();
-    await cloud.giveConsent(cloud.debug.addTeam('Equipo A', id), 'v1');
+    await cloud.giveConsent(cloud.debug.addTeam('Equipo A', id), CONSENT_VERSION);
     renderWithSession(<EquipoPage />, { path: '/equipo', cloud });
     await userEvent.click(await screen.findByRole('button', { name: 'Salir del equipo' }));
     await userEvent.click(screen.getByRole('button', { name: 'Sí, salir de Equipo A' }));
@@ -183,8 +183,8 @@ describe('Equipo (EQ-01 a EQ-08, PS-02)', () => {
     const { cloud, id } = await signedIn();
     const a = cloud.debug.addTeam('Equipo A', id);
     const b = cloud.debug.addTeam('Equipo B', id);
-    await cloud.giveConsent(a, 'v1');
-    await cloud.giveConsent(b, 'v1');
+    await cloud.giveConsent(a, CONSENT_VERSION);
+    await cloud.giveConsent(b, CONSENT_VERSION);
     const bridge = createMockBridge();
     const activeTeam = vi.spyOn(bridge, 'activeTeamSet');
     renderWithSession(<EquipoPage />, { path: '/equipo', cloud, bridge });
@@ -197,7 +197,7 @@ describe('Equipo (EQ-01 a EQ-08, PS-02)', () => {
   it('muestra el estado de sincronización y su motivo (AC-19)', async () => {
     const { cloud, id } = await signedIn();
     const team = cloud.debug.addTeam('Equipo A', id);
-    await cloud.giveConsent(team, 'v1');
+    await cloud.giveConsent(team, CONSENT_VERSION);
     cloud.debug.setOffline(true);
     const bridge = createMockBridge();
     await bridge.activeTeamSet(team);

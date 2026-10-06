@@ -18,10 +18,13 @@ export function HiddenAppsPicker({
   candidates,
   selected,
   onChange,
+  disabled = false,
 }: {
   candidates: AppCandidate[];
   selected: string[];
   onChange: (next: string[]) => void;
+  /** El equipo no permite ocultar apps (ADR-0009) */
+  disabled?: boolean;
 }) {
   const [other, setOther] = useState('');
   const inputId = useId();
@@ -34,7 +37,7 @@ export function HiddenAppsPicker({
   };
 
   return (
-    <fieldset className="flex flex-col gap-3">
+    <fieldset className="flex flex-col gap-3 disabled:opacity-50" disabled={disabled}>
       <legend className="text-sm font-medium text-fg">Apps ocultas</legend>
       <p className="text-sm text-fg-muted">
         Marca las apps que no quieres registrar. Pulso las guarda como «App oculta», sin nombre ni título, desde que las marcas.
