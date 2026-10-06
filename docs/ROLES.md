@@ -40,15 +40,18 @@ obliga a cambiar la migración y su prueba en el mismo cambio.
 | 23 | Editar reglas de clasificación y políticas de privacidad | ✔ | ✔ | — | — | — | F5 |
 | 24 | Ver quién está activo ahora | ✔ | ✔ | P | si el equipo lo permite | — | F5 |
 | 25 | Exportar los datos propios | S | S | S | S | S | F5 |
+| 26 | Ver los cierres de Pulso dentro de la jornada (A-1) | ✔ | ✔ | S | S | — | F2 |
 
 ## Reglas de integridad
 
 - El equipo siempre conserva al menos un `owner`: el último no puede salir ni degradarse. (F0 ✔)
 - Un `admin` no puede modificar ni expulsar a un `owner` ni a otro `admin`. (F0 ✔)
-- Nadie escribe la tabla `team_members` directamente: solo mediante `create_team`, `set_member_role`, `remove_member`, `leave_team` y, desde F2, `accept_invitation`. (F0 ✔)
-- Las invitaciones vencen a los 7 días y solo las puede aceptar quien inició sesión con ese correo verificado. (F2)
-- Cambios de rol, expulsiones, configuración de IA y reportes sobre otras personas quedan en `audit_log`. (F2)
-- Salida de un equipo (la persona se va o es expulsada: misma regla): se borran sus `activity_blocks` de ese equipo; sus `time_entries` se conservan y se muestran como «Exmiembro»; el hecho queda en `audit_log`. (F2)
+- Nadie escribe la tabla `team_members` directamente: solo mediante `create_team`, `set_member_role`, `remove_member`, `leave_team` y, desde F2, `accept_invitation`. (F0 ✔, F2 ✔)
+- Las invitaciones vencen a los 7 días y solo las puede aceptar quien inició sesión con ese correo verificado. (F2 ✔)
+- Cambios de rol, expulsiones, configuración de IA y reportes sobre otras personas quedan en `audit_log`. (F2 ✔ roles, expulsiones, salidas, invitaciones y consentimiento; IA y reportes en F4)
+- Salida de un equipo (la persona se va o es expulsada: misma regla): se borran sus `activity_blocks` de ese equipo; sus `time_entries` se conservan y se muestran como «Exmiembro»; el hecho queda en `audit_log`. También se borran sus cierres de Pulso (`app_closures`). (F2 ✔)
+
+- Sin consentimiento (`team_members.consent_at`) no se sube actividad, tiempo ni cierres. (F2 ✔)
 
 ## Cómo se prueba cada celda
 

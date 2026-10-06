@@ -13,6 +13,9 @@ create schema auth;
 create table auth.users (
   id uuid primary key default gen_random_uuid(),
   email text unique not null,
+  -- En Supabase es null hasta verificar el correo. Aquí los usuarios nacen verificados;
+  -- las pruebas que necesitan un correo sin verificar lo ponen en null.
+  email_confirmed_at timestamptz default now(),
   created_at timestamptz not null default now()
 );
 

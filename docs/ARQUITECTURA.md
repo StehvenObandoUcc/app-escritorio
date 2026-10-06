@@ -127,11 +127,12 @@ Presupuesto de rendimiento (se mide en F1 y F6): RAM en reposo < 120 MB, CPU med
 | `profiles` | nombre visible, zona horaria | F0 ✔ |
 | `teams` | nombre, `settings` (umbral de inactividad, horas de jornada, políticas) | F0 ✔ |
 | `team_members` | rol de equipo, versión y fecha de consentimiento | F0 ✔ |
-| `invitations` | correo, rol, quién invita, vence a los 7 días | F2 |
-| `audit_log` | quién hizo qué (roles, expulsiones, IA, reportes) | F2 |
-| `activity_blocks` | inicio, fin, app, categoría, herramienta de IA, tipo de uso de IA. **Sin títulos.** | F2 |
-| `time_entries` | inicio, fin, tarea opcional, origen (`timer`/`manual`) | F2 |
-| `classification_rules` | prioridad, tipo (`process`/`title`), patrón, categoría | F2 |
+| `invitations` | correo, rol, quién invita, vence a los 7 días | F2 ✔ |
+| `audit_log` | quién hizo qué (roles, expulsiones, IA, reportes) | F2 ✔ |
+| `app_closures` | huecos porque Pulso estuvo cerrado dentro de la jornada (`teams.settings.workday`) | F2 ✔ |
+| `activity_blocks` | inicio, fin, app, categoría, herramienta de IA, tipo de uso de IA. **Sin títulos.** | F2 ✔ |
+| `time_entries` | inicio, fin, tarea opcional, origen (`timer`/`manual`) | F2 ✔ |
+| `classification_rules` | prioridad, tipo (`process`/`title`), patrón, categoría | F2 ✔ |
 | `projects`, `project_members` | proyecto y rol de proyecto (`lead`/`contributor`) | F3 |
 | `tasks` | título, descripción, responsable, estado (`todo`/`doing`/`done`), fecha límite, etiquetas, estimación | F3 |
 | `report_runs` | alcance, periodo, hechos, narrativa, modo de IA, resultado de la validación | F4 |
@@ -167,7 +168,7 @@ la subida puede tardar un minuto más, pero no se pierde nada porque Rust ya lo 
 
 - Consentimiento explícito y versionado al unirse a un equipo: qué se mide, quién lo ve, qué proveedor de IA se usa y que los datos pueden procesarse fuera de Colombia.
 - Pausa de privacidad: durante la pausa solo se registra un bloque `paused`, sin detalle.
-- Cada persona puede exportar sus datos. Cuando una persona sale de un equipo (por su cuenta o expulsada, misma regla) se borran sus `activity_blocks` de ese equipo; sus `time_entries` se conservan y se muestran como «Exmiembro»; el hecho queda en `audit_log`. Se implementa en F2.
+- Cada persona puede exportar sus datos. Cuando una persona sale de un equipo (por su cuenta o expulsada, misma regla) se borran sus `activity_blocks` de ese equipo; sus `time_entries` se conservan y se muestran como «Exmiembro»; también se borran sus `app_closures`; el hecho queda en `audit_log` (migración `20261006000001`).
 - Referencia: Ley 1581 de 2012 (protección de datos personales, Colombia). Si se va a usar con empleados reales, hay que validarlo con asesoría.
 
 ## 10. Checklist de seguridad (cada punto es una prueba o una revisión de F6)
