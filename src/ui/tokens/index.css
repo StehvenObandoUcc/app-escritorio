@@ -24,6 +24,11 @@
     outline: 2px solid var(--sem-focus);
     outline-offset: 2px;
   }
+  /* WebView2 (Edge) añade su propio botón de «ver contraseña» y de borrar: chocan con los de Pulso. */
+  input::-ms-reveal,
+  input::-ms-clear {
+    display: none;
+  }
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
