@@ -5,8 +5,9 @@ import { useSession } from '@/app/session';
 import { CloudError } from '@/cloud/contract';
 import { MOCK_CODE } from '@/cloud/mock';
 import { cx } from '@/lib/cx';
+import { useTheme } from '@/lib/theme';
 import { Badge, Button } from '@/ui/atoms';
-import { FormField, PasswordField } from '@/ui/molecules';
+import { FormField, PasswordField, ThemeToggle } from '@/ui/molecules';
 import { AuthLayout } from '@/ui/templates';
 
 type Mode = 'entrar' | 'registro' | 'verificar' | 'recuperar' | 'nueva-clave';
@@ -31,6 +32,7 @@ const TITLES: Record<Mode, { title: string; subtitle: string }> = {
  */
 export function AccesoPage() {
   const { cloud } = useSession();
+  const { theme, cycle } = useTheme();
   const navigate = useNavigate();
   const [mode, setMode] = useState<Mode>('entrar');
   const [name, setName] = useState('');
@@ -152,6 +154,7 @@ export function AccesoPage() {
     <AuthLayout
       title={title}
       subtitle={subtitle}
+      corner={<ThemeToggle theme={theme} onCycle={cycle} />}
       footer={
         cloud.source === 'mock' && (
           <div className="flex flex-wrap items-center gap-2 text-sm text-fg-muted">
