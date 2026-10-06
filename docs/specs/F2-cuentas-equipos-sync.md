@@ -49,7 +49,7 @@ Los tipos nuevos (`SyncBatch`, `SessionJson`, reglas) se validan con zod.
 
 ### Documentos que cambian en el mismo PR
 - `docs/ROLES.md`: fila 26 (cierres) y nota de A-3 ya vigente.
-- `docs/ARQUITECTURA.md`: §5 (ruta `/acceso`), §6 (comandos), §7.1 (`app_closures`) y §9.
+- `docs/ARQUITECTURA.md`: §5 (acceso obligatorio: sin sesión solo se ve la pantalla de acceso), §6 (comandos), §7.1 (`app_closures`) y §9.
 - `docs/adr/0007-equipo-activo-en-rust.md`.
 - `docs/STACK.lock.md`: versiones instaladas de `@supabase/supabase-js` y `@tanstack/react-query`.
 
