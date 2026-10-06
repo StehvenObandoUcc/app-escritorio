@@ -6,7 +6,8 @@ use crate::classifier::{self, Category, Rule};
 use crate::crypto::TitleCipher;
 use crate::sensor::ActiveWindow;
 use crate::sensor::engine::{Change, Draft, Engine, Mode, Observation};
-use crate::store::{BlockRow, Store};
+use crate::store::{BlockRow, Closure, Store, SyncKind};
+use crate::sync::{SyncBatch, SyncBlock, SyncClosure, SyncEntry};
 use crate::views::{self, DayView, RangeView, TimeEntryView, iso};
 use chrono::{DateTime, Duration, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
@@ -21,6 +22,19 @@ const FLUSH_EVERY: Duration = Duration::seconds(10);
 const HIDDEN_APP_NAME: &str = "App oculta";
 const MAX_PAUSE_MINUTES: u32 = 480;
 const MAX_HIDDEN_APPS: usize = 200;
+
+/// Un bloque se sube cuando lleva este tiempo cerrado: para entonces ya no se fusiona (AC-2).
+const SYNC_STABLE_AFTER: Duration = Duration::minutes(2);
+const SYNC_MAX_LIMIT: u32 = 500;
+/// Un hueco mayor que esto al volver a abrir se guarda como cierre de Pulso (A-1).
+const CLOSURE_MIN_GAP: Duration = Duration::minutes(2);
+const MAX_TEAM_RULES: usize = 500;
+/// Una sesión de Supabase ocupa unos pocos KB; esto es solo un tope de seguridad.
+const MAX_SESSION_BYTES: usize = 64 * 1024;
+
+const KEY_ACTIVE_TEAM: &str = "active_team_id";
+const KEY_TEAM_RULES: &str = "team_rules";
+const KEY_SESSION: &str = "session_enc";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -73,6 +87,10 @@ struct Inner {
   settings: Settings,
   /// Tras `shutdown` no se registra nada más, aunque el proceso tarde en terminar.
   stopped: bool,
+  /// Equipo al que se asignan las filas nuevas (F2). `None`: lo registrado no se sube.
+  active_team: Option<String>,
+  /// `updated_at` de cada entrada entregada por `sync_pending`, para no marcar una editada después.
+  entry_versions: HashMap<String, DateTime<Utc>>,
 }
 
 pub struct Tracker {
@@ -90,6 +108,38 @@ fn check_task_id(task_id: Option<&str>) -> Result<()> {
     Some(id) => Uuid::parse_str(id).map(|_| ()).map_err(|_| "Identificador de tarea inválido.".to_string()),
     None => Ok(()),
   }
+}
+
+/// Reglas del equipo (de `classification_rules`) validadas antes de usarlas en el clasificador.
+fn parse_team_rules(json: &str) -> Result<Vec<Rule>> {
+  let rules: Vec<Rule> = serde_json::from_str(json).map_err(|_| "Las reglas del equipo no tienen el formato esperado.".to_string())?;
+  if rules.len() > MAX_TEAM_RULES {
+    return Err(format!("El equipo puede tener hasta {MAX_TEAM_RULES} reglas."));
+  }
+  for r in &rules {
+    let len = r.pattern.chars().count();
+    if !(1..=120).contains(&len) || r.pattern != r.pattern.to_lowercase() {
+      return Err("Cada regla necesita un patrón en minúsculas de 1 a 120 caracteres.".into());
+    }
+    if !matches!(r.category, Category::Productive | Category::Neutral | Category::Distraction | Category::Ai) {
+      return Err("Una regla solo puede asignar productivo, neutro, distracción o IA.".into());
+    }
+    if r.ai_tool.is_some() && r.category != Category::Ai {
+      return Err("Solo las reglas de IA llevan herramienta de IA.".into());
+    }
+  }
+  Ok(rules)
+}
+
+fn to_hex(bytes: &[u8]) -> String {
+  bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+
+fn from_hex(s: &str) -> Option<Vec<u8>> {
+  if !s.len().is_multiple_of(2) {
+    return None;
+  }
+  (0..s.len()).step_by(2).map(|i| u8::from_str_radix(s.get(i..i + 2)?, 16).ok()).collect()
 }
 
 impl Inner {
@@ -150,6 +200,7 @@ impl Inner {
       title_enc,
       category: d.category,
       ai_tool: d.ai_tool.clone(),
+      team_id: self.active_team.clone(),
     })
   }
 
@@ -224,12 +275,15 @@ impl Tracker {
     let settings = Inner::load_settings(&store)?;
     let mut engine = Engine::new();
     engine.set_floor(store.latest_block_end()?);
+    let active_team = store.setting_get(KEY_ACTIVE_TEAM)?;
+    // Reglas guardadas la última vez: sin red, el clasificador sigue usándolas.
+    let team_rules = store.setting_get(KEY_TEAM_RULES)?.and_then(|j| parse_team_rules(&j).ok()).unwrap_or_default();
     Ok(Self {
       inner: Mutex::new(Inner {
         store,
         cipher,
         default_rules: classifier::default_rules(),
-        team_rules: Vec::new(),
+        team_rules,
         engine,
         pause_until: None,
         on_break: false,
@@ -237,8 +291,26 @@ impl Tracker {
         last_flush: None,
         settings,
         stopped: false,
+        active_team,
+        entry_versions: HashMap::new(),
       }),
     })
+  }
+
+  /// Al arrancar: si Pulso estuvo cerrado más de 2 minutos desde el último bloque, guarda el hueco
+  /// como cierre (A-1). La interfaz decide si cae dentro de la jornada antes de subirlo.
+  /// Se llama una vez, antes de que el sensor empiece a escribir.
+  pub fn record_closure_since_last_run(&self, now: DateTime<Utc>) -> Result<Option<String>> {
+    let g = self.lock()?;
+    let Some(last) = g.store.latest_block_end()? else {
+      return Ok(None);
+    };
+    if now - last <= CLOSURE_MIN_GAP {
+      return Ok(None);
+    }
+    let id = Uuid::new_v4().to_string();
+    g.store.insert_closure(&Closure { id: id.clone(), team_id: g.active_team.clone(), closed_at: last, reopened_at: now })?;
+    Ok(Some(id))
   }
 
   fn lock(&self) -> Result<MutexGuard<'_, Inner>> {
@@ -284,7 +356,8 @@ impl Tracker {
   pub fn timer_start(&self, now: DateTime<Utc>, task_id: Option<&str>) -> Result<SensorStatus> {
     check_task_id(task_id)?;
     let mut g = self.lock()?;
-    g.store.timer_start(now, task_id)?;
+    let team = g.active_team.clone();
+    g.store.timer_start(now, task_id, team.as_deref())?;
     g.status(now)
   }
 
@@ -382,7 +455,8 @@ impl Tracker {
 
   pub fn time_entry_add(&self, now: DateTime<Utc>, start: &str, end: &str, task_id: Option<&str>) -> Result<TimeEntryView> {
     check_task_id(task_id)?;
-    let e = self.lock()?.store.time_entry_add(parse_ts(start)?, parse_ts(end)?, task_id, now)?;
+    let g = self.lock()?;
+    let e = g.store.time_entry_add(parse_ts(start)?, parse_ts(end)?, task_id, g.active_team.as_deref(), now)?;
     Ok(TimeEntryView::from(&e))
   }
 
@@ -426,6 +500,95 @@ impl Tracker {
     g.store.setting_set("hidden_apps", &serde_json::to_string(&next.hidden_apps).map_err(|e| e.to_string())?)?;
     g.settings = next.clone();
     Ok(next)
+  }
+
+  // ---- Equipo activo y sincronización (F2) ----
+
+  /// Fija el equipo al que se asignan las filas nuevas (ADR-0007). Cierra el bloque abierto para
+  /// que ningún bloque quede repartido entre dos equipos. `None` = sin equipo: no se sube nada nuevo.
+  pub fn active_team_set(&self, now: DateTime<Utc>, team_id: Option<&str>) -> Result<()> {
+    if let Some(id) = team_id {
+      Uuid::parse_str(id).map_err(|_| "Identificador de equipo inválido.".to_string())?;
+    }
+    let mut g = self.lock()?;
+    if g.active_team.as_deref() == team_id {
+      return Ok(());
+    }
+    let changes = g.engine.close_open(now);
+    g.record(changes);
+    g.flush(now)?;
+    match team_id {
+      Some(id) => g.store.setting_set(KEY_ACTIVE_TEAM, id)?,
+      None => g.store.setting_delete(KEY_ACTIVE_TEAM)?,
+    }
+    g.active_team = team_id.map(String::from);
+    g.entry_versions.clear();
+    Ok(())
+  }
+
+  /// Registros del equipo activo sin subir, **sin títulos**. Solo bloques cerrados hace más de 2 min.
+  pub fn sync_pending(&self, now: DateTime<Utc>, limit: u32) -> Result<SyncBatch> {
+    if !(1..=SYNC_MAX_LIMIT).contains(&limit) {
+      return Err(format!("El lote debe tener entre 1 y {SYNC_MAX_LIMIT} registros."));
+    }
+    let mut g = self.lock()?;
+    g.flush(now)?;
+    let Some(team) = g.active_team.clone() else {
+      return Ok(SyncBatch::default());
+    };
+    let limit = limit as usize;
+    let blocks = g.store.pending_blocks(&team, now - SYNC_STABLE_AFTER, limit)?;
+    let entries = g.store.pending_entries(&team, limit)?;
+    let closures = g.store.pending_closures(&team, limit)?;
+    g.entry_versions = entries.iter().map(|e| (e.id.clone(), e.updated_at)).collect();
+    Ok(SyncBatch {
+      blocks: blocks.iter().map(SyncBlock::from).collect(),
+      entries: entries.iter().map(SyncEntry::from).collect(),
+      closures: closures.iter().map(|c| SyncClosure::from_closure(c, &team)).collect(),
+    })
+  }
+
+  /// Marca como subidos los ids que Supabase aceptó. `kind`: "blocks", "entries" o "closures".
+  pub fn sync_mark_synced(&self, now: DateTime<Utc>, kind: &str, ids: &[String]) -> Result<()> {
+    let kind = SyncKind::parse(kind).ok_or_else(|| format!("Tipo de registro desconocido: «{kind}»."))?;
+    let g = self.lock()?;
+    g.store.mark_synced(kind, ids, &g.entry_versions, now)?;
+    Ok(())
+  }
+
+  /// Reglas de clasificación del equipo activo. Se guardan para seguir usándolas sin red.
+  pub fn rules_set(&self, json: &str) -> Result<()> {
+    let rules = parse_team_rules(json)?;
+    let mut g = self.lock()?;
+    g.store.setting_set(KEY_TEAM_RULES, json)?;
+    g.team_rules = rules;
+    Ok(())
+  }
+
+  // ---- Sesión de Supabase (F2, PS-08) ----
+  // El almacén de credenciales de Windows limita cada secreto a 2560 bytes y una sesión de Supabase
+  // lo supera. Se guarda cifrada (AES-GCM) con la clave que sí vive en el almacén seguro.
+
+  pub fn session_get(&self) -> Result<Option<String>> {
+    let g = self.lock()?;
+    let Some(hex) = g.store.setting_get(KEY_SESSION)? else {
+      return Ok(None);
+    };
+    // Una sesión ilegible (clave cambiada o dato dañado) equivale a no tener sesión.
+    Ok(from_hex(&hex).and_then(|enc| g.cipher.decrypt(&enc).ok()))
+  }
+
+  pub fn session_set(&self, json: &str) -> Result<()> {
+    if json.len() > MAX_SESSION_BYTES {
+      return Err("La sesión es demasiado grande.".into());
+    }
+    let g = self.lock()?;
+    let enc = g.cipher.encrypt(json)?;
+    g.store.setting_set(KEY_SESSION, &to_hex(&enc))
+  }
+
+  pub fn session_clear(&self) -> Result<()> {
+    self.lock()?.store.setting_delete(KEY_SESSION)
   }
 }
 
@@ -665,6 +828,7 @@ mod tests {
         title_enc: None,
         category: Category::Productive,
         ai_tool: None,
+        team_id: None,
       })
       .unwrap();
     let t = Tracker::new(store, TitleCipher::new(&TitleCipher::generate_key())).unwrap();
@@ -708,5 +872,152 @@ mod tests {
     assert_eq!(r.days.len(), 2);
     assert_eq!(r.days[0].totals["productive"], 0);
     assert_eq!(r.days[1].totals["productive"], 58);
+  }
+
+  // ---- F2: equipo activo, sincronización, reglas, sesión y cierres ----
+
+  const TEAM: &str = "11111111-1111-4111-8111-111111111111";
+  const OTHER: &str = "22222222-2222-4222-8222-222222222222";
+
+  #[test]
+  fn without_an_active_team_nothing_is_pending() {
+    // AC-20: lo registrado sin equipo nunca se sube.
+    let t = tracker();
+    feed(&t, 0, 30, win("code", "a.rs"));
+    t.shutdown(at(12, 0, 31)).unwrap();
+    let batch = t.sync_pending(at(13, 0, 0), 200).unwrap();
+    assert_eq!(batch, SyncBatch::default());
+  }
+
+  #[test]
+  fn the_sync_batch_never_carries_window_titles() {
+    // AC-18: ni el título en claro ni cifrado salen en el lote.
+    let t = tracker();
+    t.active_team_set(at(11, 59, 0), Some(TEAM)).unwrap();
+    feed(&t, 0, 30, win("chrome", "Propuesta Cliente Secreto - ChatGPT"));
+    t.time_entry_add(at(12, 1, 0), "2026-10-05T10:00:00Z", "2026-10-05T11:00:00Z", None).unwrap();
+    t.shutdown(at(12, 0, 31)).unwrap();
+    let batch = t.sync_pending(at(13, 0, 0), 200).unwrap();
+    assert_eq!(batch.blocks.len(), 1);
+    assert_eq!(batch.blocks[0].category, "ai");
+    assert_eq!(batch.blocks[0].team_id, TEAM);
+    assert_eq!(batch.entries.len(), 1);
+    let json = serde_json::to_string(&batch).unwrap().to_lowercase();
+    assert!(!json.contains("propuesta"), "el título no puede salir: {json}");
+    assert!(!json.contains("secreto"));
+    assert!(!json.contains("title"));
+  }
+
+  #[test]
+  fn recent_blocks_wait_until_they_are_stable() {
+    let t = tracker();
+    t.active_team_set(at(11, 59, 0), Some(TEAM)).unwrap();
+    feed(&t, 0, 30, win("code", "a.rs"));
+    // El bloque sigue abierto (o acaba de cerrarse): todavía no se entrega.
+    assert!(t.sync_pending(at(12, 0, 32), 200).unwrap().blocks.is_empty());
+    assert_eq!(t.sync_pending(at(12, 3, 0), 200).unwrap().blocks.len(), 1);
+  }
+
+  #[test]
+  fn marking_synced_removes_rows_from_pending() {
+    let t = tracker();
+    t.active_team_set(at(11, 59, 0), Some(TEAM)).unwrap();
+    t.time_entry_add(at(12, 0, 0), "2026-10-05T10:00:00Z", "2026-10-05T11:00:00Z", None).unwrap();
+    let batch = t.sync_pending(at(12, 0, 1), 200).unwrap();
+    let ids: Vec<String> = batch.entries.iter().map(|e| e.id.clone()).collect();
+    t.sync_mark_synced(at(12, 0, 2), "entries", &ids).unwrap();
+    assert!(t.sync_pending(at(12, 0, 3), 200).unwrap().entries.is_empty());
+    assert!(t.sync_mark_synced(at(12, 0, 4), "titulos", &ids).is_err());
+    assert!(t.sync_pending(at(12, 0, 5), 0).is_err());
+  }
+
+  #[test]
+  fn changing_team_closes_the_open_block_and_keeps_rows_in_their_team() {
+    let t = tracker();
+    t.active_team_set(at(11, 59, 0), Some(TEAM)).unwrap();
+    feed(&t, 0, 30, win("code", "a.rs"));
+    t.active_team_set(at(12, 0, 31), Some(OTHER)).unwrap();
+    feed(&t, 32, 90, win("code", "a.rs"));
+    t.shutdown(at(12, 1, 31)).unwrap();
+    let first = t.sync_pending(at(13, 0, 0), 200).unwrap();
+    assert!(!first.blocks.is_empty());
+    assert!(first.blocks.iter().all(|b| b.team_id == OTHER));
+    t.active_team_set(at(13, 0, 1), Some(TEAM)).unwrap();
+    let back = t.sync_pending(at(13, 0, 2), 200).unwrap();
+    assert!(!back.blocks.is_empty());
+    assert!(back.blocks.iter().all(|b| b.team_id == TEAM));
+    assert!(t.active_team_set(at(13, 0, 3), Some("no-es-uuid")).is_err());
+  }
+
+  #[test]
+  fn the_active_team_survives_a_restart() {
+    let dir = std::env::temp_dir().join(format!("pulso-test-{}", Uuid::new_v4()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("pulso.db");
+    let key = TitleCipher::generate_key();
+    {
+      let t = Tracker::new(Store::open(&path).unwrap(), TitleCipher::new(&key)).unwrap();
+      t.active_team_set(at(12, 0, 0), Some(TEAM)).unwrap();
+    }
+    let t = Tracker::new(Store::open(&path).unwrap(), TitleCipher::new(&key)).unwrap();
+    t.time_entry_add(at(12, 1, 0), "2026-10-05T10:00:00Z", "2026-10-05T11:00:00Z", None).unwrap();
+    assert_eq!(t.sync_pending(at(12, 1, 1), 200).unwrap().entries[0].team_id, TEAM);
+    drop(t);
+    let _ = std::fs::remove_dir_all(&dir);
+  }
+
+  #[test]
+  fn team_rules_apply_before_defaults_and_are_validated() {
+    let t = tracker();
+    t.rules_set(r#"[{"match":"process","pattern":"code","category":"distraction","ai_tool":null}]"#).unwrap();
+    feed(&t, 0, 20, win("code", "a.rs"));
+    let d = day(&t, at(12, 1, 0));
+    assert_eq!(d.blocks[0].category, Category::Distraction);
+    assert!(t.rules_set(r#"[{"match":"process","pattern":"Code","category":"neutral","ai_tool":null}]"#).is_err(), "mayúsculas");
+    assert!(t.rules_set(r#"[{"match":"process","pattern":"x","category":"idle","ai_tool":null}]"#).is_err(), "categoría");
+    assert!(t.rules_set(r#"[{"match":"title","pattern":"x","category":"neutral","ai_tool":"ChatGPT"}]"#).is_err(), "herramienta");
+    assert!(t.rules_set("no es json").is_err());
+  }
+
+  #[test]
+  fn session_is_stored_encrypted_and_can_be_cleared() {
+    let t = tracker();
+    assert_eq!(t.session_get().unwrap(), None);
+    let session = r#"{"access_token":"eyJ-token-secreto","refresh_token":"r1"}"#;
+    t.session_set(session).unwrap();
+    assert_eq!(t.session_get().unwrap().as_deref(), Some(session));
+    {
+      let g = t.inner.lock().unwrap();
+      let raw = g.store.setting_get(KEY_SESSION).unwrap().unwrap();
+      assert!(!raw.contains("token"), "la sesión no queda en texto plano");
+    }
+    t.session_clear().unwrap();
+    assert_eq!(t.session_get().unwrap(), None);
+    assert!(t.session_set(&"x".repeat(MAX_SESSION_BYTES + 1)).is_err());
+  }
+
+  #[test]
+  fn a_gap_since_the_last_run_is_recorded_as_a_closure() {
+    // AC-22 (parte de Rust): el hueco se guarda con el equipo activo y se entrega para subir.
+    let t = tracker();
+    t.active_team_set(at(11, 59, 0), Some(TEAM)).unwrap();
+    feed(&t, 0, 30, win("code", "a.rs"));
+    t.shutdown(at(12, 0, 31)).unwrap();
+    let t2 = {
+      let g = t.inner.into_inner().unwrap();
+      Tracker::new(g.store, g.cipher).unwrap()
+    };
+    assert!(t2.record_closure_since_last_run(at(12, 1, 0)).unwrap().is_none(), "menos de 2 min: no es cierre");
+    assert!(t2.record_closure_since_last_run(at(14, 0, 0)).unwrap().is_some());
+    let batch = t2.sync_pending(at(14, 0, 1), 200).unwrap();
+    assert_eq!(batch.closures.len(), 1);
+    assert_eq!(batch.closures[0].closed_at, "2026-10-05T12:00:31Z");
+    assert_eq!(batch.closures[0].reopened_at, "2026-10-05T14:00:00Z");
+  }
+
+  #[test]
+  fn no_closure_on_the_very_first_run() {
+    let t = tracker();
+    assert!(t.record_closure_since_last_run(at(12, 0, 0)).unwrap().is_none());
   }
 }

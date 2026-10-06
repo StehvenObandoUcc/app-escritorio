@@ -5,6 +5,7 @@ pub mod instance;
 pub mod secrets;
 pub mod sensor;
 pub mod store;
+pub mod sync;
 pub mod tracker;
 pub mod views;
 
@@ -88,6 +89,10 @@ pub fn run() {
       let store = store::Store::open(&dir.join("pulso.db"))?;
       let cipher = crypto::TitleCipher::new(&secrets::title_key()?);
       let tracker = Arc::new(tracker::Tracker::new(store, cipher)?);
+      // A-1: antes de que el sensor escriba, se guarda el hueco desde la última vez (si lo hubo).
+      if let Err(e) = tracker.record_closure_since_last_run(Utc::now()) {
+        log::error!("al registrar el cierre anterior: {e}");
+      }
 
       spawn_sensor(tracker.clone());
       app.manage(tracker);
@@ -110,6 +115,13 @@ pub fn run() {
       commands::time_entry_delete,
       commands::settings_get,
       commands::settings_set,
+      commands::session_get,
+      commands::session_set,
+      commands::session_clear,
+      commands::active_team_set,
+      commands::sync_pending,
+      commands::sync_mark_synced,
+      commands::rules_set,
     ])
     .build(context)
     .expect("error while building tauri application");

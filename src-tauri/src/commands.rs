@@ -1,7 +1,8 @@
-//! Comandos de Tauri de la fase F1 (nombres de docs/ARQUITECTURA.md §6).
+//! Comandos de Tauri de las fases F1 y F2 (nombres de docs/ARQUITECTURA.md §6).
 //! Son una capa fina: la lógica y las pruebas viven en `tracker`.
 //! Los argumentos llegan en camelCase desde la interfaz (`taskId` → `task_id`).
 
+use crate::sync::SyncBatch;
 use crate::tracker::{Result, SensorStatus, Settings, SettingsPatch, Tracker};
 use crate::views::{DayView, RangeView, TimeEntryView};
 use chrono::{Local, Utc};
@@ -83,4 +84,41 @@ pub fn settings_get(t: Tr) -> Result<Settings> {
 #[tauri::command]
 pub fn settings_set(t: Tr, patch: SettingsPatch) -> Result<Settings> {
   t.settings_set(patch)
+}
+
+// ---- F2 ----
+
+#[tauri::command]
+pub fn session_get(t: Tr) -> Result<Option<String>> {
+  t.session_get()
+}
+
+#[tauri::command]
+pub fn session_set(t: Tr, json: String) -> Result<()> {
+  t.session_set(&json)
+}
+
+#[tauri::command]
+pub fn session_clear(t: Tr) -> Result<()> {
+  t.session_clear()
+}
+
+#[tauri::command]
+pub fn active_team_set(t: Tr, team_id: Option<String>) -> Result<()> {
+  t.active_team_set(Utc::now(), team_id.as_deref())
+}
+
+#[tauri::command]
+pub fn sync_pending(t: Tr, limit: u32) -> Result<SyncBatch> {
+  t.sync_pending(Utc::now(), limit)
+}
+
+#[tauri::command]
+pub fn sync_mark_synced(t: Tr, kind: String, ids: Vec<String>) -> Result<()> {
+  t.sync_mark_synced(Utc::now(), &kind, &ids)
+}
+
+#[tauri::command]
+pub fn rules_set(t: Tr, json: String) -> Result<()> {
+  t.rules_set(&json)
 }
