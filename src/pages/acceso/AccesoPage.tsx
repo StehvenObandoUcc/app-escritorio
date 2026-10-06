@@ -107,7 +107,7 @@ export function AccesoPage() {
             // Un 5xx al registrarse casi siempre es el envío del correo de verificación.
             if (cause instanceof CloudError && cause.kind === 'network') {
               throw new CloudError(
-                `No pudimos enviarte el código: ${cause.message} Si la cuenta ya quedó creada, entra con «Ya tengo cuenta» y te pediremos el código.`,
+                `No pudimos enviarte el código: ${cause.message} Si la cuenta ya quedó creada, ve a «Iniciar sesión» y te pediremos el código.`,
                 'network',
               );
             }
