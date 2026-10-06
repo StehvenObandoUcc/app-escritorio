@@ -71,8 +71,8 @@ Están aprobadas pero aún no instaladas. Quien las instale anota aquí la versi
 
 | Paquete o crate | Fase | Uso | Versión instalada |
 |---|---|---|---|
-| `@supabase/supabase-js` | F2 | Sesión y datos en la nube | pendiente |
-| `@tanstack/react-query` | F2 | Caché y estados de carga de datos remotos | pendiente |
+| `@supabase/supabase-js` | F2 | Sesión y datos en la nube | 2.117.2 |
+| `@tanstack/react-query` | F2 | Caché y estados de carga de datos remotos | 5.104.1 |
 | `windows` (solo Windows) | F1 | Ventana activa e inactividad. Elegido en S-1 (`docs/spikes/S-1-sensor-windows.md`) | 0.62.2 |
 | `rusqlite` (con SQLite incluido) | F1 | Base local | 0.40.2 |
 | `aes-gcm` | F1 | Cifrado de títulos | 0.11.1 |
