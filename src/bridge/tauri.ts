@@ -10,6 +10,7 @@ import {
   RangeViewSchema,
   SensorStatusSchema,
   SettingsSchema,
+  SyncBatchSchema,
   TimeEntrySchema,
   type Bridge,
 } from './contract';
@@ -40,5 +41,22 @@ export function createTauriBridge(): Bridge {
     },
     settingsGet: async () => SettingsSchema.parse(await invoke('settings_get')),
     settingsSet: async (patch) => SettingsSchema.parse(await invoke('settings_set', { patch })),
+    sessionGet: async () => z.string().nullable().parse(await invoke('session_get')),
+    sessionSet: async (json) => {
+      await invoke('session_set', { json });
+    },
+    sessionClear: async () => {
+      await invoke('session_clear');
+    },
+    activeTeamSet: async (teamId) => {
+      await invoke('active_team_set', { teamId });
+    },
+    syncPending: async (limit) => SyncBatchSchema.parse(await invoke('sync_pending', { limit })),
+    syncMarkSynced: async (kind, ids) => {
+      await invoke('sync_mark_synced', { kind, ids });
+    },
+    rulesSet: async (rules) => {
+      await invoke('rules_set', { json: JSON.stringify(rules) });
+    },
   };
 }

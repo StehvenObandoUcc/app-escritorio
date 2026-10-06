@@ -93,6 +93,59 @@ export const SettingsSchema = z.object({
 export type Settings = z.infer<typeof SettingsSchema>;
 export type SettingsPatch = Partial<Settings>;
 
+// ---- F2: sincronización, sesión y reglas del equipo ----
+
+/** Bloque pendiente de subir. No tiene título: los títulos nunca salen del equipo (D-05). */
+export const SyncBlockSchema = z.strictObject({
+  id: z.uuid(),
+  teamId: z.uuid(),
+  startedAt: z.iso.datetime({ offset: true }),
+  endedAt: z.iso.datetime({ offset: true }),
+  appName: z.string().min(1),
+  category: CategorySchema,
+  aiTool: z.string().nullable(),
+});
+export type SyncBlock = z.infer<typeof SyncBlockSchema>;
+
+export const SyncEntrySchema = z.strictObject({
+  id: z.uuid(),
+  teamId: z.uuid(),
+  startedAt: z.iso.datetime({ offset: true }),
+  endedAt: z.iso.datetime({ offset: true }).nullable(),
+  taskId: z.uuid().nullable(),
+  source: z.enum(['timer', 'manual']),
+  updatedAt: z.iso.datetime({ offset: true }),
+  deletedAt: z.iso.datetime({ offset: true }).nullable(),
+});
+export type SyncEntry = z.infer<typeof SyncEntrySchema>;
+
+/** Hueco porque Pulso estuvo cerrado (A-1). La interfaz decide si cae dentro de la jornada. */
+export const SyncClosureSchema = z.strictObject({
+  id: z.uuid(),
+  teamId: z.uuid(),
+  closedAt: z.iso.datetime({ offset: true }),
+  reopenedAt: z.iso.datetime({ offset: true }),
+});
+export type SyncClosure = z.infer<typeof SyncClosureSchema>;
+
+/** `strictObject`: si Rust añadiera un campo (p. ej. un título), la validación falla. */
+export const SyncBatchSchema = z.strictObject({
+  blocks: z.array(SyncBlockSchema),
+  entries: z.array(SyncEntrySchema),
+  closures: z.array(SyncClosureSchema),
+});
+export type SyncBatch = z.infer<typeof SyncBatchSchema>;
+export type SyncKind = 'blocks' | 'entries' | 'closures';
+
+/** Regla de clasificación del equipo, con la forma de `rules/default.json`. */
+export const TeamRuleSchema = z.object({
+  match: z.enum(['process', 'title']),
+  pattern: z.string().min(1).max(120),
+  category: z.enum(['productive', 'neutral', 'distraction', 'ai']),
+  ai_tool: z.string().nullable(),
+});
+export type TeamRule = z.infer<typeof TeamRuleSchema>;
+
 export interface Bridge {
   /** "mock" = datos de ejemplo; "tauri" = sensor real. La interfaz lo muestra al usuario. */
   readonly source: 'mock' | 'tauri';
@@ -120,4 +173,19 @@ export interface Bridge {
 
   settingsGet(): Promise<Settings>;
   settingsSet(patch: SettingsPatch): Promise<Settings>;
+
+  // ---- F2 ----
+
+  /** Sesión de Supabase guardada por Rust (cifrada). `null` si no hay. */
+  sessionGet(): Promise<string | null>;
+  sessionSet(json: string): Promise<void>;
+  sessionClear(): Promise<void>;
+
+  /** Equipo al que se asignan las filas nuevas (ADR-0007). Solo con consentimiento; si no, `null`. */
+  activeTeamSet(teamId: string | null): Promise<void>;
+  /** Registros del equipo activo sin subir, sin títulos. */
+  syncPending(limit: number): Promise<SyncBatch>;
+  syncMarkSynced(kind: SyncKind, ids: string[]): Promise<void>;
+  /** Reglas de clasificación del equipo activo. */
+  rulesSet(rules: TeamRule[]): Promise<void>;
 }
