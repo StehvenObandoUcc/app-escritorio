@@ -56,26 +56,30 @@ líder y colaborador).
 
 ## Estado del proyecto
 
-El desarrollo avanza por fases ([`docs/PLAN.md`](docs/PLAN.md)). Hoy el repositorio está en **F0 (fundaciones)** con
-el inicio de **F1**.
+El desarrollo avanza por fases ([`docs/PLAN.md`](docs/PLAN.md)). Hoy **F0 está hecha** y **F1 está implementada y
+verificada con la app real** (`docs/spikes/F1-medicion-app-real.md`), a la espera de aprobar su spec.
 
 | Fase | Contenido | Estado |
 |---|---|---|
 | F0 · Fundaciones | Estructura, design tokens, atomic design, galería de componentes, CI, primera migración y pruebas de permisos | Hecho en gran parte |
-| F1 · Sensor y *Mi día* | Sensor de actividad en Windows, SQLite local, vista *Mi día* | En curso: la vista *Mi día* existe con **datos de ejemplo**; el sensor en Rust aún no está implementado |
-| F2 · Cuentas, equipos y sincronización | Auth, equipos, roles, invitaciones, sincronización | Planificado (la migración de identidad y equipos ya existe) |
+| F1 · Sensor y *Mi día* | Sensor de actividad en Windows, SQLite local, vista *Mi día* | Implementada: sensor real, títulos cifrados, temporizador, descansos, pausa, registro manual y ajustes locales. Spec en espera de aprobación |
+| F2 · Cuentas, equipos y sincronización | Auth, equipos, roles, invitaciones, sincronización | Planificado (ya existen las migraciones de equipos y de actividad y tiempo) |
 | F3 · Proyectos y tareas | Lista, tablero y tiempo por tarea | Planificado |
 | F4 · IA y reportes | Reportes con IA en tres modos | Planificado |
 | F5 – F6 | Tableros por rol, privacidad, avisos, instalador | Planificado |
 
-Las pantallas *Tareas*, *Equipo*, *Reportes* y *Ajustes* son hoy marcadores de posición que indican su fase.
+Las pantallas *Tareas*, *Equipo* y *Reportes* son hoy marcadores de posición que indican su fase.
 
 ## Características principales
 
 **Disponibles hoy**
 
 - Interfaz de escritorio con navegación, tema claro/oscuro y tres anchos de ventana.
-- Vista **Mi día** (con datos de ejemplo): bloques de actividad, totales por categoría, temporizador y estado del sensor.
+- **Sensor de actividad en Windows** (app activa, título e inactividad cada 2 s), clasificación por reglas con
+  detección de uso de IA, títulos cifrados con AES-256-GCM y clave en el almacén seguro del sistema. Funciona sin conexión.
+- Vista **Mi día** con datos reales: franja del día, totales por categoría, temporizador, descansos, pausa de privacidad,
+  registro manual de tiempo (crear, editar y eliminar) y actualización automática.
+- **Ajustes** locales: umbral de inactividad y apps ocultas. Una sola instancia; cerrar Pulso detiene el registro.
 - Sistema de diseño propio (tokens → átomos → moléculas → organismos → plantillas) con galería de componentes en desarrollo.
 - Primera migración de Supabase (perfiles, equipos y miembros) con pruebas de permisos que corren sin Docker.
 - Guardianes de calidad: lint, tipos, verificación de tokens de diseño y pruebas, ejecutados también en CI.
@@ -108,7 +112,8 @@ Versiones leídas de `package.json` y [`docs/STACK.lock.md`](docs/STACK.lock.md)
 | Calidad | ESLint · typescript-eslint | 10.11.0 · 8.71.0 |
 | Entorno | Node.js | 22 o superior |
 
-Aprobadas pero aún sin instalar: `@supabase/supabase-js`, `@tanstack/react-query`, `rusqlite`, `aes-gcm`, `keyring`, `reqwest`, entre otras.
+Instaladas en F1 (Rust): `windows`, `rusqlite`, `aes-gcm`, `keyring`, `uuid` y `chrono`.
+Aprobadas pero aún sin instalar: `@supabase/supabase-js`, `@tanstack/react-query`, `reqwest`, entre otras.
 
 ## Arquitectura y cómo funciona
 
@@ -140,8 +145,7 @@ flowchart TB
     end
 ```
 
-> Diagrama de la arquitectura **objetivo**. Hoy el núcleo Rust solo contiene el arranque de Tauri; los módulos
-> `sensor`, `store`, `crypto`, `secrets` y `ai` se implementan por fases.
+> Diagrama de la arquitectura **objetivo**. Hoy existen `sensor`, `store`, `crypto` y `secrets` (F1); `ai` llega en F4.
 
 **Dos formas de ejecutar la interfaz**
 
@@ -156,7 +160,7 @@ flowchart TB
 3. La página *Mi día* llama `day_view(date)` por el puente; la respuesta se valida con Zod y se pinta con los componentes de `src/ui`.
 4. (F2) La sincronización en TypeScript pide los pendientes **sin títulos** y los sube a Supabase con `upsert` idempotente.
 
-Hoy el paso 3 está implementado contra el puente simulado; los pasos 1, 2 y 4 están por construir.
+Hoy los pasos 1 a 3 funcionan con la app real; el paso 4 llega en F2.
 
 ## Relación con el backend
 
@@ -164,7 +168,9 @@ El backend es **Supabase**, incluido en este mismo repositorio (`supabase/`); no
 
 - **Protocolo:** HTTPS con el JWT del usuario, mediante `supabase-js` (aún no instalado; llega en F2).
 - **Datos:** Postgres con RLS en cada tabla; escrituras sensibles solo mediante funciones `SECURITY DEFINER`.
-- **Hoy:** existe la migración `20261001000001_identidad_y_equipos.sql` (`profiles`, `teams`, `team_members`) con sus pruebas.
+- **Hoy:** existen las migraciones `20261001000001_identidad_y_equipos.sql` (`profiles`, `teams`, `team_members`) y
+  `20261005000001_actividad_y_tiempo.sql` (`activity_blocks` sin títulos, `time_entries`, `classification_rules`), con sus pruebas.
+  Aún no están aplicadas en la nube.
 - **IA gratuita:** Edge Function `ai-trial` con cuota diaria (planificada, F4).
 - **Contrato Rust ⇄ interfaz:** lista cerrada de comandos en [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md) §6.
 

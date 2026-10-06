@@ -1,0 +1,22 @@
+[
+  { "match": "title", "pattern": "chatgpt", "category": "ai", "ai_tool": "ChatGPT" },
+  { "match": "title", "pattern": "claude", "category": "ai", "ai_tool": "Claude" },
+  { "match": "title", "pattern": "gemini", "category": "ai", "ai_tool": "Gemini" },
+  { "match": "title", "pattern": "deepseek", "category": "ai", "ai_tool": "DeepSeek" },
+  { "match": "title", "pattern": "copilot", "category": "ai", "ai_tool": "Copilot" },
+  { "match": "process", "pattern": "ollama", "category": "ai", "ai_tool": "Ollama" },
+  { "match": "process", "pattern": "lm studio", "category": "ai", "ai_tool": "LM Studio" },
+  { "match": "process", "pattern": "code", "category": "productive", "ai_tool": null },
+  { "match": "process", "pattern": "devenv", "category": "productive", "ai_tool": null },
+  { "match": "process", "pattern": "idea64", "category": "productive", "ai_tool": null },
+  { "match": "process", "pattern": "winword", "category": "productive", "ai_tool": null },
+  { "match": "process", "pattern": "excel", "category": "productive", "ai_tool": null },
+  { "match": "process", "pattern": "powerpnt", "category": "productive", "ai_tool": null },
+  { "match": "process", "pattern": "windowsterminal", "category": "productive", "ai_tool": null },
+  { "match": "title", "pattern": "youtube", "category": "distraction", "ai_tool": null },
+  { "match": "title", "pattern": "netflix", "category": "distraction", "ai_tool": null },
+  { "match": "title", "pattern": "facebook", "category": "distraction", "ai_tool": null },
+  { "match": "title", "pattern": "instagram", "category": "distraction", "ai_tool": null },
+  { "match": "title", "pattern": "tiktok", "category": "distraction", "ai_tool": null },
+  { "match": "process", "pattern": "spotify", "category": "distraction", "ai_tool": null }
+]

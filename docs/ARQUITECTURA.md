@@ -23,6 +23,7 @@ tareas y genera reportes con IA. Promesa: *entiende cómo trabaja tu equipo con 
 | Hechos (`facts`) | Cifras de un reporte, calculadas por SQL. |
 | Narrativa | Texto generado por IA que solo puede citar hechos. |
 | Puente (`bridge`) | Contrato entre la interfaz y el núcleo Rust (`src/bridge/contract.ts`). |
+| App oculta | Ajuste local de F1: apps (por nombre de proceso) que la persona elige no registrar. El bloque se guarda como `app_name = "App oculta"`, sin título y `neutral`. No es lo mismo que «No compartir nombres de apps» (PS-05, F5), que solo limita lo que se sube a la nube. |
 
 ## 3. Decisiones cerradas
 
@@ -96,7 +97,8 @@ Comandos (nombres exactos; `src/bridge/contract.ts` es su espejo en TypeScript):
 | F1 | `timer_start(task_id?)` · `timer_stop()` | `SensorStatus` |
 | F1 | `break_start()` · `break_end()` | `SensorStatus` |
 | F1 | `privacy_pause(minutes)` · `privacy_resume()` | `SensorStatus` |
-| F1 | `time_entry_add(start, end, task_id?)` · `time_entry_update(id, …)` · `time_entry_delete(id)` | entrada |
+| F1 | `time_entry_add(start, end, task_id?)` · `time_entry_update(id, start, end, task_id?)` · `time_entry_delete(id)` | entrada (`add`) · nada (`update`, `delete`) |
+| F1 | `time_entries(date)` (ADR-0005) | entradas de tiempo del día local |
 | F1 | `settings_get()` · `settings_set(patch)` | ajustes locales (umbral de inactividad, ocultar apps) |
 | F2 | `session_get()` · `session_set(json)` · `session_clear()` | sesión de Supabase |
 | F2 | `sync_pending(limit)` | bloques y entradas sin subir, **sin títulos** |
@@ -165,7 +167,7 @@ la subida puede tardar un minuto más, pero no se pierde nada porque Rust ya lo 
 
 - Consentimiento explícito y versionado al unirse a un equipo: qué se mide, quién lo ve, qué proveedor de IA se usa y que los datos pueden procesarse fuera de Colombia.
 - Pausa de privacidad: durante la pausa solo se registra un bloque `paused`, sin detalle.
-- Cada persona puede exportar sus datos y, al salir de un equipo, se borra su actividad en ese equipo.
+- Cada persona puede exportar sus datos. Cuando una persona sale de un equipo (por su cuenta o expulsada, misma regla) se borran sus `activity_blocks` de ese equipo; sus `time_entries` se conservan y se muestran como «Exmiembro»; el hecho queda en `audit_log`. Se implementa en F2.
 - Referencia: Ley 1581 de 2012 (protección de datos personales, Colombia). Si se va a usar con empleados reales, hay que validarlo con asesoría.
 
 ## 10. Checklist de seguridad (cada punto es una prueba o una revisión de F6)

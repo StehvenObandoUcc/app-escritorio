@@ -1,11 +1,11 @@
 import { Play } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { CATEGORIES } from '@/bridge/contract';
+import { CATEGORIES, type TimeEntry } from '@/bridge/contract';
 import { sampleDay } from '@/bridge/mock';
 import { CATEGORY_STYLE } from '@/lib/categories';
 import { Avatar, Badge, Button, CategoryMark, Heading, Input, ProgressBar, Surface } from '@/ui/atoms';
-import { CategoryBreakdown, EmptyState, FormField, TimerControl } from '@/ui/molecules';
-import { ActivityList, PulseStrip } from '@/ui/organisms';
+import { CategoryBreakdown, EmptyState, FormField, TimeEntryForm, TimerControl } from '@/ui/molecules';
+import { ActivityList, PulseStrip, TimeEntryList } from '@/ui/organisms';
 import { PageLayout } from '@/ui/templates';
 
 const SWATCHES = [
@@ -21,6 +21,12 @@ const SWATCHES = [
 ] as const;
 
 const noop = () => {};
+
+const SAMPLE_ENTRIES: TimeEntry[] = [
+  { id: '00000000-0000-4000-8000-0000000000a1', startedAt: '2026-10-01T09:00:00-05:00', endedAt: '2026-10-01T10:30:00-05:00', taskId: null, source: 'manual' },
+  { id: '00000000-0000-4000-8000-0000000000a2', startedAt: '2026-10-01T11:00:00-05:00', endedAt: '2026-10-01T11:45:00-05:00', taskId: null, source: 'timer' },
+  { id: '00000000-0000-4000-8000-0000000000a3', startedAt: '2026-10-01T14:00:00-05:00', endedAt: null, taskId: null, source: 'timer' },
+];
 
 /**
  * Galería de componentes (solo desarrollo): #/dev/galeria
@@ -114,6 +120,13 @@ export function GaleriaPage() {
             categories={['productive', 'ai', 'neutral', 'distraction', 'break']}
           />
         </div>
+        <div className="max-w-xl">
+          <TimeEntryForm
+            initial={{ date: '2026-10-01', start: '', end: '' }}
+            submitLabel="Guardar entrada"
+            onSubmit={() => Promise.reject(new Error('El fin debe ser posterior al inicio.'))}
+          />
+        </div>
         <EmptyState
           title="No tienes tareas asignadas"
           description="Cuando alguien te asigne una tarea, aparecerá aquí."
@@ -125,6 +138,9 @@ export function GaleriaPage() {
         <PulseStrip blocks={day.blocks} summary="Franja de pulso de ejemplo" />
         <Surface padding="flush">
           <ActivityList blocks={day.blocks.slice(0, 4)} />
+        </Surface>
+        <Surface padding="flush">
+          <TimeEntryList entries={SAMPLE_ENTRIES} onUpdate={() => Promise.resolve()} onDelete={() => Promise.resolve()} />
         </Surface>
       </Section>
     </PageLayout>

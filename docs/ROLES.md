@@ -48,6 +48,7 @@ obliga a cambiar la migración y su prueba en el mismo cambio.
 - Nadie escribe la tabla `team_members` directamente: solo mediante `create_team`, `set_member_role`, `remove_member`, `leave_team` y, desde F2, `accept_invitation`. (F0 ✔)
 - Las invitaciones vencen a los 7 días y solo las puede aceptar quien inició sesión con ese correo verificado. (F2)
 - Cambios de rol, expulsiones, configuración de IA y reportes sobre otras personas quedan en `audit_log`. (F2)
+- Salida de un equipo (la persona se va o es expulsada: misma regla): se borran sus `activity_blocks` de ese equipo; sus `time_entries` se conservan y se muestran como «Exmiembro»; el hecho queda en `audit_log`. (F2)
 
 ## Cómo se prueba cada celda
 

@@ -86,13 +86,13 @@ Funcionalidades: TA-01 a TA-09, IA-01 a IA-03, PS-03, PS-04, SY-01. Spec: `docs/
 | C · Interfaz | *Mi día* con datos reales, registro manual de tiempo, ajustes locales |
 
 **Puerta G1**
-- [ ] `npm run verify` y `npm run verify:rust` en verde.
-- [ ] Una hora de uso real sin cierres inesperados.
-- [ ] Abrir VS Code, el navegador con ChatGPT y otra app: *Mi día* muestra los tres bloques con su categoría.
-- [ ] Dejar el equipo quieto más que el umbral: aparece un bloque sin actividad.
-- [ ] Pausar: durante la pausa no se guarda ni app ni título.
-- [ ] Sin red, todo lo anterior sigue funcionando.
-- [ ] El Administrador de tareas muestra menos de 120 MB de memoria.
+- [x] `npm run verify` y `npm run verify:rust` en verde.
+- [x] Una hora de uso real sin cierres inesperados.
+- [x] Abrir VS Code, el navegador con ChatGPT y otra app: *Mi día* muestra los tres bloques con su categoría. (Hecho con Claude en Brave y Firefox: el responsable no usa ChatGPT.)
+- [x] Dejar el equipo quieto más que el umbral: aparece un bloque sin actividad.
+- [x] Pausar: durante la pausa no se guarda ni app ni título.
+- [x] Sin red, todo lo anterior sigue funcionando.
+- [x] El Administrador de tareas muestra menos de 120 MB de memoria.
 
 ### F2 · Cuentas, equipos, roles y sincronización (mar 6 – jue 8)
 
@@ -204,3 +204,58 @@ No se mueve el congelamiento: se recorta. En este orden:
 | Supabase limita los correos de verificación en el plan gratuito | Para la demo se crean las cuentas con antelación; las invitaciones no envían correos |
 | Supabase pausa los proyectos gratuitos sin uso | Abrir el proyecto el día anterior a la demo |
 | Windows advierte que el instalador no está firmado | Es esperado sin certificado de pago; se explica en la demo |
+| El equipo de desarrollo tiene poca RAM libre | Cerrar apps antes de `npm run verify` y de compilar en release (~3–12 min). Si Vitest no arranca sus procesos, se libera memoria y se repite; no se toca la configuración |
+| WebView2 se conecta a servidores de Microsoft por su cuenta | Revisar en F6 junto con la CSP (decisión abierta A-2) |
+
+## 8. Adaptaciones (5 de octubre, al cerrar F1)
+
+Lo de arriba es el plan original y sigue vigente. Esta sección añade lo acordado durante F1.
+
+### 8.1 Forma de trabajo
+
+1. Se trabaja en la rama `feat/f1-sensor-y-mi-dia` hasta nuevo aviso, con commits por partes
+   (docs · núcleo Rust · interfaz · base de datos) en español, formato `tipo(ámbito): descripción`,
+   **sin líneas de co-autor ni de atribución a herramientas**, y subidos a `origin`.
+2. En cada iteración se informa qué se hizo, qué falla y qué falta; lo no verificado se dice como tal.
+3. Si algo es ambiguo o falla dos veces, se detiene y se pregunta (R9).
+4. Nada contra Supabase en la nube (`db:link`, `db:push`) lo ejecuta un agente: lo hace el responsable al empezar F2.
+5. La verificación incluye la app real compilada en release: UI Automation para pulsar botones y lectura de la base
+   SQLite para confirmar lo guardado. El responsable sigue usando el equipo con normalidad; no se le pide dejarlo quieto.
+
+### 8.2 Puerta G1: precisiones
+
+- «Menos de 120 MB»: memoria privada de Pulso más sus procesos de WebView2, medida según **ADR-0006**. En la hora
+  de uso, además: CPU media < 1 % y la media de los últimos 10 minutos no supera en más de un 15 % a la de los primeros 10.
+- Puntos añadidos tras las pruebas reales:
+  - [x] Cerrar Pulso detiene el registro en ese momento (no queda un proceso grabando sin ventana).
+  - [x] Solo puede haber una instancia abierta.
+  - [x] Ningún bloque empieza antes de que termine el anterior (consulta en `docs/spikes/F1-medicion-app-real.md` §3).
+  - [x] AC-1 a AC-20 con estado y evidencia en `docs/spikes/F1-medicion-app-real.md` §5.
+
+### 8.3 Avance (al 5 de octubre, cierre de F1)
+
+| Fase | Estado | Puerta |
+|---|---|---|
+| F0 · Fundaciones | Hecha | G0 incompleta: faltan los informes S-2 (detección de IA por título) y S-4 (DeepSeek) |
+| **F1 · Sensor y *Mi día*** | **Hecha. Spec aprobada el 5 oct** | **G1 pasa** (evidencia en `docs/spikes/F1-medicion-app-real.md`) |
+| F2 · Cuentas, equipos y sincronización | Por empezar (6–8 oct). Migración de actividad y tiempo adelantada en F1 | — |
+| F3 a F6 | Por empezar | — |
+
+Funcionalidades antes de la entrega (`docs/FUNCIONALIDADES.md`): **86**.
+
+| | Cuántas | % de 86 | Cuáles |
+|---|---|---|---|
+| Completas | 19 | 22 % | UI-01 a UI-05, EQ-04, TA-01 a TA-04, TA-06 a TA-09, IA-01, IA-03, PS-03, PS-04, SY-01 |
+| A medias (parte hecha, el resto en su fase) | 8 | 9 % | TA-05 (tarea en F3), IA-02 (pantalla en F5), EQ-01/05/08 (pantalla en F2), PS-07 (sigue hasta F5), UI-06 (revisión en F6), UI-07 (cada fase) |
+| Por hacer | 59 | 69 % | F2 a F6 |
+
+Tiempo: van 5 de los 18 días del calendario (28 %) y está hecho el 22–31 % del alcance. Vamos al ritmo
+previsto, sin margen: F2 empieza el martes 6.
+
+### 8.4 Decisiones abiertas
+
+| # | Tema | Necesita |
+|---|---|---|
+| A-1 | **Cierres de Pulso dentro de la jornada.** Cerrar Pulso detiene el registro (hecho en F1), pero si ocurre dentro de la jornada laboral debe quedar reportado. | Definir qué es la jornada (¿horas de `teams.settings`, EQ-09?), qué se guarda (¿un evento «Pulso cerrado» con hora?), quién lo ve (¿la persona, owner y admin?) y si exige una fila nueva en `docs/ROLES.md`. **Acordado: se define en la spec de F2, junto con los roles.** |
+| A-2 | Conexiones de WebView2 a servidores de Microsoft vistas en la prueba real (`52.96.185.210:443`) | Revisar en F6 con la CSP: qué las origina y si se pueden desactivar sin dependencias nuevas. |
+| A-3 | La regla de salida de equipo (D2: se borran `activity_blocks`, se conservan `time_entries` como «Exmiembro», queda en `audit_log`) contradice la migración `20261005000001`, que hoy borra también `time_entries` y solo al salir por cuenta propia | Corregir con una migración nueva en F2, con sus pruebas. |
