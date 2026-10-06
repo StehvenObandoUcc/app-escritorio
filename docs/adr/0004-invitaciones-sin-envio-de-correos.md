@@ -1,6 +1,6 @@
 # ADR-0004 · Invitaciones sin envío de correos
 
-Fecha: 2026-10-01 · Estado: aceptado
+Fecha: 2026-10-01 · Estado: aceptado; la verificación del correo la reemplaza el código de invitación (ADR-0008)
 
 ## Contexto
 La versión 1.0 usaba enlaces con un código de un solo uso enviados por correo. Eso exige

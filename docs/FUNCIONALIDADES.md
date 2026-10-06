@@ -13,7 +13,7 @@ Resumen: 104 funcionalidades en total: 86 antes de la entrega y 18 después.
 
 | ID | Funcionalidad | RF | Fase | Cómo se comprueba |
 |---|---|---|---|---|
-| CU-01 | Registro con correo y contraseña; verificación con código de 6 dígitos | 01 | F2 | Crear una cuenta nueva y entrar |
+| CU-01 | Registro con correo y contraseña; se entra al instante, sin verificar el correo (ADR-0008) | 01 | F2 | Crear una cuenta nueva y entrar |
 | CU-02 | Iniciar y cerrar sesión; la sesión se guarda en el almacén seguro del sistema | 01 | F2 | Cerrar y abrir la app: sigue la sesión. Tras cerrar sesión, no |
 | CU-03 | Recuperar la contraseña con un código por correo | 01 | F2 | Cambiar la contraseña sin conocer la anterior |
 | CU-04 | Perfil: nombre visible, zona horaria, avatar con iniciales | 03 | F2 | Editar el nombre y verlo en la lista del equipo |
@@ -27,8 +27,8 @@ Resumen: 104 funcionalidades en total: 86 antes de la entrega y 18 después.
 | ID | Funcionalidad | RF | Fase | Cómo se comprueba |
 |---|---|---|---|---|
 | EQ-01 | Crear un equipo; quien lo crea es `owner` | 02 | F0 ✔ / F2 | Prueba de base de datos + pantalla |
-| EQ-02 | Invitar por correo con un rol; la invitación vence a los 7 días | 02 | F2 | La persona invitada ve la invitación al iniciar sesión |
-| EQ-03 | Aceptar o rechazar una invitación (con consentimiento) | 02 | F2 | Al aceptar, aparece en el equipo |
+| EQ-02 | Invitar por correo con un rol y un código para compartir (ADR-0008); la invitación vence a los 7 días | 02 | F2 | La persona invitada ve la invitación al iniciar sesión |
+| EQ-03 | Aceptar (con el código y el consentimiento) o rechazar una invitación | 02 | F2 | Al aceptar, aparece en el equipo |
 | EQ-04 | Roles de equipo: `owner`, `admin`, `member`, `viewer` | 02 | F0 ✔ | `npm run test:db` |
 | EQ-05 | Cambiar roles y expulsar según la matriz; el equipo siempre conserva un owner | 02 | F0 ✔ / F2 | Prueba de base de datos + pantalla |
 | EQ-06 | Ceder la propiedad del equipo | 02 | F2 | Nombrar otro owner y degradarse |
