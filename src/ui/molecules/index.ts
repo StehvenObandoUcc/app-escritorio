@@ -6,3 +6,4 @@ export * from './ThemeToggle';
 export * from './TimeEntryForm';
 export * from './SyncStatus';
 export * from './PasswordField';
+export * from './SegmentedControl';

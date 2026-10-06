@@ -1,9 +1,11 @@
+import { useMemo, useState } from 'react';
 import type { Bridge, Category } from '@/bridge/contract';
+import { appTotals, buildTimeline } from '@/lib/activity';
 import { WORK_CATEGORIES } from '@/lib/categories';
 import { formatDuration, formatHour, formatLongDate, localDate, localDateTimeToIso } from '@/lib/time';
 import { Badge, Heading, Surface } from '@/ui/atoms';
-import { CategoryBreakdown, EmptyState, TimeEntryForm, TimerControl } from '@/ui/molecules';
-import { ActivityList, PulseStrip, TimeEntryList } from '@/ui/organisms';
+import { CategoryBreakdown, EmptyState, SegmentedControl, TimeEntryForm, TimerControl } from '@/ui/molecules';
+import { ActivityList, ActivityTimeline, AppSummary, PulseStrip, TimeEntryList } from '@/ui/organisms';
 import { PageLayout } from '@/ui/templates';
 import { useDay } from './useDay';
 import { useElapsed } from './useElapsed';
@@ -11,10 +13,21 @@ import { useElapsed } from './useElapsed';
 const BREAKDOWN: Category[] = ['productive', 'ai', 'neutral', 'distraction', 'break'];
 const PAUSE_MINUTES = 15;
 
+type ActivityView = 'resumen' | 'linea' | 'detalle';
+const VIEWS: { value: ActivityView; label: string }[] = [
+  { value: 'resumen', label: 'Por app' },
+  { value: 'linea', label: 'Línea de tiempo' },
+  { value: 'detalle', label: 'Detalle' },
+];
+
 export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date?: string }) {
   const { state, run, reload } = useDay(bridge, date);
   const status = state.phase === 'ready' ? state.status : null;
   const elapsed = useElapsed(status?.timer.startedAt ?? null);
+  const [view, setView] = useState<ActivityView>('resumen');
+  const blocks = state.phase === 'ready' ? state.day.blocks : null;
+  const totalsByApp = useMemo(() => (blocks ? appTotals(blocks) : []), [blocks]);
+  const timeline = useMemo(() => (blocks ? buildTimeline(blocks) : []), [blocks]);
 
   const sampleTag = bridge.source === 'mock' && <Badge tone="accent">Datos de ejemplo</Badge>;
 
@@ -114,7 +127,10 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
       </section>
 
       <section className="flex flex-col gap-3">
-        <Heading level={2}>Actividad</Heading>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Heading level={2}>Actividad</Heading>
+          {day.blocks.length > 0 && <SegmentedControl label="Vista de la actividad" options={VIEWS} value={view} onChange={setView} />}
+        </div>
         {day.blocks.length === 0 ? (
           <EmptyState
             title="Aún no hay bloques"
@@ -122,7 +138,14 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
           />
         ) : (
           <Surface padding="flush">
-            <ActivityList blocks={day.blocks} />
+            {view === 'resumen' &&
+              (totalsByApp.length ? (
+                <AppSummary totals={totalsByApp} />
+              ) : (
+                <p className="p-4 text-fg-muted md:p-5">Hoy solo hay inactividad, pausas o descansos.</p>
+              ))}
+            {view === 'linea' && <ActivityTimeline rows={timeline} />}
+            {view === 'detalle' && <ActivityList blocks={day.blocks} />}
           </Surface>
         )}
       </section>

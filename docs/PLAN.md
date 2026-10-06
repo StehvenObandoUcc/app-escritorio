@@ -270,4 +270,6 @@ previsto, sin margen: F2 empieza el martes 6.
 | Interfaz: acceso con código, equipos, invitaciones, consentimiento, perfil, privacidad, sincronización | Hecha contra la nube simulada; falta probarla con Supabase real |
 | Puerta G2 | Pendiente: dos cuentas reales, 30 min sin red, viewer y persona de otro equipo |
 
-Decisión abierta: **A-4** · Supabase envía el código de verificación y el de recuperación con las plantillas de correo del proyecto. Deben usar `{{ .Token }}` y la longitud del código debe ser 6 (CU-01).
+Decisiones abiertas:
+- **A-4** · *Olvidé mi contraseña* necesita que Supabase envíe correos: hoy responde 504. Hay que revisar o configurar el SMTP del proyecto. El registro ya no depende del correo (ADR-0008).
+- **A-5** · Enviar por correo el código de invitación, además de mostrarlo para compartirlo (pedido el 6 oct). Depende de A-4 y necesita una Edge Function o el SMTP del proyecto; se retoma después de G2.
