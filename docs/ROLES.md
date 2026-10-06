@@ -27,7 +27,7 @@ obliga a cambiar la migración y su prueba en el mismo cambio.
 | 10 | Registrar y editar tiempo propio | S | S | S | S | — | F2 |
 | 11 | Editar el tiempo de otra persona | — | — | — | — | — | F2 |
 | 12 | Ver la propia actividad con títulos (solo local) | S | S | S | S | — | F1 |
-| 13 | Ver actividad agregada por miembro (categorías, apps, horas) | ✔ | ✔ | P (solo tiempo de sus proyectos) | — | — | F2 |
+| 13 | Ver actividad agregada por miembro (categorías, apps, sitios por dominio, horas) | ✔ | ✔ | P (solo tiempo de sus proyectos) | — | — | F2 |
 | 14 | Ver uso de IA por miembro | ✔ | ✔ | P | — | — | F2 |
 | 15 | Ver totales del equipo sin nombres | ✔ | ✔ | ✔ | ✔ | ✔ | F5 |
 | 16 | Crear o archivar proyectos | ✔ | ✔ | — | — | — | F3 |
@@ -37,7 +37,7 @@ obliga a cambiar la migración y su prueba en el mismo cambio.
 | 20 | Generar un reporte personal | S | S | S | S | — | F4 |
 | 21 | Generar un reporte de proyecto | ✔ | ✔ | P | — | — | F4 |
 | 22 | Generar un reporte de equipo | ✔ | ✔ | — | — | ver los ya generados | F4 |
-| 23 | Editar reglas de clasificación y políticas de privacidad | ✔ | ✔ | — | — | — | F5 |
+| 23 | Editar reglas de clasificación y políticas de privacidad | ✔ | ✔ | — | — | — | F2 (sitios y apps ocultas, ADR-0009) / F5 (resto) |
 | 24 | Ver quién está activo ahora | ✔ | ✔ | P | si el equipo lo permite | — | F5 |
 | 25 | Exportar los datos propios | S | S | S | S | S | F5 |
 | 26 | Ver los cierres de Pulso dentro de la jornada (A-1) | ✔ | ✔ | S | S | — | F2 |
