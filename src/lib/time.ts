@@ -43,3 +43,8 @@ export function formatLongDate(date: string): string {
     month: 'long',
   }).format(new Date(`${date}T12:00:00`));
 }
+
+/** Fecha "2026-10-01" y hora local "09:30" → instante ISO (UTC). Lanza RangeError si no son válidas. */
+export function localDateTimeToIso(date: string, hhmm: string): string {
+  return new Date(`${date}T${hhmm}:00`).toISOString();
+}

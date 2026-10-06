@@ -1,0 +1,104 @@
+import { useState } from 'react';
+import type { TimeEntry } from '@/bridge/contract';
+import { formatDuration, formatHour, localDate, localDateTimeToIso } from '@/lib/time';
+import { Badge, Button } from '@/ui/atoms';
+import { TimeEntryForm, type TimeEntryValues } from '@/ui/molecules';
+
+export interface TimeEntryListProps {
+  entries: TimeEntry[];
+  onUpdate: (id: string, start: string, end: string) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+}
+
+const SOURCE_LABEL: Record<TimeEntry['source'], string> = { timer: 'Temporizador', manual: 'Manual' };
+
+const toValues = (e: TimeEntry): TimeEntryValues => ({
+  date: localDate(new Date(e.startedAt)),
+  start: formatHour(e.startedAt),
+  end: e.endedAt ? formatHour(e.endedAt) : '',
+});
+
+/** Entradas de tiempo del día. Las del temporizador en marcha no se pueden editar todavía. */
+export function TimeEntryList({ entries, onUpdate, onDelete }: TimeEntryListProps) {
+  const [editing, setEditing] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const remove = async (id: string) => {
+    setDeleteError(null);
+    try {
+      await onDelete(id);
+      setConfirming(null);
+    } catch (cause) {
+      setDeleteError(cause instanceof Error ? cause.message : String(cause));
+    }
+  };
+
+  return (
+    <ul aria-label="Entradas de tiempo" className="divide-y divide-line">
+      {entries.map((entry) => {
+        const range = `${formatHour(entry.startedAt)}–${entry.endedAt ? formatHour(entry.endedAt) : 'en curso'}`;
+        if (editing === entry.id) {
+          return (
+            <li key={entry.id} className="px-4 py-3 md:px-5">
+              <TimeEntryForm
+                initial={toValues(entry)}
+                submitLabel="Guardar cambios"
+                onCancel={() => setEditing(null)}
+                onSubmit={async (v) => {
+                  await onUpdate(entry.id, localDateTimeToIso(v.date, v.start), localDateTimeToIso(v.date, v.end));
+                  setEditing(null);
+                }}
+              />
+            </li>
+          );
+        }
+        return (
+          <li key={entry.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 md:px-5">
+            <span className="w-32 shrink-0 text-sm text-fg tabular-nums">{range}</span>
+            <span className="w-20 shrink-0 text-sm text-fg-muted tabular-nums">
+              {entry.endedAt ? formatDuration((Date.parse(entry.endedAt) - Date.parse(entry.startedAt)) / 1000) : '—'}
+            </span>
+            <Badge>{SOURCE_LABEL[entry.source]}</Badge>
+            <span className="flex min-w-0 flex-1 basis-48 flex-wrap items-center justify-end gap-2">
+              {entry.endedAt &&
+                (confirming === entry.id ? (
+                  <>
+                    <span className="text-sm text-fg">¿Eliminar esta entrada?</span>
+                    <Button size="sm" variant="danger" onClick={() => remove(entry.id)}>
+                      Sí, eliminar
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setConfirming(null)}>
+                      Cancelar
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button size="sm" variant="ghost" aria-label={`Editar entrada de ${range}`} onClick={() => setEditing(entry.id)}>
+                      Editar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label={`Eliminar entrada de ${range}`}
+                      onClick={() => {
+                        setDeleteError(null);
+                        setConfirming(entry.id);
+                      }}
+                    >
+                      Eliminar
+                    </Button>
+                  </>
+                ))}
+            </span>
+            {confirming === entry.id && deleteError && (
+              <p role="alert" className="basis-full text-sm text-danger">
+                {deleteError}
+              </p>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
