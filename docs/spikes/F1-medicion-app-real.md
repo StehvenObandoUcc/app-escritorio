@@ -108,5 +108,18 @@ Pruebas Rust: `cargo test` en `src-tauri` (62). Pruebas de interfaz: `vitest` (1
   equipo durante el umbral; se cubren con pruebas automáticas.
 - AC-18 sin red: no se cortó la conexión ni se crearon reglas de firewall.
 - AC-6, AC-11, AC-13 y AC-17 en la app real (ver tabla).
-- Revisión visual de las pantallas nuevas en 380, 800 y 1280 px y en tema claro y oscuro (C3 de `docs/PLAN.md`).
 - La causa exacta del proceso que siguió vivo tras cerrar (§4).
+
+## 7. Revisión visual (app release, escala de pantalla 1,25)
+
+*Mi día* y *Ajustes* capturadas con `PrintWindow` a 380, 800 y 1280 px de ancho CSS, en tema claro y oscuro (12 capturas).
+
+| Comprobación | Resultado |
+|---|---|
+| Navegación según `docs/DISENO.md` §4 | Barra inferior a 380, riel de iconos a 800, barra lateral con texto a 1280 |
+| Desplazamiento horizontal o textos cortados | Ninguno en las 12 capturas |
+| Formulario de registro de tiempo | Campos en columna a 380 y en fila a 800 y 1280 |
+| Tema oscuro | Contraste legible en tarjetas, barras, formularios y navegación |
+| **Formato de fecha** | **Fallo corregido:** el campo «Día» mostraba `10/05/2026` (mes/día, idioma de WebView2 en inglés). Se fijó el idioma de WebView2 con `additionalBrowserArgs: --lang=es-CO` en `tauri.conf.json`, conservando los argumentos por defecto de wry. Ahora muestra `05/10/2026` y horas de 24 h |
+
+No revisado: uso solo con teclado (UI-06, revisión de F6).
