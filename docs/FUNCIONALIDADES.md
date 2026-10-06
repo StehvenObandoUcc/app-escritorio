@@ -7,7 +7,7 @@ en que se construyen y cómo se comprueba cada una. Nada se construye si no tien
 - **F7–F9**: después de la entrega. Están diseñadas, no olvidadas.
 - **✂** = recortable: es lo primero que sale si una fase se atrasa (orden en `docs/PLAN.md` §4).
 
-Resumen: 104 funcionalidades en total: 86 antes de la entrega y 18 después.
+Resumen: 106 funcionalidades en total: 88 antes de la entrega y 18 después (TA-14 y PS-11 se añadieron el 6 oct, ADR-0009).
 
 ## A. Cuenta y acceso (RF-01, RF-03)
 
@@ -54,6 +54,7 @@ Resumen: 104 funcionalidades en total: 86 antes de la entrega y 18 después.
 | TA-11 | Editor de reglas de clasificación del equipo | 05 | F5 | Marcar una app como distracción y verla reclasificada |
 | TA-12 | Abrir con el sistema e icono en la bandeja | — | F6 ✂ | Reiniciar: Pulso arranca solo |
 | TA-13 | macOS y Linux (X11) | — | F7 | — |
+| TA-14 | Tiempo por sitio web: solo el dominio, nunca la página ni la búsqueda (ADR-0009) | 05 | F2 | Abrir perplexity.ai: *Mi día → Por sitio* lo muestra |
 
 ## D. Proyectos y tareas (RF-07, RF-08, RF-09)
 
@@ -132,11 +133,12 @@ Resumen: 104 funcionalidades en total: 86 antes de la entrega y 18 después.
 | PS-03 | Pausa de privacidad | 21 | F1 | Durante la pausa no se guardan app ni título |
 | PS-04 | Títulos de ventana solo en el equipo y cifrados | 22, 23 | F1 | Prueba: ningún envío contiene títulos |
 | PS-05 | Opción personal: no compartir nombres de apps, solo categorías | 22 | F5 | El admin deja de ver las apps de esa persona |
-| PS-06 | Política mínima del equipo y tope diario de pausa | 22 | F5 | El tope impide pausar de más |
+| PS-06 | Política mínima del equipo y tope diario de pausa (la política de apps ocultas llega en F2, ADR-0009) | 22 | F2 / F5 | El tope impide pausar de más |
 | PS-07 | Permisos por rol aplicados en la base de datos (RLS) | 23 | F0 ✔ → F5 | `npm run test:db` |
 | PS-08 | Sesión y clave de IA en el almacén seguro del sistema | 23 | F2, F4 | No aparecen en archivos ni en el almacenamiento del navegador |
 | PS-09 | Comunicación cifrada (HTTPS) | 23 | F2 | Revisión de F6 |
 | PS-10 | Permisos mínimos de la app y política de contenido (CSP) | 23 | F6 | Revisión de F6 con la app real |
+| PS-11 | Sitios no permitidos por el equipo: se marcan como distracción, no se bloquean (ADR-0009) | 22 | F2 | El admin marca un sitio y el miembro lo ve «No permitido» |
 
 ## J. Sin conexión y sincronización (RF-26, RF-27)
 

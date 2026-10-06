@@ -33,7 +33,7 @@ tareas y genera reportes con IA. Promesa: *entiende cómo trabaja tu equipo con 
 | D-02 | **Rust es delgado**: sensor, SQLite local, cifrado, secretos y la llamada a la IA con clave propia. Nada más. | Rust compila lento y el equipo lo está aprendiendo. |
 | D-03 | La interfaz no ejecuta SQL ni ve secretos. Habla con Rust solo por los comandos de §6. | Seguridad y pruebas simples. |
 | D-04 | Backend: Supabase (Auth, Postgres con RLS, Edge Functions). Sin NestJS ni AWS en v1. | Cero servidores que operar. |
-| D-05 | Los **títulos de ventana nunca salen del equipo** y se guardan cifrados (AES-GCM; la clave vive en el almacén seguro del sistema). | Privacidad. Un título revela asuntos de correo o nombres de clientes. |
+| D-05 | Los **títulos de ventana y las URL completas nunca salen del equipo**; los títulos se guardan cifrados (AES-GCM; la clave vive en el almacén seguro del sistema). Del navegador solo sale el **dominio** del sitio, tras consentir (ADR-0009). | Privacidad. Un título o una URL revelan asuntos de correo, búsquedas o nombres de clientes. |
 | D-06 | **La sincronización vive en TypeScript**: pide a Rust los registros pendientes (sin títulos), los sube con `supabase-js` y le confirma a Rust. | Quita de Rust el cliente HTTP, los reintentos y el refresco de sesión (ADR-0001). |
 | D-07 | Actividad y tiempo funcionan sin conexión (UUID generado en el cliente, subida idempotente). Las tareas necesitan conexión para editarse; sin conexión se leen de una copia local. | Offline donde importa, sin resolver conflictos complejos. |
 | D-08 | Conflictos en tareas: gana la última modificación (`updated_at` del servidor). | Regla simple y predecible. |
@@ -82,7 +82,7 @@ La interfaz muestra la etiqueta "Datos de ejemplo" siempre que usa el puente sim
 
 | Módulo | Hace | No hace |
 |---|---|---|
-| `sensor` | Cada 2 s lee app activa, título e inactividad. Cierra el bloque si cambia la app o la categoría, o si la inactividad supera el umbral. Fusiona bloques de menos de 10 s. | Teclas, pantalla, red. |
+| `sensor` | Cada 2 s lee app activa, título, dominio del navegador (UI Automation, ADR-0009) e inactividad. Cierra el bloque si cambia la app o la categoría, o si la inactividad supera el umbral. Fusiona bloques de menos de 10 s. | Teclas, pantalla, red. |
 | `classifier` | Asigna categoría con reglas: primero las del equipo, luego `rules/default.json`. Gana la primera coincidencia. | Llamar a la red. |
 | `store` | Único dueño de SQLite (modo WAL). Migraciones locales versionadas. Escribe en lote cada 10 s. | Exponer SQL a la interfaz. |
 | `crypto` | Cifra y descifra títulos. | |
@@ -106,7 +106,8 @@ Comandos (nombres exactos; `src/bridge/contract.ts` es su espejo en TypeScript):
 | F2 | `active_team_set(team_id?)` (ADR-0007) | — (equipo al que se asignan las filas nuevas) |
 | F2 | `sync_pending(limit)` | bloques, entradas y cierres del equipo activo sin subir, **sin títulos** |
 | F2 | `sync_mark_synced(kind, ids)` | — (`kind`: `blocks` · `entries` · `closures`) |
-| F2 | `rules_set(json)` | — (reglas del equipo para el clasificador) |
+| F2 | `rules_set(json)` | — (reglas del equipo para el clasificador, también por dominio) |
+| F2 | `team_policy_set(policy)` (ADR-0009) | — (política del equipo: si se permiten apps ocultas) |
 | F3 | `tasks_cache_put(json)` · `tasks_cache_get()` | copia local de tareas |
 | F4 | `ai_config_set(base_url, model, key)` · `ai_config_get()` · `ai_config_clear()` | `ai_config_get` devuelve `{base_url, model, has_key}`, **nunca la clave** |
 | F4 | `ai_chat(messages)` | texto de la respuesta |
@@ -133,9 +134,9 @@ Presupuesto de rendimiento (se mide en F1 y F6): RAM en reposo < 120 MB, CPU med
 | `invitations` | correo, rol, quién invita, vence a los 7 días | F2 ✔ |
 | `audit_log` | quién hizo qué (roles, expulsiones, IA, reportes) | F2 ✔ |
 | `app_closures` | huecos porque Pulso estuvo cerrado dentro de la jornada (`teams.settings.workday`) | F2 ✔ |
-| `activity_blocks` | inicio, fin, app, categoría, herramienta de IA, tipo de uso de IA. **Sin títulos.** | F2 ✔ |
+| `activity_blocks` | inicio, fin, app, categoría, herramienta de IA, tipo de uso de IA, dominio del sitio (ADR-0009). **Sin títulos ni URL.** | F2 ✔ |
 | `time_entries` | inicio, fin, tarea opcional, origen (`timer`/`manual`) | F2 ✔ |
-| `classification_rules` | prioridad, tipo (`process`/`title`), patrón, categoría | F2 ✔ |
+| `classification_rules` | prioridad, tipo (`process`/`title`/`domain`), patrón, categoría, `not_allowed` (sitio no permitido: se marca, no se bloquea) | F2 ✔ |
 | `projects`, `project_members` | proyecto y rol de proyecto (`lead`/`contributor`) | F3 |
 | `tasks` | título, descripción, responsable, estado (`todo`/`doing`/`done`), fecha límite, etiquetas, estimación | F3 |
 | `report_runs` | alcance, periodo, hechos, narrativa, modo de IA, resultado de la validación | F4 |

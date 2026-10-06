@@ -14,5 +14,6 @@ decisión de `docs/ARQUITECTURA.md` §3 o cambiar una celda de `docs/ROLES.md`.
 | [0006](./0006-metrica-de-memoria.md) | Métrica de memoria: privada, suma de Pulso y WebView2, tras 5 min en reposo | Aceptado |
 | [0007](./0007-equipo-activo-en-rust.md) | Equipo activo en Rust: comando `active_team_set` | Aceptado |
 | [0008](./0008-registro-sin-verificacion-y-codigo-de-invitacion.md) | Registro sin verificar el correo; las invitaciones llevan un código | Aceptado |
+| [0009](./0009-dominio-del-sitio-y-politicas-del-equipo.md) | Dominio del sitio web, sitios no permitidos y política de apps ocultas | Aceptado |
 
 Plantilla: copia cualquiera de los anteriores. Numeración consecutiva de cuatro dígitos.
