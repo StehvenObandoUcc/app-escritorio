@@ -27,7 +27,20 @@ function Heartbeat({ className }: { className?: string }) {
  * Pantalla de acceso, fuera de la app (sin navegación). En ventanas anchas, a la izquierda la
  * marca y lo que promete Pulso; en estrechas, solo la marca arriba del formulario.
  */
-export function AuthLayout({ title, subtitle, children, footer }: { title: string; subtitle: string; children: ReactNode; footer?: ReactNode }) {
+export function AuthLayout({
+  title,
+  subtitle,
+  children,
+  footer,
+  corner,
+}: {
+  title: string;
+  subtitle: string;
+  children: ReactNode;
+  footer?: ReactNode;
+  /** Arriba a la derecha (p. ej. el botón de tema) */
+  corner?: ReactNode;
+}) {
   return (
     <div className="flex min-h-dvh bg-canvas text-fg">
       <aside className="hidden flex-col justify-between gap-8 border-r border-line bg-accent-soft p-10 lg:flex lg:w-1/2">
@@ -52,8 +65,9 @@ export function AuthLayout({ title, subtitle, children, footer }: { title: strin
         <p className="text-sm text-fg-muted">Tus datos se quedan en tu equipo hasta que aceptas compartirlos.</p>
       </aside>
 
-      <main className="flex flex-1 items-center justify-center overflow-y-auto p-4 md:p-8">
-        <div className="flex w-full max-w-auth flex-col gap-6 py-6">
+      <main className="relative flex flex-1 items-center justify-center overflow-y-auto p-4 md:p-8">
+        {corner && <div className="absolute top-4 right-4">{corner}</div>}
+        <div className="flex w-full max-w-auth flex-col gap-6 py-12">
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2 text-accent-text lg:hidden">
               <Activity size={24} aria-hidden="true" />
