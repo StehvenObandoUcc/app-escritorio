@@ -71,6 +71,8 @@ struct Inner {
   pending: HashMap<String, Change>,
   last_flush: Option<DateTime<Utc>>,
   settings: Settings,
+  /// Tras `shutdown` no se registra nada más, aunque el proceso tarde en terminar.
+  stopped: bool,
 }
 
 pub struct Tracker {
@@ -234,6 +236,7 @@ impl Tracker {
         pending: HashMap::new(),
         last_flush: None,
         settings,
+        stopped: false,
       }),
     })
   }
@@ -245,6 +248,9 @@ impl Tracker {
   /// Una lectura del sensor (cada ~2 s). Vuelca a disco cada 10 s.
   pub fn tick(&self, now: DateTime<Utc>, window: Option<ActiveWindow>, idle_secs: Option<u64>) -> Result<()> {
     let mut g = self.lock()?;
+    if g.stopped {
+      return Ok(());
+    }
     let mode = g.mode(now);
     let obs = if mode == Mode::Tracking { window.as_ref().map(|w| g.observe(w)) } else { None };
     let thr = g.idle_threshold();
@@ -256,9 +262,14 @@ impl Tracker {
     Ok(())
   }
 
-  /// Cierra el bloque abierto y vuelca todo (al salir de la app).
+  /// Al cerrar la app: cierra el bloque abierto, vuelca todo y deja de registrar para siempre.
+  /// Se puede llamar varias veces; solo la primera hace algo.
   pub fn shutdown(&self, now: DateTime<Utc>) -> Result<()> {
     let mut g = self.lock()?;
+    if g.stopped {
+      return Ok(());
+    }
+    g.stopped = true;
     let changes = g.engine.close_open(now);
     g.record(changes);
     g.flush(now)
@@ -662,6 +673,21 @@ mod tests {
     assert_eq!(d.blocks.len(), 2);
     assert_eq!(d.blocks[1].category, Category::Idle);
     assert_eq!(d.blocks[1].started_at, "2026-10-05T12:00:00Z", "empieza donde acabó la sesión anterior");
+  }
+
+  #[test]
+  fn nothing_is_recorded_after_shutdown() {
+    // Cerrar Pulso detiene el registro aunque el proceso tarde en terminar (fallo visto en la app real).
+    let t = tracker();
+    feed(&t, 0, 10, win("code", "a.rs"));
+    t.shutdown(at(12, 0, 11)).unwrap();
+    feed(&t, 12, 120, win("chrome", "Correo"));
+    t.shutdown(at(12, 2, 1)).unwrap(); // una segunda llamada no hace nada
+    let g = t.inner.lock().unwrap();
+    let rows = g.store.blocks_between(at(0, 0, 0), at(23, 0, 0)).unwrap();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].app_name, "code");
+    assert_eq!(rows[0].ended_at, at(12, 0, 11));
   }
 
   #[test]
