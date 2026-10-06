@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import type { Bridge, Category } from '@/bridge/contract';
-import { appTotals, buildTimeline } from '@/lib/activity';
+import { aiToolTotals, appTotals, buildTimeline } from '@/lib/activity';
+import { HIDDEN_APP } from '@/lib/apps';
 import { WORK_CATEGORIES } from '@/lib/categories';
-import { formatDuration, formatHour, formatLongDate, localDate, localDateTimeToIso } from '@/lib/time';
+import { formatDuration, formatHour, formatLongDate, formatShortDuration, localDate, localDateTimeToIso } from '@/lib/time';
 import { Badge, Heading, Surface } from '@/ui/atoms';
 import { CategoryBreakdown, EmptyState, SegmentedControl, TimeEntryForm, TimerControl } from '@/ui/molecules';
 import { ActivityList, ActivityTimeline, AppSummary, PulseStrip, TimeEntryList } from '@/ui/organisms';
@@ -25,9 +26,17 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
   const status = state.phase === 'ready' ? state.status : null;
   const elapsed = useElapsed(status?.timer.startedAt ?? null);
   const [view, setView] = useState<ActivityView>('resumen');
-  const blocks = state.phase === 'ready' ? state.day.blocks : null;
+  const [showHidden, setShowHidden] = useState(true);
+  const allBlocks = state.phase === 'ready' ? state.day.blocks : null;
+  const hasHidden = useMemo(() => Boolean(allBlocks?.some((b) => b.appName === HIDDEN_APP)), [allBlocks]);
+  // Solo cambia lo que se ve: los totales del día (franja y reparto) siguen incluyendo las apps ocultas.
+  const blocks = useMemo(
+    () => (allBlocks && !showHidden ? allBlocks.filter((b) => b.appName !== HIDDEN_APP) : allBlocks),
+    [allBlocks, showHidden],
+  );
   const totalsByApp = useMemo(() => (blocks ? appTotals(blocks) : []), [blocks]);
   const timeline = useMemo(() => (blocks ? buildTimeline(blocks) : []), [blocks]);
+  const aiTools = useMemo(() => (allBlocks ? aiToolTotals(allBlocks) : []), [allBlocks]);
 
   const sampleTag = bridge.source === 'mock' && <Badge tone="accent">Datos de ejemplo</Badge>;
 
@@ -131,6 +140,13 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
           <Heading level={2}>Actividad</Heading>
           {day.blocks.length > 0 && <SegmentedControl label="Vista de la actividad" options={VIEWS} value={view} onChange={setView} />}
         </div>
+        {hasHidden && (
+          <label className="flex items-center gap-2 text-sm text-fg-muted">
+            <input type="checkbox" className="size-4 accent-accent" checked={showHidden} onChange={(e) => setShowHidden(e.target.checked)} />
+            Mostrar apps ocultas
+            <span className="text-xs">(sus nombres no se guardan; puedes dejar de ocultarlas en Ajustes)</span>
+          </label>
+        )}
         {day.blocks.length === 0 ? (
           <EmptyState
             title="Aún no hay bloques"
@@ -138,6 +154,16 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
           />
         ) : (
           <Surface padding="flush">
+            {view === 'resumen' && aiTools.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3 md:px-5" aria-label="IA usadas hoy">
+                <span className="text-sm font-medium text-fg">IA usadas hoy:</span>
+                {aiTools.map((t) => (
+                  <Badge key={t.tool} tone="accent">
+                    {t.tool} · {formatShortDuration(t.seconds)}
+                  </Badge>
+                ))}
+              </div>
+            )}
             {view === 'resumen' &&
               (totalsByApp.length ? (
                 <AppSummary totals={totalsByApp} />
@@ -145,7 +171,7 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
                 <p className="p-4 text-fg-muted md:p-5">Hoy solo hay inactividad, pausas o descansos.</p>
               ))}
             {view === 'linea' && <ActivityTimeline rows={timeline} />}
-            {view === 'detalle' && <ActivityList blocks={day.blocks} />}
+            {view === 'detalle' && <ActivityList blocks={blocks ?? []} />}
           </Surface>
         )}
       </section>

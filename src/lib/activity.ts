@@ -102,6 +102,17 @@ export interface AppTotal {
   aiTools: string[];
 }
 
+/** Tiempo por herramienta de IA (Claude, Gemini, Perplexity…), de más a menos. */
+export function aiToolTotals(blocks: ActivityBlock[]): { tool: string; seconds: number }[] {
+  const map = new Map<string, number>();
+  for (const b of blocks) {
+    if (b.category !== 'ai') continue;
+    const tool = b.aiTool ?? 'Otra IA';
+    map.set(tool, (map.get(tool) ?? 0) + secondsOf(b));
+  }
+  return [...map.entries()].map(([tool, seconds]) => ({ tool, seconds })).sort((a, b) => b.seconds - a.seconds);
+}
+
 /** Categorías que no son una app: no entran en el resumen por app. */
 const NOT_APPS: Category[] = ['idle', 'paused', 'break'];
 

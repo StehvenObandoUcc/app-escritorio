@@ -43,6 +43,24 @@
   --prim-red-600: #bd3026;
   --prim-red-900: #3f1411;
 
+  /* Paleta de apps: 8 tonos distinguibles entre sí (versión para fondo claro y para fondo oscuro) */
+  --prim-app-indigo-500: #4c63d2;
+  --prim-app-indigo-300: #8fa0f0;
+  --prim-app-green-600: #2f8a3a;
+  --prim-app-green-400: #5cc46a;
+  --prim-app-orange-600: #c96a12;
+  --prim-app-orange-400: #f29a4a;
+  --prim-app-cyan-600: #0f8aa3;
+  --prim-app-cyan-400: #4cc3da;
+  --prim-app-purple-600: #8a3fc0;
+  --prim-app-purple-400: #c08af0;
+  --prim-app-gold-600: #a37a00;
+  --prim-app-gold-400: #e6c24a;
+  --prim-app-blue-600: #1d6fd1;
+  --prim-app-blue-400: #6aa8f0;
+  --prim-app-brown-600: #8c5a3c;
+  --prim-app-brown-400: #c99a7a;
+
   /* Tipografía */
   --prim-font-body: 'Figtree Variable', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
   --prim-font-display: 'Bricolage Grotesque Variable', 'Figtree Variable', 'Segoe UI', system-ui, sans-serif;

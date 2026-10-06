@@ -37,6 +37,7 @@ src/ui/tokens/
 | Texto | `text-fg` · `text-fg-muted` · `text-on-accent` · `text-accent-text` · `text-danger` |
 | Borde | `border-line` · `border-line-strong` |
 | Categorías | `bg-cat-productive` · `-neutral` · `-distraction` · `-ai` · `-break` · `-idle` · `pattern-paused` |
+| Apps | `bg-app-1` … `bg-app-8`: un color por app en «Tiempo por app» (`appColor` en `lib/apps.ts`). La categoría se sigue diciendo con su marca y en texto |
 | Tamaño de texto | `text-xs` (12) · `text-sm` (13) · `text-base` (15) · `text-lg` (18) · `text-xl` (22) · `text-2xl` (28) · `text-display` (44) |
 | Fuente | `font-sans` · `font-display` |
 | Espacio | múltiplos de 4 px: `p-1` = 4 px, `gap-4` = 16 px… |

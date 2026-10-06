@@ -1,12 +1,12 @@
 import type { AppTotal } from '@/lib/activity';
-import { displayAppName } from '@/lib/apps';
+import { appColor, displayAppName } from '@/lib/apps';
 import { CATEGORY_STYLE } from '@/lib/categories';
 import { formatShortDuration } from '@/lib/time';
 import { CategoryMark, ProgressBar } from '@/ui/atoms';
 
 /**
- * Tiempo por app, de más a menos: responde «¿en qué se me fue el día?». La barra es relativa a la
- * app con más tiempo; la categoría se repite en texto (nada depende solo del color).
+ * Tiempo por app, de más a menos: responde «¿en qué se me fue el día?». Cada app tiene su color de
+ * barra (siempre el mismo); la categoría se dice con su marca y en texto (nada depende solo del color).
  */
 export function AppSummary({ totals }: { totals: AppTotal[] }) {
   const max = totals[0]?.seconds ?? 0;
@@ -23,7 +23,7 @@ export function AppSummary({ totals }: { totals: AppTotal[] }) {
               <span className="text-sm text-fg-muted">{CATEGORY_STYLE[t.mainCategory].label}</span>
               <span className="w-20 shrink-0 text-right text-sm text-fg tabular-nums">{formatShortDuration(t.seconds)}</span>
             </div>
-            <ProgressBar value={max ? t.seconds / max : 0} label={`${name}: ${formatShortDuration(t.seconds)}`} fill={CATEGORY_STYLE[t.mainCategory].fill} />
+            <ProgressBar value={max ? t.seconds / max : 0} label={`${name}: ${formatShortDuration(t.seconds)}`} fill={appColor(t.appName)} />
             {ai > 0 && t.mainCategory !== 'ai' && (
               <p className="text-sm text-fg-muted">
                 Incluye {formatShortDuration(ai)} con IA{t.aiTools.length ? ` (${t.aiTools.join(', ')})` : ''}.
