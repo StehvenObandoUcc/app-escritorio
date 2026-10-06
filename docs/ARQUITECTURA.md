@@ -74,7 +74,8 @@ La interfaz muestra la etiqueta "Datos de ejemplo" siempre que usa el puente sim
 - Capas y reglas: `docs/DISENO.md`. ESLint impide que una capa importe de otra superior.
 - Solo `src/pages`, `src/app` y `src/dev` usan el puente; los componentes de `src/ui` reciben datos por props.
 - Todo dato que llega del puente o de Supabase se valida con zod antes de usarse.
-- Rutas (HashRouter): `/acceso` (registro, inicio de sesión y recuperar contraseña; F2), `/mi-dia`, `/tareas`, `/equipo`, `/reportes`, `/ajustes`, `/dev/galeria` (solo desarrollo).
+- Igual que el puente, Supabase se usa solo a través de `src/cloud` (contrato `Cloud`: implementación real y simulada). Las páginas no llaman a `supabase-js` directamente.
+- Rutas (HashRouter): `/acceso` (registro, inicio de sesión y recuperar contraseña; F2), `/mi-dia`, `/tareas`, `/equipo`, `/equipo/privacidad` (qué se mide y quién lo ve; F2), `/reportes`, `/ajustes`, `/dev/galeria` (solo desarrollo).
 
 ## 6. Núcleo Rust: módulos y comandos (lista cerrada)
 

@@ -3,9 +3,9 @@ import type { ReactNode } from 'react';
 import { CATEGORIES, type TimeEntry } from '@/bridge/contract';
 import { sampleDay } from '@/bridge/mock';
 import { CATEGORY_STYLE } from '@/lib/categories';
-import { Avatar, Badge, Button, CategoryMark, Heading, Input, ProgressBar, Surface } from '@/ui/atoms';
-import { CategoryBreakdown, EmptyState, FormField, TimeEntryForm, TimerControl } from '@/ui/molecules';
-import { ActivityList, PulseStrip, TimeEntryList } from '@/ui/organisms';
+import { Avatar, Badge, Button, CategoryMark, Heading, Input, ProgressBar, Select, Surface } from '@/ui/atoms';
+import { CategoryBreakdown, EmptyState, FormField, SyncStatus, TimeEntryForm, TimerControl } from '@/ui/molecules';
+import { ActivityList, ConsentPanel, MemberList, PulseStrip, TimeEntryList } from '@/ui/organisms';
 import { PageLayout } from '@/ui/templates';
 
 const SWATCHES = [
@@ -127,6 +127,17 @@ export function GaleriaPage() {
             onSubmit={() => Promise.reject(new Error('El fin debe ser posterior al inicio.'))}
           />
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select aria-label="Rol de ejemplo" options={ROLE_OPTIONS} defaultValue="member" />
+          <Select aria-label="Rol de ejemplo pequeño" size="sm" options={ROLE_OPTIONS} defaultValue="viewer" />
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <SyncStatus phase="synced" lastSyncedAt={new Date().toISOString()} />
+          <SyncStatus phase="pending" message="Sin conexión. Se subirá al volver la red." />
+          <SyncStatus phase="syncing" />
+          <SyncStatus phase="error" message="El servidor no aceptó tus datos. Revisa en Equipo que sigas en el equipo." />
+          <SyncStatus phase="off" />
+        </div>
         <EmptyState
           title="No tienes tareas asignadas"
           description="Cuando alguien te asigne una tarea, aparecerá aquí."
@@ -142,10 +153,27 @@ export function GaleriaPage() {
         <Surface padding="flush">
           <TimeEntryList entries={SAMPLE_ENTRIES} onUpdate={() => Promise.resolve()} onDelete={() => Promise.resolve()} />
         </Surface>
+        <Surface>
+          <MemberList members={SAMPLE_MEMBERS} myUserId={SAMPLE_MEMBERS[0]!.userId} myRole="owner" onChangeRole={() => {}} onRemove={() => {}} />
+        </Surface>
+        <ConsentPanel teamName="Equipo de ejemplo" acceptLabel="Aceptar y unirme" onAccept={() => {}} secondary={<Button>Rechazar invitación</Button>} />
       </Section>
     </PageLayout>
   );
 }
+
+const ROLE_OPTIONS = [
+  { value: 'admin', label: 'Administrador' },
+  { value: 'member', label: 'Miembro' },
+  { value: 'viewer', label: 'Observador' },
+];
+
+const SAMPLE_MEMBERS = [
+  { userId: '00000000-0000-4000-8000-000000000101', role: 'owner' as const, displayName: 'Ana Gómez' },
+  { userId: '00000000-0000-4000-8000-000000000102', role: 'admin' as const, displayName: 'Beto Ruiz' },
+  { userId: '00000000-0000-4000-8000-000000000103', role: 'member' as const, displayName: 'Caro Díaz' },
+  { userId: '00000000-0000-4000-8000-000000000104', role: 'viewer' as const, displayName: null },
+];
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
