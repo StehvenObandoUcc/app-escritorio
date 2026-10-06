@@ -40,7 +40,7 @@ tareas y genera reportes con IA. Promesa: *entiende cómo trabaja tu equipo con 
 | D-09 | **Las cifras salen de SQL. La IA no calcula ni inventa números.** | Anti-alucinación (ver `docs/IA.md`). |
 | D-10 | IA con **un solo formato**: API compatible con OpenAI. Tres modos: Gratis, Clave propia y Manual. | Un adaptador cubre casi todos los proveedores (ADR-0002). |
 | D-11 | **Sin Docker.** Las pruebas de permisos corren con Postgres en memoria (PGlite). Supabase se usa en la nube. | Desarrollo y verificación simples (ADR-0003). |
-| D-12 | Invitaciones por correo **sin enviar correos**: la invitación queda ligada al correo y aparece cuando esa persona inicia sesión. | Sin enlaces mágicos, sin límites de envío (ADR-0004). |
+| D-12 | Invitaciones por correo **sin enviar correos**: la invitación queda ligada al correo, aparece cuando esa persona inicia sesión y se acepta con el código que comparte quien invita. El registro no exige verificar el correo. | Sin enlaces mágicos ni dependencia del servicio de correo (ADR-0004, ADR-0008). |
 | D-13 | Interfaz con design tokens, atomic design y 3 tamaños de ventana (`docs/DISENO.md`). | Coherencia y velocidad. |
 | D-14 | Nunca: registro de teclas, capturas de pantalla, contenido de documentos o de chats de IA. | Límite ético del producto. |
 | D-15 | Los reportes son indicativos, no prueba disciplinaria. Se dice en la interfaz y en el consentimiento. | Las mediciones automáticas tienen errores. |

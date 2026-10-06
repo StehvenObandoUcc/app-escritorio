@@ -21,7 +21,7 @@ Otras decisiones tomadas aquí (confirmar al aprobar):
 - **Consentimiento sin cambiar `create_team`.** Una función nueva `give_consent(team, version)` fija `consent_version` y `consent_at`. Quien crea un equipo la llama justo después. Sin consentimiento, ninguna política deja subir actividad ni tiempo (PS-02).
 - **Qué equipo recibe cada fila.** Rust guarda `team_id` en cada bloque y entrada local al crearla, tomándolo del equipo activo. Si no hay equipo activo (o aún no hay consentimiento), `team_id` queda nulo y esa fila **nunca se sube**: lo registrado antes de unirse a un equipo no se comparte.
 - **Sesión.** Se guarda con `session_set` desde un adaptador de almacenamiento de `supabase-js`. El almacén de credenciales de Windows limita el tamaño de cada secreto y una sesión con sus tokens puede superarlo: **antes de implementar se comprueba (R2)**. Si no cabe, Rust guarda la sesión cifrada con la clave AES-GCM existente en `kv_settings`, y la clave sigue en el almacén seguro.
-- **Verificación del correo.** Una invitación solo se acepta con un correo verificado (ADR-0004). Supabase Auth debe tener la confirmación por correo activada y la plantilla con `{{ .Token }}` para el código de 6 dígitos.
+- **Registro sin verificar el correo (ADR-0008, aprobado el 6 oct).** Supabase Auth con *Confirm email* desactivado. Una invitación se acepta con el correo invitado **y** un código de 8 caracteres que comparte quien invita.
 
 ## Contratos
 
@@ -56,7 +56,7 @@ Los tipos nuevos (`SyncBatch`, `SessionJson`, reglas) se validan con zod.
 ## Criterios de aceptación
 
 Cuentas (CU-01 a CU-04, PS-08, PS-09)
-- AC-1 Dado un correo nuevo, cuando se registra con contraseña y escribe el código de 6 dígitos, entonces entra a la app. Con un código incorrecto o vencido ve un error que dice qué hacer.
+- AC-1 Dado un correo nuevo, cuando se registra con contraseña, entonces entra a la app al instante (ADR-0008). Sin sesión solo se ve la pantalla de acceso.
 - AC-2 Dada una sesión iniciada, cuando se cierra y se vuelve a abrir Pulso, entonces la sesión sigue; tras *Cerrar sesión* no.
 - AC-3 Dado un usuario que olvidó la contraseña, cuando pide el código por correo y escribe uno válido con una contraseña nueva, entonces puede entrar con ella.
 - AC-4 Dado un perfil, cuando se edita el nombre visible o la zona horaria, entonces el cambio aparece en la lista del equipo.
@@ -65,7 +65,7 @@ Cuentas (CU-01 a CU-04, PS-08, PS-09)
 Equipos y roles (EQ-01 a EQ-08)
 - AC-6 Dado un usuario sin equipo, cuando crea uno, entonces es `owner` y se le pide el consentimiento antes de empezar a subir datos.
 - AC-7 Dado un `owner` o `admin`, cuando invita a un correo con un rol, entonces la invitación queda pendiente y vence a los 7 días. Un `admin` solo invita `member` o `viewer`; un `member` o `viewer` no puede invitar.
-- AC-8 Dada una invitación pendiente, cuando la persona inicia sesión con ese correo verificado, entonces la ve; al aceptarla con el consentimiento entra al equipo con el rol indicado. Con otro correo, con la invitación vencida o revocada, aceptar falla con un mensaje claro.
+- AC-8 Dada una invitación pendiente, cuando la persona inicia sesión con ese correo, entonces la ve; al aceptarla con el código y el consentimiento entra al equipo con el rol indicado. Con otro correo, un código incorrecto, la invitación vencida o revocada, aceptar falla con un mensaje claro; tras 5 códigos incorrectos la invitación se anula.
 - AC-9 Dada una invitación, cuando se rechaza o se revoca, entonces desaparece de la lista de pendientes y queda en `audit_log`.
 - AC-10 Dado un `owner`, cuando nombra a otro `owner` y se degrada, entonces la propiedad cambia y el equipo nunca queda sin `owner`.
 - AC-11 Dada una persona en dos equipos, cuando cambia el equipo activo, entonces la interfaz muestra los datos de ese equipo y las filas nuevas se asignan a él.
@@ -89,7 +89,7 @@ Cierres dentro de la jornada (A-1)
 - AC-23 El `owner` y el `admin` ven los cierres del equipo; un `member`, solo los suyos; un `viewer` ninguno; alguien de otro equipo no ve nada.
 
 Permisos (puerta G2: una prueba por celda de `docs/ROLES.md` marcada F2)
-- AC-24 Filas 8, 9, 10, 11, 13, 14 y 26 de la matriz, y las reglas de integridad de F2 (vencimiento a 7 días, correo verificado, auditoría), tienen su prueba en `supabase/tests`, con caso permitido y denegado.
+- AC-24 Filas 8, 9, 10, 11, 13, 14 y 26 de la matriz, y las reglas de integridad de F2 (vencimiento a 7 días, código de invitación, auditoría), tienen su prueba en `supabase/tests`, con caso permitido y denegado.
 - AC-25 Un `viewer` solo ve su fila en la lista de miembros; alguien de otro equipo no ve nada (filas 7 y 13).
 
 ## Trabajo por flujo

@@ -7,6 +7,7 @@ import { createTestDb, failure, type Query, type TestDb } from './harness';
  * contra docs/ROLES.md (filas 8, 9, 13 y 26) y las decisiones A-1 y A-3 de la spec F2.
  * Equipo A: ana (owner), beto (admin), caro (member), dani (viewer).
  * Equipo B: eva (owner). Invitados: fran, gabi (correo sin verificar), hugo, ines.
+ * Desde ADR-0008, aceptar exige el código de la invitación en lugar del correo verificado.
  */
 let db: TestDb;
 let ana: string, beto: string, caro: string, dani: string, eva: string;
@@ -17,7 +18,16 @@ const minsAgo = (m: number) => new Date(Date.now() - m * 60_000).toISOString();
 const inMins = (m: number) => new Date(Date.now() + m * 60_000).toISOString();
 
 const invite = (by: string, team: string, email: string, role: string) =>
-  db.as(by, (q) => q<{ id: string }>('select invite_member($1, $2, $3) as id', [team, email, role])).then((r) => r[0]!.id);
+  db.as(by, (q) => q<{ id: string }>('select * from invite_member($1, $2, $3)', [team, email, role])).then((r) => r[0]!.id);
+
+const codeOf = async (id: string) =>
+  (await db.admin<{ code: string }>('select code from invitations where id = $1', [id]))[0]!.code;
+
+/** Acepta con el código real de la invitación (o el que se pase). Devuelve el equipo, o null si el código no coincide. */
+const accept = async (user: string, id: string, consent = 'v1', code?: string) => {
+  const c = code ?? (await codeOf(id));
+  return (await db.as(user, (q) => q<{ team: string | null }>('select accept_invitation($1, $2, $3) as team', [id, c, consent])))[0]!.team;
+};
 
 const myInvitations = (user: string) =>
   db.as(user, (q) => q<{ id: string; team_name: string; role: string }>('select * from my_invitations()'));
@@ -134,7 +144,7 @@ describe('invitar personas (fila 8)', () => {
     for (const user of [caro, dani, eva]) {
       expect(await failure(() => invite(user, teamA, 'otra@pulso.test', 'member'))).toMatch(/No permitido/);
     }
-    expect(await failure(() => db.as(null, (q) => q("select invite_member($1, 'x@pulso.test', 'member')", [teamA])))).toMatch(
+    expect(await failure(() => db.as(null, (q) => q("select * from invite_member($1, 'x@pulso.test', 'member')", [teamA])))).toMatch(
       /permission denied/,
     );
   });
@@ -186,18 +196,18 @@ describe('aceptar o rechazar una invitación (EQ-03)', () => {
 
   it('con otro correo no se puede aceptar ni rechazar', async () => {
     const [inv] = await myInvitations(fran);
-    expect(await failure(() => db.as(eva, (q) => q("select accept_invitation($1, 'v1')", [inv!.id])))).toMatch(/No permitido/);
+    expect(await failure(() => accept(eva, inv!.id, 'v1'))).toMatch(/No permitido/);
     expect(await failure(() => db.as(eva, (q) => q('select decline_invitation($1)', [inv!.id])))).toMatch(/No permitido/);
   });
 
   it('sin consentimiento no se acepta', async () => {
     const [inv] = await myInvitations(fran);
-    expect(await failure(() => db.as(fran, (q) => q("select accept_invitation($1, '')", [inv!.id])))).toMatch(/consentimiento/);
+    expect(await failure(() => accept(fran, inv!.id, ''))).toMatch(/consentimiento/);
   });
 
   it('al aceptar entra con el rol indicado, con consentimiento, y queda auditado', async () => {
     const [inv] = await myInvitations(fran);
-    await db.as(fran, (q) => q("select accept_invitation($1, 'v1')", [inv!.id]));
+    await accept(fran, inv!.id, 'v1');
     expect(await roleOf(teamA, fran)).toBe('member');
     const [m] = await db.admin<{ consent_at: string | null }>(
       'select consent_at from team_members where team_id = $1 and user_id = $2',
@@ -212,20 +222,60 @@ describe('aceptar o rechazar una invitación (EQ-03)', () => {
 
   it('una invitación ya usada no se vuelve a aceptar', async () => {
     const [row] = await db.admin<{ id: string }>("select id from invitations where email = 'fran@pulso.test' and status = 'accepted'");
-    expect(await failure(() => db.as(fran, (q) => q("select accept_invitation($1, 'v1')", [row!.id])))).toMatch(/ya no está pendiente/);
+    expect(await failure(() => accept(fran, row!.id, 'v1'))).toMatch(/ya no está pendiente/);
   });
 
-  it('con el correo sin verificar no ve ni acepta invitaciones', async () => {
+  it('con el correo sin verificar también ve la invitación y entra con el código (ADR-0008)', async () => {
     const id = await invite(eva, teamB, 'gabi@pulso.test', 'member');
-    expect(await myInvitations(gabi)).toHaveLength(0);
-    expect(await failure(() => db.as(gabi, (q) => q("select accept_invitation($1, 'v1')", [id])))).toMatch(/Verifica tu correo/);
+    expect(await myInvitations(gabi)).toHaveLength(1);
+    expect(await accept(gabi, id)).toBe(teamB);
+    expect(await roleOf(teamB, gabi)).toBe('member');
+  });
+
+  it('el código tiene el formato XXXX-XXXX sin letras ni números que se confundan', async () => {
+    const codes = await Promise.all(
+      Array.from({ length: 20 }, () => db.admin<{ c: string }>('select new_invitation_code() as c').then((r) => r[0]!.c)),
+    );
+    for (const c of codes) expect(c).toMatch(/^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/);
+    expect(new Set(codes).size).toBe(codes.length);
+  });
+
+  it('con un código incorrecto no entra; se acepta en minúsculas y con espacios', async () => {
+    const teamF = (await db.as(eva, (q) => q<{ id: string }>("select create_team('Equipo F') as id")))[0]!.id;
+    const id = await invite(eva, teamF, 'ines@pulso.test', 'member');
+    expect(await accept(ines, id, 'v1', 'AAAA-AAAA')).toBeNull();
+    expect(await roleOf(teamF, ines)).toBeUndefined();
+    const [row] = await db.admin<{ failed_attempts: number; status: string }>('select failed_attempts, status from invitations where id = $1', [id]);
+    expect(row).toMatchObject({ failed_attempts: 1, status: 'pending' });
+    expect(await accept(ines, id, 'v1', `  ${(await codeOf(id)).toLowerCase()} `)).toBe(teamF);
+  });
+
+  it('tras 5 códigos incorrectos la invitación se anula', async () => {
+    const teamG = (await db.as(eva, (q) => q<{ id: string }>("select create_team('Equipo G') as id")))[0]!.id;
+    const id = await invite(eva, teamG, 'ines@pulso.test', 'member');
+    for (let i = 0; i < 5; i++) expect(await accept(ines, id, 'v1', 'ZZZZ-ZZZZ')).toBeNull();
+    const [row] = await db.admin<{ status: string }>('select status from invitations where id = $1', [id]);
+    expect(row!.status).toBe('revoked');
+    expect(await failure(() => accept(ines, id))).toMatch(/ya no está pendiente/);
+  });
+
+  it('owner y admin ven el código de las invitaciones pendientes; el member no', async () => {
+    const id = await invite(ana, teamA, 'codigo@pulso.test', 'member');
+    for (const user of [ana, beto]) {
+      const rows = await db.as(user, (q) => q<{ code: string }>('select code from invitations where id = $1', [id]));
+      expect(rows[0]!.code).toBe(await codeOf(id));
+    }
+    expect(await db.as(caro, (q) => q('select code from invitations where id = $1', [id]))).toHaveLength(0);
+    await db.as(ana, (q) => q('select revoke_invitation($1)', [id]));
   });
 
   it('una invitación vencida no se acepta', async () => {
     const id = await invite(eva, teamB, 'ines@pulso.test', 'viewer');
     await db.admin("update invitations set expires_at = now() - interval '1 minute' where id = $1", [id]);
     expect(await myInvitations(ines)).toHaveLength(0);
-    expect(await failure(() => db.as(ines, (q) => q("select accept_invitation($1, 'v1')", [id])))).toMatch(/venció/);
+    expect(await accept(ines, id)).toBeNull();
+    const [row] = await db.admin<{ status: string }>('select status from invitations where id = $1', [id]);
+    expect(row!.status).toBe('expired');
   });
 
   it('al rechazarla desaparece y queda auditado', async () => {
@@ -239,7 +289,7 @@ describe('aceptar o rechazar una invitación (EQ-03)', () => {
   it('una invitación revocada no se acepta', async () => {
     const id = await invite(eva, teamB, 'ines@pulso.test', 'member');
     await db.as(eva, (q) => q('select revoke_invitation($1)', [id]));
-    expect(await failure(() => db.as(ines, (q) => q("select accept_invitation($1, 'v1')", [id])))).toMatch(/ya no está pendiente/);
+    expect(await failure(() => accept(ines, id, 'v1'))).toMatch(/ya no está pendiente/);
     expect(await auditActions(teamB)).toContain('invitation_revoked');
   });
 
@@ -255,7 +305,7 @@ describe('ceder la propiedad (EQ-06)', () => {
   it('el owner nombra a otro owner, se degrada y el equipo nunca queda sin owner', async () => {
     const teamC = (await db.as(eva, (q) => q<{ id: string }>("select create_team('Equipo C') as id")))[0]!.id;
     const id = await invite(eva, teamC, 'hugo@pulso.test', 'member');
-    await db.as(hugo, (q) => q("select accept_invitation($1, 'v1')", [id]));
+    await accept(hugo, id, 'v1');
     await db.as(eva, (q) => q("select set_member_role($1, $2, 'owner')", [teamC, hugo]));
     await db.as(eva, (q) => q("select set_member_role($1, $2, 'member')", [teamC, eva]));
     expect(await roleOf(teamC, hugo)).toBe('owner');
@@ -364,7 +414,7 @@ describe('salida de un equipo (A-3): misma regla para salir y para ser expulsado
     await db.as(ana, (q) => q("select give_consent($1, 'v1')", [teamD]));
     for (const [user, email] of [[mia, 'mia@pulso.test'], [nico, 'nico@pulso.test']] as const) {
       const id = await invite(ana, teamD, email, 'member');
-      await db.as(user, (q) => q("select accept_invitation($1, 'v1')", [id]));
+      await accept(user, id, 'v1');
       await db.as(user, async (q) => {
         await addBlock(q, teamD, user);
         await addEntry(q, teamD, user);
