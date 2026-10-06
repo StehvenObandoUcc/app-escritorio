@@ -3,7 +3,7 @@
 //! Los argumentos llegan en camelCase desde la interfaz (`taskId` → `task_id`).
 
 use crate::sync::SyncBatch;
-use crate::tracker::{Result, SensorStatus, Settings, SettingsPatch, Tracker};
+use crate::tracker::{Result, SensorStatus, Settings, SettingsPatch, TeamPolicy, Tracker};
 use crate::views::{DayView, RangeView, TimeEntryView};
 use chrono::{Local, Utc};
 use std::sync::Arc;
@@ -121,4 +121,10 @@ pub fn sync_mark_synced(t: Tr, kind: String, ids: Vec<String>) -> Result<()> {
 #[tauri::command]
 pub fn rules_set(t: Tr, json: String) -> Result<()> {
   t.rules_set(&json)
+}
+
+/// ADR-0009: política del equipo activo (por ahora, si se permiten apps ocultas).
+#[tauri::command]
+pub fn team_policy_set(t: Tr, policy: TeamPolicy) -> Result<()> {
+  t.team_policy_set(policy)
 }

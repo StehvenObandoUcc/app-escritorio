@@ -1,7 +1,7 @@
 //! Lectura de ventana activa e inactividad con funciones de Win32 (crate `windows`).
 
 use super::ActiveWindow;
-use windows::Win32::Foundation::CloseHandle;
+use windows::Win32::Foundation::{CloseHandle, HWND};
 use windows::Win32::System::SystemInformation::GetTickCount64;
 use windows::Win32::System::Threading::{
   OpenProcess, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION, QueryFullProcessImageNameW,
@@ -12,7 +12,8 @@ use windows::Win32::UI::WindowsAndMessaging::{
 };
 use windows::core::PWSTR;
 
-pub fn active_window() -> Option<ActiveWindow> {
+/// Ventana en primer plano (con su identificador, para leer después la barra de direcciones).
+pub fn foreground() -> Option<(HWND, ActiveWindow)> {
   // SAFETY: llamadas de solo lectura al sistema; los búferes viven durante cada llamada.
   unsafe {
     let hwnd = GetForegroundWindow();
@@ -32,7 +33,7 @@ pub fn active_window() -> Option<ActiveWindow> {
     }
 
     let process = process_name(pid)?;
-    Some(ActiveWindow { process, title })
+    Some((hwnd, ActiveWindow { process, title, domain: None }))
   }
 }
 

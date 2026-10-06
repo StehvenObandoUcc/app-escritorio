@@ -35,11 +35,15 @@ pub struct Draft {
   pub title: Option<String>,
   pub category: Category,
   pub ai_tool: Option<String>,
+  /// Dominio del sitio (solo navegadores, ADR-0009). Un cambio de dominio abre un bloque nuevo.
+  pub domain: Option<String>,
 }
 
+type Key<'a> = (&'a str, Category, Option<&'a str>);
+
 impl Draft {
-  fn key(&self) -> (&str, Category) {
-    (&self.app_name, self.category)
+  fn key(&self) -> Key<'_> {
+    (&self.app_name, self.category, self.domain.as_deref())
   }
 
   pub fn secs(&self) -> i64 {
@@ -67,6 +71,13 @@ pub struct Observation {
   pub title: Option<String>,
   pub category: Category,
   pub ai_tool: Option<String>,
+  pub domain: Option<String>,
+}
+
+impl Observation {
+  fn key(&self) -> Key<'_> {
+    (&self.app_name, self.category, self.domain.as_deref())
+  }
 }
 
 #[derive(Default)]
@@ -81,7 +92,7 @@ pub struct Engine {
 }
 
 fn special(app: &str, category: Category) -> Observation {
-  Observation { app_name: app.into(), title: None, category, ai_tool: None }
+  Observation { app_name: app.into(), title: None, category, ai_tool: None, domain: None }
 }
 
 impl Engine {
@@ -129,7 +140,7 @@ impl Engine {
       return out;
     };
 
-    let same = self.open_draft().is_some_and(|c| c.key() == (desired.app_name.as_str(), desired.category));
+    let same = self.open_draft().is_some_and(|c| c.key() == desired.key());
     if same {
       self.extend_open(now, &mut out);
     } else {
@@ -179,7 +190,7 @@ impl Engine {
   fn transition(&mut self, t: DateTime<Utc>, now: DateTime<Utc>, d: Observation, out: &mut Vec<Change>) {
     self.close_open_at(t, out);
 
-    let key = (d.app_name.as_str(), d.category);
+    let key = d.key();
     let n = self.tail.len();
 
     // El bloque anterior es de la misma app y categoría (p. ej. se descartó uno de duración cero).
@@ -209,6 +220,7 @@ impl Engine {
         title: d.title,
         category: d.category,
         ai_tool: d.ai_tool,
+        domain: d.domain,
       };
       out.push(Change::Upsert(draft.clone()));
       self.tail.push(draft);
@@ -233,7 +245,7 @@ mod tests {
   }
 
   fn obs(app: &str, category: Category) -> Observation {
-    Observation { app_name: app.into(), title: Some(format!("{app} título")), category, ai_tool: None }
+    Observation { app_name: app.into(), title: Some(format!("{app} título")), category, ai_tool: None, domain: None }
   }
 
   /// Aplica los cambios a un "disco" simulado y lo devuelve ordenado por inicio.

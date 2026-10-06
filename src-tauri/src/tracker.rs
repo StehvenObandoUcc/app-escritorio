@@ -35,6 +35,7 @@ const MAX_SESSION_BYTES: usize = 64 * 1024;
 const KEY_ACTIVE_TEAM: &str = "active_team_id";
 const KEY_TEAM_RULES: &str = "team_rules";
 const KEY_SESSION: &str = "session_enc";
+const KEY_ALLOW_HIDDEN: &str = "team_allow_hidden_apps";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -91,6 +92,15 @@ struct Inner {
   active_team: Option<String>,
   /// `updated_at` de cada entrada entregada por `sync_pending`, para no marcar una editada después.
   entry_versions: HashMap<String, DateTime<Utc>>,
+  /// Política del equipo (ADR-0009): con `false`, la lista de apps ocultas no se aplica.
+  allow_hidden: bool,
+}
+
+/// Política del equipo que llega de la interfaz (`team_policy_set`).
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TeamPolicy {
+  pub allow_hidden_apps: bool,
 }
 
 pub struct Tracker {
@@ -120,6 +130,9 @@ fn parse_team_rules(json: &str) -> Result<Vec<Rule>> {
     let len = r.pattern.chars().count();
     if !(1..=120).contains(&len) || r.pattern != r.pattern.to_lowercase() {
       return Err("Cada regla necesita un patrón en minúsculas de 1 a 120 caracteres.".into());
+    }
+    if r.kind == classifier::MatchKind::Domain && !r.pattern.chars().all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-') {
+      return Err("Una regla de dominio solo lleva el dominio, sin rutas, por ejemplo youtube.com.".into());
     }
     if !matches!(r.category, Category::Productive | Category::Neutral | Category::Distraction | Category::Ai) {
       return Err("Una regla solo puede asignar productivo, neutro, distracción o IA.".into());
@@ -201,6 +214,7 @@ impl Inner {
       category: d.category,
       ai_tool: d.ai_tool.clone(),
       team_id: self.active_team.clone(),
+      domain: d.domain.clone(),
     })
   }
 
@@ -223,22 +237,25 @@ impl Inner {
   }
 
   fn observe(&self, w: &ActiveWindow) -> Observation {
-    let hidden = self.settings.hidden_apps.iter().any(|a| a.eq_ignore_ascii_case(&w.process));
+    // ADR-0009: si el equipo no permite apps ocultas, la lista personal no se aplica.
+    let hidden = self.allow_hidden && self.settings.hidden_apps.iter().any(|a| a.eq_ignore_ascii_case(&w.process));
     if hidden {
-      // AC-20: una app oculta no se clasifica (ni por proceso ni por título): siempre neutral.
+      // AC-20: una app oculta no se clasifica (ni por proceso, título ni dominio): siempre neutral.
       return Observation {
         app_name: HIDDEN_APP_NAME.to_string(),
         title: None,
         category: Category::Neutral,
         ai_tool: None,
+        domain: None,
       };
     }
-    let c = classifier::classify(&self.team_rules, &self.default_rules, &w.process, &w.title);
+    let c = classifier::classify(&self.team_rules, &self.default_rules, &w.process, &w.title, w.domain.as_deref());
     Observation {
       app_name: w.process.clone(),
       title: Some(w.title.clone()).filter(|t| !t.is_empty()),
       category: c.category,
       ai_tool: c.ai_tool,
+      domain: w.domain.clone(),
     }
   }
 
@@ -278,6 +295,7 @@ impl Tracker {
     let active_team = store.setting_get(KEY_ACTIVE_TEAM)?;
     // Reglas guardadas la última vez: sin red, el clasificador sigue usándolas.
     let team_rules = store.setting_get(KEY_TEAM_RULES)?.and_then(|j| parse_team_rules(&j).ok()).unwrap_or_default();
+    let allow_hidden = store.setting_get(KEY_ALLOW_HIDDEN)?.is_none_or(|v| v != "false");
     Ok(Self {
       inner: Mutex::new(Inner {
         store,
@@ -293,6 +311,7 @@ impl Tracker {
         stopped: false,
         active_team,
         entry_versions: HashMap::new(),
+        allow_hidden,
       }),
     })
   }
@@ -565,6 +584,14 @@ impl Tracker {
     Ok(())
   }
 
+  /// Política del equipo activo (ADR-0009). Se guarda para aplicarla también sin red.
+  pub fn team_policy_set(&self, policy: TeamPolicy) -> Result<()> {
+    let mut g = self.lock()?;
+    g.store.setting_set(KEY_ALLOW_HIDDEN, if policy.allow_hidden_apps { "true" } else { "false" })?;
+    g.allow_hidden = policy.allow_hidden_apps;
+    Ok(())
+  }
+
   // ---- Sesión de Supabase (F2, PS-08) ----
   // El almacén de credenciales de Windows limita cada secreto a 2560 bytes y una sesión de Supabase
   // lo supera. Se guarda cifrada (AES-GCM) con la clave que sí vive en el almacén seguro.
@@ -606,7 +633,11 @@ mod tests {
   }
 
   fn win(process: &str, title: &str) -> Option<ActiveWindow> {
-    Some(ActiveWindow { process: process.into(), title: title.into() })
+    Some(ActiveWindow { process: process.into(), title: title.into(), domain: None })
+  }
+
+  fn site(title: &str, domain: &str) -> Option<ActiveWindow> {
+    Some(ActiveWindow { process: "brave".into(), title: title.into(), domain: Some(domain.into()) })
   }
 
   /// Lecturas cada 2 s entre dos instantes (segundos desde 12:00:00).
@@ -829,6 +860,7 @@ mod tests {
         category: Category::Productive,
         ai_tool: None,
         team_id: None,
+        domain: None,
       })
       .unwrap();
     let t = Tracker::new(store, TitleCipher::new(&TitleCipher::generate_key())).unwrap();
@@ -1013,6 +1045,67 @@ mod tests {
     assert_eq!(batch.closures.len(), 1);
     assert_eq!(batch.closures[0].closed_at, "2026-10-05T12:00:31Z");
     assert_eq!(batch.closures[0].reopened_at, "2026-10-05T14:00:00Z");
+  }
+
+  // ---- ADR-0009: dominio y política de apps ocultas ----
+
+  #[test]
+  fn a_change_of_site_opens_a_new_block_and_ai_sites_are_classified() {
+    let t = tracker();
+    feed(&t, 0, 20, site("Buscar algo", "perplexity.ai"));
+    feed(&t, 22, 40, site("Video", "youtube.com"));
+    let d = day(&t, at(12, 1, 0));
+    assert_eq!(d.blocks.len(), 2);
+    assert_eq!(d.blocks[0].domain.as_deref(), Some("perplexity.ai"));
+    assert_eq!(d.blocks[0].category, Category::Ai);
+    assert_eq!(d.blocks[0].ai_tool.as_deref(), Some("Perplexity"));
+    assert_eq!(d.blocks[1].domain.as_deref(), Some("youtube.com"));
+  }
+
+  #[test]
+  fn the_sync_batch_carries_the_domain_but_never_a_path() {
+    let t = tracker();
+    t.active_team_set(at(11, 59, 0), Some(TEAM)).unwrap();
+    // El sensor ya entrega solo el dominio (host_of); aquí se comprueba que nada más llega al lote.
+    feed(&t, 0, 30, site("Resultado secreto - Perplexity", "perplexity.ai"));
+    t.shutdown(at(12, 0, 31)).unwrap();
+    let batch = t.sync_pending(at(13, 0, 0), 200).unwrap();
+    assert_eq!(batch.blocks[0].domain.as_deref(), Some("perplexity.ai"));
+    let json = serde_json::to_string(&batch).unwrap();
+    assert!(!json.contains("perplexity.ai/"), "sin rutas: {json}");
+    assert!(!json.to_lowercase().contains("secreto"));
+  }
+
+  #[test]
+  fn a_hidden_app_has_no_domain() {
+    let t = tracker();
+    t.settings_set(SettingsPatch { idle_minutes: None, hidden_apps: Some(vec!["brave".into()]) }).unwrap();
+    feed(&t, 0, 20, site("Correo", "mail.google.com"));
+    let d = day(&t, at(12, 1, 0));
+    assert_eq!(d.blocks[0].app_name, HIDDEN_APP_NAME);
+    assert_eq!(d.blocks[0].domain, None);
+  }
+
+  #[test]
+  fn when_the_team_forbids_hidden_apps_the_real_name_is_recorded() {
+    let t = tracker();
+    t.settings_set(SettingsPatch { idle_minutes: None, hidden_apps: Some(vec!["windowsterminal".into()]) }).unwrap();
+    t.team_policy_set(TeamPolicy { allow_hidden_apps: false }).unwrap();
+    feed(&t, 0, 20, win("WindowsTerminal", "pwsh"));
+    let d = day(&t, at(12, 1, 0));
+    assert_eq!(d.blocks[0].app_name, "WindowsTerminal");
+    // Al volver a permitirlas, se ocultan de nuevo desde ese momento.
+    t.team_policy_set(TeamPolicy { allow_hidden_apps: true }).unwrap();
+    feed(&t, 22, 40, win("WindowsTerminal", "pwsh"));
+    let d = day(&t, at(12, 1, 0));
+    assert_eq!(d.blocks.last().unwrap().app_name, HIDDEN_APP_NAME);
+  }
+
+  #[test]
+  fn domain_rules_from_the_team_are_validated() {
+    let t = tracker();
+    assert!(t.rules_set(r#"[{"match":"domain","pattern":"youtube.com","category":"distraction","ai_tool":null}]"#).is_ok());
+    assert!(t.rules_set(r#"[{"match":"domain","pattern":"youtube.com/shorts","category":"distraction","ai_tool":null}]"#).is_err());
   }
 
   #[test]

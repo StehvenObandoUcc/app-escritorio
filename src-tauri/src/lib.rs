@@ -25,8 +25,10 @@ fn spawn_sensor(tracker: Arc<tracker::Tracker>) {
   std::thread::Builder::new()
     .name("pulso-sensor".into())
     .spawn(move || {
+      // El lector de la barra de direcciones (UI Automation) vive en este hilo.
+      let mut reader = sensor::Sensor::new();
       loop {
-        let (window, idle) = (sensor::active_window(), sensor::idle_seconds());
+        let (window, idle) = (reader.read(), sensor::idle_seconds());
         if let Err(e) = tracker.tick(Utc::now(), window, idle) {
           log::error!("sensor: {e}");
         }
@@ -122,6 +124,7 @@ pub fn run() {
       commands::sync_pending,
       commands::sync_mark_synced,
       commands::rules_set,
+      commands::team_policy_set,
     ])
     .build(context)
     .expect("error while building tauri application");

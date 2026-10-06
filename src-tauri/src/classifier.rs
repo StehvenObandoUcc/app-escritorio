@@ -48,6 +48,8 @@ impl Category {
 pub enum MatchKind {
   Process,
   Title,
+  /// Dominio del sitio: coincide si es igual al patrón o es un subdominio suyo (ADR-0009).
+  Domain,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -73,19 +75,20 @@ pub fn default_rules() -> Vec<Rule> {
   serde_json::from_str(DEFAULT_RULES_JSON).expect("rules/default.json es inválido")
 }
 
-/// Clasifica por nombre de proceso y título. Sin coincidencia: `neutral`.
-pub fn classify(team_rules: &[Rule], defaults: &[Rule], process: &str, title: &str) -> Classification {
+/// Clasifica por nombre de proceso, título y dominio. Sin coincidencia: `neutral`.
+pub fn classify(team_rules: &[Rule], defaults: &[Rule], process: &str, title: &str, domain: Option<&str>) -> Classification {
   let process = process.to_lowercase();
   let title = title.to_lowercase();
   team_rules
     .iter()
     .chain(defaults)
     .find(|rule| {
-      let haystack = match rule.kind {
-        MatchKind::Process => &process,
-        MatchKind::Title => &title,
-      };
-      haystack.contains(&rule.pattern.to_lowercase())
+      let pattern = rule.pattern.to_lowercase();
+      match rule.kind {
+        MatchKind::Process => process.contains(&pattern),
+        MatchKind::Title => title.contains(&pattern),
+        MatchKind::Domain => domain.is_some_and(|d| d == pattern || d.ends_with(&format!(".{pattern}"))),
+      }
     })
     .map(|rule| Classification {
       category: rule.category,
@@ -99,7 +102,40 @@ mod tests {
   use super::*;
 
   fn run(process: &str, title: &str) -> Classification {
-    classify(&[], &default_rules(), process, title)
+    classify(&[], &default_rules(), process, title, None)
+  }
+
+  fn run_domain(domain: &str) -> Classification {
+    classify(&[], &default_rules(), "brave", "", Some(domain))
+  }
+
+  #[test]
+  fn ai_domains_are_detected_even_without_the_name_in_the_title() {
+    for (domain, tool) in [
+      ("chatgpt.com", "ChatGPT"),
+      ("claude.ai", "Claude"),
+      ("gemini.google.com", "Gemini"),
+      ("perplexity.ai", "Perplexity"),
+      ("chat.deepseek.com", "DeepSeek"),
+      ("copilot.microsoft.com", "Copilot"),
+      ("chat.mistral.ai", "Mistral"),
+      ("grok.com", "Grok"),
+      ("notebooklm.google.com", "NotebookLM"),
+    ] {
+      let c = run_domain(domain);
+      assert_eq!(c.category, Category::Ai, "{domain}");
+      assert_eq!(c.ai_tool.as_deref(), Some(tool), "{domain}");
+    }
+  }
+
+  #[test]
+  fn domain_rules_match_subdomains_but_not_lookalikes() {
+    let team = vec![Rule { kind: MatchKind::Domain, pattern: "youtube.com".into(), category: Category::Distraction, ai_tool: None }];
+    let c = |d: &str| classify(&team, &[], "brave", "", Some(d)).category;
+    assert_eq!(c("youtube.com"), Category::Distraction);
+    assert_eq!(c("m.youtube.com"), Category::Distraction);
+    assert_eq!(c("notyoutube.com"), Category::Neutral);
+    assert_eq!(classify(&team, &[], "brave", "", None).category, Category::Neutral);
   }
 
   #[test]
@@ -153,7 +189,7 @@ mod tests {
       category: Category::Productive,
       ai_tool: None,
     }];
-    let c = classify(&team, &default_rules(), "chrome", "YouTube - tutorial");
+    let c = classify(&team, &default_rules(), "chrome", "YouTube - tutorial", None);
     assert_eq!(c.category, Category::Productive);
   }
 
@@ -166,11 +202,11 @@ mod tests {
   #[test]
   fn every_default_rule_matches_itself() {
     for rule in default_rules() {
-      let (p, t) = match rule.kind {
-        MatchKind::Process => (rule.pattern.as_str(), ""),
-        MatchKind::Title => ("", rule.pattern.as_str()),
+      let c = match rule.kind {
+        MatchKind::Process => run(&rule.pattern, ""),
+        MatchKind::Title => run("", &rule.pattern),
+        MatchKind::Domain => run_domain(&rule.pattern),
       };
-      let c = run(p, t);
       // Puede ganar una regla anterior, pero nunca debe quedar neutral.
       assert_ne!(c.category, Category::Neutral, "{}", rule.pattern);
     }
