@@ -11,6 +11,7 @@
   --cmp-touch-target: 2.75rem; /* mínimo cómodo para clic/tacto */
   --cmp-strip-height: 5.5rem; /* franja de pulso del día */
   --cmp-content-max: 68rem; /* ancho máximo de lectura de una página */
+  --cmp-auth-width: 25rem; /* formulario de acceso */
 }
 
 /* Trama para "seguimiento en pausa": no depende solo del color. */

@@ -40,7 +40,7 @@ src/ui/tokens/
 | Tamaño de texto | `text-xs` (12) · `text-sm` (13) · `text-base` (15) · `text-lg` (18) · `text-xl` (22) · `text-2xl` (28) · `text-display` (44) |
 | Fuente | `font-sans` · `font-display` |
 | Espacio | múltiplos de 4 px: `p-1` = 4 px, `gap-4` = 16 px… |
-| Medidas de pieza | `h-control` · `h-control-sm` · `min-h-touch` · `w-nav` · `w-rail` · `h-strip` · `max-w-content` |
+| Medidas de pieza | `h-control` · `h-control-sm` · `min-h-touch` · `w-nav` · `w-rail` · `h-strip` · `max-w-content` · `max-w-auth` |
 | Radio | `rounded-xs` (4) · `rounded-sm` (6) · `rounded-md` (8) · `rounded-lg` (12) · `rounded-full` |
 | Sombra | `shadow-overlay` (solo elementos flotantes) |
 

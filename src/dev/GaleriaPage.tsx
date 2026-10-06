@@ -4,9 +4,9 @@ import { CATEGORIES, type TimeEntry } from '@/bridge/contract';
 import { sampleDay } from '@/bridge/mock';
 import { CATEGORY_STYLE } from '@/lib/categories';
 import { Avatar, Badge, Button, CategoryMark, Heading, Input, ProgressBar, Select, Surface } from '@/ui/atoms';
-import { CategoryBreakdown, EmptyState, FormField, SyncStatus, TimeEntryForm, TimerControl } from '@/ui/molecules';
+import { CategoryBreakdown, EmptyState, FormField, PasswordField, SyncStatus, TimeEntryForm, TimerControl } from '@/ui/molecules';
 import { ActivityList, ConsentPanel, MemberList, PulseStrip, TimeEntryList } from '@/ui/organisms';
-import { PageLayout } from '@/ui/templates';
+import { AuthLayout, PageLayout } from '@/ui/templates';
 
 const SWATCHES = [
   ['canvas', 'bg-canvas'],
@@ -127,6 +127,7 @@ export function GaleriaPage() {
             onSubmit={() => Promise.reject(new Error('El fin debe ser posterior al inicio.'))}
           />
         </div>
+        <PasswordField label="Contraseña de ejemplo" hint="Al menos 8 caracteres." defaultValue="secreto-123" />
         <div className="flex flex-wrap items-center gap-2">
           <Select aria-label="Rol de ejemplo" options={ROLE_OPTIONS} defaultValue="member" />
           <Select aria-label="Rol de ejemplo pequeño" size="sm" options={ROLE_OPTIONS} defaultValue="viewer" />
@@ -156,6 +157,13 @@ export function GaleriaPage() {
         <Surface>
           <MemberList members={SAMPLE_MEMBERS} myUserId={SAMPLE_MEMBERS[0]!.userId} myRole="owner" onChangeRole={() => {}} onRemove={() => {}} />
         </Surface>
+        <div className="overflow-hidden rounded-lg border border-line">
+          <AuthLayout title="Hola de nuevo" subtitle="Plantilla de la pantalla de acceso.">
+            <Button variant="primary" className="w-full">
+              Iniciar sesión
+            </Button>
+          </AuthLayout>
+        </div>
         <ConsentPanel teamName="Equipo de ejemplo" acceptLabel="Aceptar y unirme" onAccept={() => {}} secondary={<Button>Rechazar invitación</Button>} />
       </Section>
     </PageLayout>

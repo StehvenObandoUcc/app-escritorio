@@ -1,10 +1,13 @@
+import { ArrowLeft, Mail } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { useSession } from '@/app/session';
+import { CloudError } from '@/cloud/contract';
 import { MOCK_CODE } from '@/cloud/mock';
-import { Badge, Button, Heading, Surface } from '@/ui/atoms';
-import { FormField } from '@/ui/molecules';
-import { PageLayout } from '@/ui/templates';
+import { cx } from '@/lib/cx';
+import { Badge, Button } from '@/ui/atoms';
+import { FormField, PasswordField } from '@/ui/molecules';
+import { AuthLayout } from '@/ui/templates';
 
 type Mode = 'entrar' | 'registro' | 'verificar' | 'recuperar' | 'nueva-clave';
 
@@ -15,16 +18,19 @@ const CODE = /^\d{6,10}$/;
 const MIN_PASSWORD = 8;
 
 const TITLES: Record<Mode, { title: string; subtitle: string }> = {
-  entrar: { title: 'Iniciar sesión', subtitle: 'Entra con tu correo para trabajar en equipo' },
-  registro: { title: 'Crear cuenta', subtitle: 'Te enviaremos un código de 6 dígitos a tu correo' },
-  verificar: { title: 'Verifica tu correo', subtitle: 'Escribe el código que te enviamos' },
-  recuperar: { title: 'Recuperar contraseña', subtitle: 'Te enviaremos un código para crear una nueva' },
-  'nueva-clave': { title: 'Nueva contraseña', subtitle: 'Escribe el código del correo y tu contraseña nueva' },
+  entrar: { title: 'Hola de nuevo', subtitle: 'Entra para ver tu día y trabajar con tu equipo.' },
+  registro: { title: 'Crea tu cuenta', subtitle: 'Toma un minuto. Te enviaremos un código para confirmar tu correo.' },
+  verificar: { title: 'Revisa tu correo', subtitle: 'Escribe el código de 6 dígitos que te enviamos.' },
+  recuperar: { title: '¿Olvidaste tu contraseña?', subtitle: 'Te enviaremos un código para crear una nueva.' },
+  'nueva-clave': { title: 'Crea una contraseña nueva', subtitle: 'Escribe el código del correo y tu contraseña nueva.' },
 };
 
-/** Registro, verificación por código, inicio de sesión y recuperación de contraseña (CU-01 a CU-03). */
+/**
+ * Pantalla de acceso (CU-01 a CU-03). Se muestra en lugar de la app mientras no haya sesión:
+ * registro con código de verificación, inicio de sesión y recuperación de contraseña.
+ */
 export function AccesoPage() {
-  const { cloud, user, profile } = useSession();
+  const { cloud } = useSession();
   const navigate = useNavigate();
   const [mode, setMode] = useState<Mode>('entrar');
   const [name, setName] = useState('');
@@ -74,7 +80,7 @@ export function AccesoPage() {
         async () => {
           try {
             await cloud.signIn(mail, password);
-            navigate('/equipo');
+            navigate('/mi-dia');
           } catch (cause) {
             if (/verificado/i.test(describe(cause))) {
               await cloud.resendSignUpCode(mail).catch(() => {});
@@ -93,7 +99,18 @@ export function AccesoPage() {
           emailProblem() ??
           passwordProblem(),
         async () => {
-          await cloud.signUp(mail, password, name.trim());
+          try {
+            await cloud.signUp(mail, password, name.trim());
+          } catch (cause) {
+            // Un 5xx al registrarse casi siempre es el envío del correo de verificación.
+            if (cause instanceof CloudError && cause.kind === 'network') {
+              throw new CloudError(
+                `No pudimos enviarte el código: ${cause.message} Si la cuenta ya quedó creada, entra con «Ya tengo cuenta» y te pediremos el código.`,
+                'network',
+              );
+            }
+            throw cause;
+          }
           go('verificar');
           setNotice(`Enviamos un código a ${mail}. Puede tardar un minuto; revisa también el correo no deseado.`);
         },
@@ -114,124 +131,142 @@ export function AccesoPage() {
         () => codeProblem() ?? passwordProblem(),
         async () => {
           await cloud.resetPassword(mail, code.trim(), password);
-          navigate('/equipo');
+          navigate('/mi-dia');
         },
       );
     }
   };
 
-  const sampleTag = cloud.source === 'mock' && <Badge tone="accent">Datos de ejemplo</Badge>;
-
-  if (user) {
-    return (
-      <PageLayout title="Tu cuenta" subtitle="Ya iniciaste sesión" actions={sampleTag}>
-        <Surface className="flex flex-col items-start gap-3">
-          <p className="text-fg">
-            Entraste como <strong>{profile?.displayName ?? user.email}</strong> ({user.email}).
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="primary" onClick={() => navigate('/equipo')}>
-              Ir a Equipo
-            </Button>
-            <Button onClick={() => void cloud.signOut()}>Cerrar sesión</Button>
-          </div>
-        </Surface>
-      </PageLayout>
-    );
-  }
-
   const { title, subtitle } = TITLES[mode];
+  const isTab = mode === 'entrar' || mode === 'registro';
   const needsCode = mode === 'verificar' || mode === 'nueva-clave';
+  const submitLabel: Record<Mode, string> = {
+    entrar: 'Iniciar sesión',
+    registro: 'Crear cuenta',
+    verificar: 'Verificar correo',
+    recuperar: 'Enviar código',
+    'nueva-clave': 'Guardar contraseña',
+  };
+
   return (
-    <PageLayout title={title} subtitle={subtitle} actions={sampleTag}>
-      <Surface as="section" aria-label={title}>
-        <form onSubmit={submit} className="flex max-w-prose flex-col gap-4" noValidate>
-          {mode === 'registro' && (
-            <FormField label="Nombre visible" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} />
-          )}
-          <FormField
-            label="Correo"
-            type="email"
-            autoComplete="email"
-            value={email}
-            disabled={mode === 'verificar'}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          {needsCode && (
-            <FormField
-              label="Código"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={10}
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-              hint={cloud.source === 'mock' ? `Datos de ejemplo: el código es ${MOCK_CODE}.` : 'Lo encuentras en el correo que te enviamos.'}
-            />
-          )}
-          {(mode === 'entrar' || mode === 'registro' || mode === 'nueva-clave') && (
-            <FormField
-              label={mode === 'nueva-clave' ? 'Contraseña nueva' : 'Contraseña'}
-              type="password"
-              autoComplete={mode === 'entrar' ? 'current-password' : 'new-password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              hint={mode === 'entrar' ? undefined : `Al menos ${MIN_PASSWORD} caracteres.`}
-            />
-          )}
-          {error && (
-            <p role="alert" className="text-sm text-danger">
-              {error}
-            </p>
-          )}
-          {notice && (
-            <p role="status" className="text-sm text-fg-muted">
-              {notice}
-            </p>
-          )}
-          <div className="flex flex-wrap gap-2">
-            <Button type="submit" variant="primary" disabled={busy}>
-              {mode === 'entrar' && 'Iniciar sesión'}
-              {mode === 'registro' && 'Crear cuenta'}
-              {mode === 'verificar' && 'Verificar correo'}
-              {mode === 'recuperar' && 'Enviar código'}
-              {mode === 'nueva-clave' && 'Guardar contraseña'}
-            </Button>
-            {mode === 'verificar' && (
-              <Button
-                disabled={busy}
-                onClick={() =>
-                  void attempt(emailProblem, async () => {
-                    await cloud.resendSignUpCode(email.trim());
-                    setNotice('Te enviamos un código nuevo.');
-                  })
-                }
-              >
-                Reenviar código
-              </Button>
-            )}
+    <AuthLayout
+      title={title}
+      subtitle={subtitle}
+      footer={
+        cloud.source === 'mock' && (
+          <div className="flex flex-wrap items-center gap-2 text-sm text-fg-muted">
+            <Badge tone="accent">Datos de ejemplo</Badge>
+            <span>Sin conexión a Supabase: las cuentas viven en memoria.</span>
           </div>
-        </form>
-      </Surface>
-      <Surface>
-        <Heading level={3}>Otras opciones</Heading>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {mode !== 'entrar' && (
-            <Button variant="ghost" onClick={() => go('entrar')}>
-              Ya tengo cuenta
-            </Button>
-          )}
-          {mode !== 'registro' && (
-            <Button variant="ghost" onClick={() => go('registro')}>
-              Crear una cuenta
-            </Button>
-          )}
-          {mode !== 'recuperar' && mode !== 'nueva-clave' && (
-            <Button variant="ghost" onClick={() => go('recuperar')}>
-              Olvidé mi contraseña
-            </Button>
-          )}
+        )
+      }
+    >
+      {isTab && (
+        <div role="tablist" aria-label="Acceso" className="grid grid-cols-2 gap-1 rounded-lg bg-sunken p-1">
+          {(['entrar', 'registro'] as const).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              role="tab"
+              aria-selected={mode === tab}
+              onClick={() => go(tab)}
+              className={cx(
+                'h-control rounded-md text-sm font-medium transition-colors',
+                mode === tab ? 'border border-line bg-surface text-fg' : 'text-fg-muted hover:text-fg',
+              )}
+            >
+              {tab === 'entrar' ? 'Iniciar sesión' : 'Crear cuenta'}
+            </button>
+          ))}
         </div>
-      </Surface>
-    </PageLayout>
+      )}
+
+      {needsCode && (
+        <div className="flex items-start gap-3 rounded-lg border border-line bg-surface p-3">
+          <Mail size={20} aria-hidden="true" className="mt-1 shrink-0 text-accent-text" />
+          <p className="min-w-0 text-sm text-fg-muted">
+            {email.trim() ? (
+              <>
+                Lo enviamos a <strong className="break-all text-fg">{email.trim()}</strong>.
+              </>
+            ) : (
+              'Revisa tu correo.'
+            )}{' '}
+            Si no llega en un minuto, revisa el correo no deseado.
+          </p>
+        </div>
+      )}
+
+      <form onSubmit={submit} className="flex flex-col gap-4" noValidate aria-label={title}>
+        {mode === 'registro' && (
+          <FormField label="Nombre visible" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} hint="Así te verá tu equipo." />
+        )}
+        {mode !== 'verificar' && (
+          <FormField label="Correo" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        )}
+        {needsCode && (
+          <FormField
+            label="Código"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={10}
+            value={code}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+            className="text-center font-display text-xl tracking-widest"
+            hint={cloud.source === 'mock' ? `Datos de ejemplo: el código es ${MOCK_CODE}.` : undefined}
+          />
+        )}
+        {(mode === 'entrar' || mode === 'registro' || mode === 'nueva-clave') && (
+          <PasswordField
+            label={mode === 'nueva-clave' ? 'Contraseña nueva' : 'Contraseña'}
+            autoComplete={mode === 'entrar' ? 'current-password' : 'new-password'}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            hint={mode === 'entrar' ? undefined : `Al menos ${MIN_PASSWORD} caracteres.`}
+          />
+        )}
+        {error && (
+          <p role="alert" className="rounded-md bg-danger-soft p-3 text-sm text-danger">
+            {error}
+          </p>
+        )}
+        {notice && (
+          <p role="status" className="text-sm text-fg-muted">
+            {notice}
+          </p>
+        )}
+        <Button type="submit" variant="primary" disabled={busy} className="w-full">
+          {busy ? 'Un momento…' : submitLabel[mode]}
+        </Button>
+      </form>
+
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {mode === 'entrar' && (
+          <Button variant="ghost" size="sm" onClick={() => go('recuperar')}>
+            Olvidé mi contraseña
+          </Button>
+        )}
+        {mode === 'verificar' && (
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={busy}
+            onClick={() =>
+              void attempt(emailProblem, async () => {
+                await cloud.resendSignUpCode(email.trim());
+                setNotice('Te enviamos un código nuevo.');
+              })
+            }
+          >
+            Reenviar código
+          </Button>
+        )}
+        {!isTab && (
+          <Button variant="ghost" size="sm" icon={<ArrowLeft size={16} aria-hidden="true" />} onClick={() => go('entrar')}>
+            Volver a iniciar sesión
+          </Button>
+        )}
+      </div>
+    </AuthLayout>
   );
 }

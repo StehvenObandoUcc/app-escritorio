@@ -38,6 +38,57 @@ function NavFooter() {
   );
 }
 
+/**
+ * Sin sesión no se entra a la app: se muestra solo la pantalla de acceso, sin navegación.
+ * El sensor de Rust sigue registrando en el equipo; nada se sube sin sesión ni consentimiento.
+ */
+function Gate() {
+  const { user } = useSession();
+  if (user === undefined) {
+    return (
+      <div className="flex h-dvh items-center justify-center bg-canvas">
+        <p role="status" className="text-fg-muted">
+          Abriendo Pulso…
+        </p>
+      </div>
+    );
+  }
+  if (user === null) return <AccesoPage />;
+  return (
+    <AppShell nav={<AppNav items={NAV} footer={<NavFooter />} />}>
+      <Routes>
+        <Route path="/" element={<Navigate to="/mi-dia" replace />} />
+        <Route path="/mi-dia" element={<MiDiaPage bridge={bridge} />} />
+        <Route
+          path="/tareas"
+          element={
+            <PendingPage
+              title="Tareas"
+              phase="F3"
+              what="Proyectos, tareas en lista y tablero, y tiempo ligado a cada tarea."
+            />
+          }
+        />
+        <Route path="/equipo" element={<EquipoPage />} />
+        <Route path="/equipo/privacidad" element={<PrivacidadPage />} />
+        <Route
+          path="/reportes"
+          element={
+            <PendingPage
+              title="Reportes"
+              phase="F4"
+              what="Resúmenes con IA a partir de cifras calculadas, y exportación a Markdown y PDF."
+            />
+          }
+        />
+        <Route path="/ajustes" element={<AjustesPage bridge={bridge} />} />
+        {import.meta.env.DEV && <Route path="/dev/galeria" element={<GaleriaPage />} />}
+        <Route path="*" element={<Navigate to="/mi-dia" replace />} />
+      </Routes>
+    </AppShell>
+  );
+}
+
 export function App() {
   // Los datos remotos se vuelven a pedir al enfocar la ventana; sin red, se reintenta poco.
   const [queryClient] = useState(
@@ -47,38 +98,7 @@ export function App() {
     <QueryClientProvider client={queryClient}>
       <SessionProvider cloud={cloud} bridge={bridge}>
         <HashRouter>
-          <AppShell nav={<AppNav items={NAV} footer={<NavFooter />} />}>
-            <Routes>
-              <Route path="/" element={<Navigate to="/mi-dia" replace />} />
-              <Route path="/acceso" element={<AccesoPage />} />
-              <Route path="/mi-dia" element={<MiDiaPage bridge={bridge} />} />
-              <Route
-                path="/tareas"
-                element={
-                  <PendingPage
-                    title="Tareas"
-                    phase="F3"
-                    what="Proyectos, tareas en lista y tablero, y tiempo ligado a cada tarea."
-                  />
-                }
-              />
-              <Route path="/equipo" element={<EquipoPage />} />
-              <Route path="/equipo/privacidad" element={<PrivacidadPage />} />
-              <Route
-                path="/reportes"
-                element={
-                  <PendingPage
-                    title="Reportes"
-                    phase="F4"
-                    what="Resúmenes con IA a partir de cifras calculadas, y exportación a Markdown y PDF."
-                  />
-                }
-              />
-              <Route path="/ajustes" element={<AjustesPage bridge={bridge} />} />
-              {import.meta.env.DEV && <Route path="/dev/galeria" element={<GaleriaPage />} />}
-              <Route path="*" element={<Navigate to="/mi-dia" replace />} />
-            </Routes>
-          </AppShell>
+          <Gate />
         </HashRouter>
       </SessionProvider>
     </QueryClientProvider>
