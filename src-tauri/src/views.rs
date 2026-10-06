@@ -203,6 +203,7 @@ mod tests {
       title_enc: None,
       category,
       ai_tool: None,
+      team_id: None,
     }
   }
 
