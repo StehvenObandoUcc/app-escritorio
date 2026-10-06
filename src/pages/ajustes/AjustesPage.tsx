@@ -3,6 +3,7 @@ import { IDLE_MINUTES_MAX, IDLE_MINUTES_MIN, type Bridge, type Settings } from '
 import { Badge, Button, Heading, Surface } from '@/ui/atoms';
 import { EmptyState, FormField } from '@/ui/molecules';
 import { PageLayout } from '@/ui/templates';
+import { PerfilSection } from './PerfilSection';
 
 const splitApps = (text: string) =>
   text
@@ -62,7 +63,8 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
   };
 
   return (
-    <PageLayout title="Ajustes" subtitle="Seguimiento en este equipo" actions={sampleTag}>
+    <PageLayout title="Ajustes" subtitle="Cuenta y seguimiento en este equipo" actions={sampleTag}>
+      <PerfilSection />
       {loadError ? (
         <EmptyState
           title="No se pudieron leer los ajustes"
@@ -113,7 +115,7 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
       )}
       <EmptyState
         title="Más ajustes llegan después"
-        description="Perfil y privacidad del equipo (F2), proveedor de IA (F4) y avisos (F5)."
+        description="Proveedor de IA (F4), reglas y jornada del equipo, y avisos (F5)."
       />
     </PageLayout>
   );

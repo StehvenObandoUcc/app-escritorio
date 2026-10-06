@@ -3,3 +3,5 @@ export * from './AppNav';
 export * from './PulseStrip';
 export * from './TimeEntryList';
 export * from './pulseLayout';
+export * from './ConsentPanel';
+export * from './MemberList';
