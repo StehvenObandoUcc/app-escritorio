@@ -86,6 +86,79 @@ export type Database = {
           },
         ]
       }
+      app_closures: {
+        Row: {
+          closed_at: string
+          created_at: string
+          id: string
+          reopened_at: string
+          team_id: string
+          user_id: string
+        }
+        Insert: {
+          closed_at: string
+          created_at?: string
+          id: string
+          reopened_at: string
+          team_id: string
+          user_id: string
+        }
+        Update: {
+          closed_at?: string
+          created_at?: string
+          id?: string
+          reopened_at?: string
+          team_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_closures_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          details: Json
+          id: number
+          target_user: string | null
+          team_id: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          details?: Json
+          id?: never
+          target_user?: string | null
+          team_id: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          details?: Json
+          id?: never
+          target_user?: string | null
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_log_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       classification_rules: {
         Row: {
           ai_tool: string | null
@@ -123,6 +196,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "classification_rules_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invitations: {
+        Row: {
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string | null
+          responded_at: string | null
+          role: string
+          status: string
+          team_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          responded_at?: string | null
+          role: string
+          status?: string
+          team_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          responded_at?: string | null
+          role?: string
+          status?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invitations_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"
@@ -262,16 +379,42 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_invitation: {
+        Args: { p_consent_version: string; p_id: string }
+        Returns: string
+      }
       create_team: { Args: { p_name: string }; Returns: string }
+      decline_invitation: { Args: { p_id: string }; Returns: undefined }
+      give_consent: {
+        Args: { p_team: string; p_version: string }
+        Returns: undefined
+      }
+      has_consent: { Args: { p_team: string }; Returns: boolean }
       has_team_role: {
         Args: { p_roles: string[]; p_team: string }
         Returns: boolean
       }
+      invite_member: {
+        Args: { p_email: string; p_role: string; p_team: string }
+        Returns: string
+      }
       leave_team: { Args: { p_team: string }; Returns: undefined }
+      my_invitations: {
+        Args: never
+        Returns: {
+          expires_at: string
+          id: string
+          invited_by_name: string
+          role: string
+          team_id: string
+          team_name: string
+        }[]
+      }
       remove_member: {
         Args: { p_team: string; p_user: string }
         Returns: undefined
       }
+      revoke_invitation: { Args: { p_id: string }; Returns: undefined }
       set_member_role: {
         Args: { p_role: string; p_team: string; p_user: string }
         Returns: undefined
@@ -289,6 +432,24 @@ export type Database = {
         }[]
       }
       team_role: { Args: { p_team: string }; Returns: string }
+      team_time_summary: {
+        Args: { p_from: string; p_team: string; p_to: string }
+        Returns: {
+          entries: number
+          seconds: number
+          user_id: string
+        }[]
+      }
+      verified_email: { Args: never; Returns: string }
+      write_audit: {
+        Args: {
+          p_action: string
+          p_details: Json
+          p_target: string
+          p_team: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
