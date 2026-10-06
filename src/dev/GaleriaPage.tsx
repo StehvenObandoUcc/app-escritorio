@@ -6,7 +6,7 @@ import { CATEGORY_STYLE } from '@/lib/categories';
 import { Avatar, Badge, Button, CategoryMark, Heading, Input, ProgressBar, Select, Surface } from '@/ui/atoms';
 import { CategoryBreakdown, EmptyState, FormField, PasswordField, SegmentedControl, SyncStatus, TimeEntryForm, TimerControl } from '@/ui/molecules';
 import { appTotals, buildTimeline } from '@/lib/activity';
-import { ActivityList, ActivityTimeline, AppSummary, ConsentPanel, MemberList, PulseStrip, TimeEntryList } from '@/ui/organisms';
+import { ActivityList, ActivityTimeline, AppSummary, ConsentPanel, HiddenAppsPicker, MemberList, PulseStrip, TimeEntryList } from '@/ui/organisms';
 import { AuthLayout, PageLayout } from '@/ui/templates';
 
 const SWATCHES = [
@@ -161,6 +161,17 @@ export function GaleriaPage() {
         </Surface>
         <Surface padding="flush">
           <TimeEntryList entries={SAMPLE_ENTRIES} onUpdate={() => Promise.resolve()} onDelete={() => Promise.resolve()} />
+        </Surface>
+        <Surface>
+          <HiddenAppsPicker
+            candidates={[
+              { process: 'brave', label: 'Brave' },
+              { process: 'whatsapp.root', label: 'WhatsApp' },
+              { process: 'windowsterminal', label: 'Terminal' },
+            ]}
+            selected={['windowsterminal']}
+            onChange={() => {}}
+          />
         </Surface>
         <Surface>
           <MemberList members={SAMPLE_MEMBERS} myUserId={SAMPLE_MEMBERS[0]!.userId} myRole="owner" onChangeRole={() => {}} onRemove={() => {}} />

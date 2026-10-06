@@ -1,15 +1,38 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { IDLE_MINUTES_MAX, IDLE_MINUTES_MIN, type Bridge, type Settings } from '@/bridge/contract';
+import { displayAppName, HIDDEN_APP } from '@/lib/apps';
+import { localDate } from '@/lib/time';
 import { Badge, Button, Heading, Surface } from '@/ui/atoms';
 import { EmptyState, FormField } from '@/ui/molecules';
+import { HiddenAppsPicker, type AppCandidate } from '@/ui/organisms';
 import { PageLayout } from '@/ui/templates';
 import { PerfilSection } from './PerfilSection';
 
-const splitApps = (text: string) =>
-  text
-    .split(/[,\n]/)
-    .map((a) => a.trim())
-    .filter(Boolean);
+/** Días hacia atrás de los que se sacan las apps candidatas a ocultar. */
+const RECENT_DAYS = 7;
+
+/** Apps usadas en los últimos días, de más a menos tiempo. Todo local. */
+async function recentApps(bridge: Bridge): Promise<AppCandidate[]> {
+  const dates = Array.from({ length: RECENT_DAYS }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    return localDate(d);
+  });
+  const days = await Promise.all(dates.map((date) => bridge.dayView(date).catch(() => null)));
+  const time = new Map<string, number>();
+  const label = new Map<string, string>();
+  for (const day of days) {
+    for (const b of day?.blocks ?? []) {
+      if (b.appName === HIDDEN_APP || b.category === 'idle' || b.category === 'paused' || b.category === 'break') continue;
+      const key = b.appName.trim().toLowerCase();
+      time.set(key, (time.get(key) ?? 0) + (Date.parse(b.endedAt) - Date.parse(b.startedAt)));
+      if (!label.has(key)) label.set(key, displayAppName(b.appName));
+    }
+  }
+  return [...time.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([process]) => ({ process, label: label.get(process) ?? displayAppName(process) }));
+}
 
 const describe = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause));
 
@@ -17,7 +40,8 @@ const describe = (cause: unknown) => (cause instanceof Error ? cause.message : S
 export function AjustesPage({ bridge }: { bridge: Bridge }) {
   const [saved, setSaved] = useState<Settings | null>(null);
   const [minutes, setMinutes] = useState('');
-  const [apps, setApps] = useState('');
+  const [hidden, setHidden] = useState<string[]>([]);
+  const [recent, setRecent] = useState<AppCandidate[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -30,15 +54,25 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
         if (cancelled) return;
         setSaved(s);
         setMinutes(String(s.idleMinutes));
-        setApps(s.hiddenApps.join(', '));
+        setHidden(s.hiddenApps);
       })
       .catch((cause: unknown) => {
         if (!cancelled) setLoadError(describe(cause));
       });
+    recentApps(bridge)
+      .then((apps) => !cancelled && setRecent(apps))
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
   }, [bridge]);
+
+  // Candidatas: las usadas hace poco y, además, las que ya están ocultas (no aparecen con su nombre en los datos).
+  const candidates = useMemo<AppCandidate[]>(() => {
+    const seen = new Set(recent.map((c) => c.process));
+    const extra = [...new Set([...(saved?.hiddenApps ?? []), ...hidden])].filter((p) => !seen.has(p));
+    return [...recent, ...extra.map((process) => ({ process, label: displayAppName(process) }))];
+  }, [recent, saved, hidden]);
 
   const sampleTag = bridge.source === 'mock' && <Badge tone="accent">Datos de ejemplo</Badge>;
 
@@ -52,10 +86,10 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
     }
     setFormError(null);
     try {
-      const next = await bridge.settingsSet({ idleMinutes: n, hiddenApps: splitApps(apps) });
+      const next = await bridge.settingsSet({ idleMinutes: n, hiddenApps: hidden });
       setSaved(next);
       setMinutes(String(next.idleMinutes));
-      setApps(next.hiddenApps.join(', '));
+      setHidden(next.hiddenApps);
       setNotice('Cambios guardados.');
     } catch (cause) {
       setFormError(describe(cause));
@@ -88,13 +122,7 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
               onChange={(e) => setMinutes(e.target.value)}
               hint={`Entre ${IDLE_MINUTES_MIN} y ${IDLE_MINUTES_MAX}. Sin teclado ni ratón durante ese tiempo, el bloque se cierra en tu última acción y empieza uno sin actividad.`}
             />
-            <FormField
-              label="Apps ocultas"
-              value={apps}
-              onChange={(e) => setApps(e.target.value)}
-              placeholder="keepass, whatsapp"
-              hint="Nombres de programa separados por comas. Pulso las registra como «App oculta» y sin título."
-            />
+            <HiddenAppsPicker candidates={candidates} selected={hidden} onChange={setHidden} />
             {formError && (
               <p role="alert" className="text-sm text-danger">
                 {formError}

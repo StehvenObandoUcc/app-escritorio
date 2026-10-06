@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ActivityBlock, Category } from '@/bridge/contract';
-import { appTotals, buildTimeline, groupConsecutive } from './activity';
-import { cleanTitle, displayAppName } from './apps';
+import { aiToolTotals, appTotals, buildTimeline, groupConsecutive } from './activity';
+import { appColor, cleanTitle, displayAppName } from './apps';
 import { formatShortDuration } from './time';
 
 let n = 0;
@@ -60,6 +60,22 @@ describe('agrupar la actividad', () => {
   });
 });
 
+describe('IA usadas', () => {
+  it('suma el tiempo por herramienta de IA, de más a menos', () => {
+    expect(
+      aiToolTotals([
+        block('brave', 0, 2, 'ai', 'Claude', 'Claude'),
+        block('brave', 2, 7, 'ai', 'Perplexity', 'Perplexity'),
+        block('chrome', 7, 9, 'ai', 'Claude', 'Claude'),
+        block('code', 9, 20, 'productive'),
+      ]),
+    ).toEqual([
+      { tool: 'Perplexity', seconds: 300 },
+      { tool: 'Claude', seconds: 240 },
+    ]);
+  });
+});
+
 describe('nombres y duraciones legibles', () => {
   it('traduce nombres de proceso y deja los desconocidos con mayúscula inicial', () => {
     expect(displayAppName('brave')).toBe('Brave');
@@ -73,6 +89,13 @@ describe('nombres y duraciones legibles', () => {
     expect(cleanTitle('Roles | IAM | Global - Brave', 'brave')).toBe('Roles | IAM | Global');
     expect(cleanTitle('Pulso', 'pulso')).toBeNull();
     expect(cleanTitle(null, 'brave')).toBeNull();
+  });
+
+  it('cada app tiene un color de la paleta, el mismo siempre; las ocultas, gris neutro', () => {
+    expect(appColor('brave')).toMatch(/^bg-app-[1-8]$/);
+    expect(appColor('brave')).toBe(appColor('Brave'));
+    expect(new Set(['brave', 'code', 'explorer', 'WhatsApp.Root', 'pulso', 'firefox'].map(appColor)).size).toBeGreaterThan(2);
+    expect(appColor('App oculta')).toBe('bg-cat-neutral');
   });
 
   it('las duraciones cortas se dicen en segundos en vez de «0 min»', () => {
