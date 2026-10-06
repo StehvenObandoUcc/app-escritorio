@@ -15,6 +15,7 @@ import {
   TeamInvitationSchema,
   TeamRoleSchema,
   WorkdaySchema,
+  WRONG_INVITATION_CODE,
   type Cloud,
   type CloudUser,
 } from './contract';
@@ -261,21 +262,27 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
 
     teamInvitations: async (teamId) => {
       const rows = z
-        .array(z.object({ id: z.uuid(), email: z.string(), role: TeamRoleSchema, expires_at: z.string() }))
+        .array(z.object({ id: z.uuid(), email: z.string(), role: TeamRoleSchema, expires_at: z.string(), code: z.string().nullable() }))
         .parse(
           await run(
             client
               .from('invitations')
-              .select('id, email, role, expires_at')
+              .select('id, email, role, expires_at, code')
               .eq('team_id', teamId)
               .eq('status', 'pending')
               .order('created_at'),
           ),
         );
-      return rows.map((r) => TeamInvitationSchema.parse({ id: r.id, email: r.email, role: r.role, expiresAt: r.expires_at }));
+      return rows.map((r) =>
+        TeamInvitationSchema.parse({ id: r.id, email: r.email, role: r.role, expiresAt: r.expires_at, code: r.code }),
+      );
     },
     invite: async (teamId, email, role) => {
-      await rpc('invite_member', { p_team: teamId, p_email: email, p_role: role });
+      const [row] = z
+        .array(z.object({ id: z.uuid(), code: z.string() }))
+        .parse(await rpc('invite_member', { p_team: teamId, p_email: email, p_role: role }));
+      if (!row) throw new CloudError('No se pudo crear la invitación.', 'unknown');
+      return { code: row.code };
     },
     revokeInvitation: async (id) => {
       await rpc('revoke_invitation', { p_id: id });
@@ -304,8 +311,14 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
         }),
       );
     },
-    acceptInvitation: async (id, consentVersion) =>
-      z.uuid().parse(await rpc('accept_invitation', { p_id: id, p_consent_version: consentVersion })),
+    acceptInvitation: async (id, code, consentVersion) => {
+      const team = z
+        .uuid()
+        .nullable()
+        .parse(await rpc('accept_invitation', { p_id: id, p_code: code, p_consent_version: consentVersion }));
+      if (!team) throw new CloudError(WRONG_INVITATION_CODE, 'invalid');
+      return team;
+    },
     declineInvitation: async (id) => {
       await rpc('decline_invitation', { p_id: id });
     },

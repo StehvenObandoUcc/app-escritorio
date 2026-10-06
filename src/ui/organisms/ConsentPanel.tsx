@@ -13,6 +13,7 @@ export function ConsentPanel({
   secondary,
   busy = false,
   error,
+  children,
 }: {
   teamName: string;
   /** Texto del botón, p. ej. «Aceptar y unirme» */
@@ -22,6 +23,8 @@ export function ConsentPanel({
   secondary?: ReactNode;
   busy?: boolean;
   error?: string | null;
+  /** Campos que van antes de la casilla de aceptación (p. ej. el código de invitación) */
+  children?: ReactNode;
 }) {
   const [agreed, setAgreed] = useState(false);
   const checkId = useId();
@@ -39,6 +42,7 @@ export function ConsentPanel({
           </div>
         ))}
       </dl>
+      {children}
       <label htmlFor={checkId} className="flex items-start gap-2 text-fg">
         <input
           id={checkId}

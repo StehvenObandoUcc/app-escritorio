@@ -8,6 +8,7 @@ import type { SyncBlock, SyncClosure, SyncEntry, TeamRule } from '@/bridge/contr
 import {
   CloudError,
   DEFAULT_WORKDAY,
+  WRONG_INVITATION_CODE,
   type Cloud,
   type CloudUser,
   type Member,
@@ -43,6 +44,16 @@ interface MockInvitation {
   invitedBy: string;
   status: 'pending' | 'accepted' | 'declined' | 'revoked';
   expiresAt: string;
+  code: string;
+  failedAttempts: number;
+}
+
+const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+/** Mismo formato que new_invitation_code() en la base (ADR-0008). */
+export function mockInvitationCode(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(8));
+  const chars = [...bytes].map((b) => CODE_ALPHABET[b % 32]).join('');
+  return `${chars.slice(0, 4)}-${chars.slice(4)}`;
 }
 
 export interface MockCloud extends Cloud {
@@ -51,7 +62,9 @@ export interface MockCloud extends Cloud {
     addAccount(email: string, password: string, displayName: string): string;
     addTeam(name: string, ownerId: string): string;
     addMember(teamId: string, userId: string, role: TeamRole, consent?: boolean): void;
+    /** Devuelve el id; el código se lee con `codeOf`. */
     invite(teamId: string, email: string, role: TeamRole, invitedBy: string): string;
+    codeOf(invitationId: string): string;
     uploaded: { blocks: SyncBlock[]; entries: SyncEntry[]; closures: SyncClosure[] };
     /** Hace fallar las siguientes subidas como si no hubiera red. */
     setOffline(offline: boolean): void;
@@ -63,7 +76,11 @@ const fail = (message: string, kind: CloudError['kind'] = 'forbidden') => {
   throw new CloudError(message, kind);
 };
 
-export function createMockCloud(now: () => Date = () => new Date()): MockCloud {
+/**
+ * `confirmEmail`: imita un proyecto que aún exige confirmar el correo al registrarse (antes de ADR-0008).
+ * Por defecto no: registrarse inicia la sesión al instante.
+ */
+export function createMockCloud(now: () => Date = () => new Date(), { confirmEmail = false } = {}): MockCloud {
   const accounts = new Map<string, MockAccount>();
   const profiles = new Map<string, Profile>();
   const teams = new Map<string, { id: string; name: string }>();
@@ -107,6 +124,8 @@ export function createMockCloud(now: () => Date = () => new Date()): MockCloud {
       invitedBy,
       status: 'pending',
       expiresAt: new Date(now().getTime() + 7 * 86_400_000).toISOString(),
+      code: mockInvitationCode(),
+      failedAttempts: 0,
     });
     return id;
   };
@@ -137,6 +156,7 @@ export function createMockCloud(now: () => Date = () => new Date()): MockCloud {
         members.push({ teamId, userId, role, consentAt: at, consentVersion: consent ? 'v1' : null, joinedAt: now().toISOString() });
       },
       invite: addInvitation,
+      codeOf: (id) => invitations.find((i) => i.id === id)?.code ?? '',
       uploaded,
       setOffline: (value) => {
         offline = value;
@@ -151,7 +171,14 @@ export function createMockCloud(now: () => Date = () => new Date()): MockCloud {
     },
     signUp: async (email, password, displayName) => {
       if (password.length < 8) fail('La contraseña es muy débil. Usa al menos 8 caracteres, con letras y números.', 'auth');
-      if (!accounts.has(email.toLowerCase())) addAccount(email, password, displayName, false);
+      if (accounts.has(email.toLowerCase())) {
+        fail('Ya existe una cuenta con ese correo. Inicia sesión o recupera tu contraseña.', 'auth');
+      }
+      const id = addAccount(email, password, displayName, !confirmEmail);
+      if (!confirmEmail) {
+        current = id;
+        emit();
+      }
     },
     verifySignUp: async (email, code) => {
       const a = accounts.get(email.toLowerCase());
@@ -274,7 +301,7 @@ export function createMockCloud(now: () => Date = () => new Date()): MockCloud {
       if (mine !== 'owner' && mine !== 'admin') return [];
       return invitations
         .filter((i) => i.teamId === teamId && i.status === 'pending')
-        .map((i) => ({ id: i.id, email: i.email, role: i.role, expiresAt: i.expiresAt }));
+        .map((i) => ({ id: i.id, email: i.email, role: i.role, expiresAt: i.expiresAt, code: i.code }));
     },
     invite: async (teamId, email, role) => {
       const a = me();
@@ -286,7 +313,8 @@ export function createMockCloud(now: () => Date = () => new Date()): MockCloud {
       if (invitations.some((i) => i.teamId === teamId && i.email === clean && i.status === 'pending')) {
         fail('Ya hay una invitación pendiente para ese correo', 'invalid');
       }
-      addInvitation(teamId, clean, role, a.id);
+      const id = addInvitation(teamId, clean, role, a.id);
+      return { code: invitations.find((i) => i.id === id)!.code };
     },
     revokeInvitation: async (id) => {
       const a = me();
@@ -298,7 +326,6 @@ export function createMockCloud(now: () => Date = () => new Date()): MockCloud {
     },
     myInvitations: async () => {
       const a = me();
-      if (!a.verified) return [];
       return pendingFor(a.email).map((i) => ({
         id: i.id,
         teamId: i.teamId,
@@ -308,11 +335,16 @@ export function createMockCloud(now: () => Date = () => new Date()): MockCloud {
         expiresAt: i.expiresAt,
       }));
     },
-    acceptInvitation: async (id, consentVersion) => {
+    acceptInvitation: async (id, code, consentVersion) => {
       const a = me();
       if (!consentVersion.trim()) fail('Debes aceptar el consentimiento', 'invalid');
       const inv = pendingFor(a.email).find((i) => i.id === id);
       if (!inv) fail('No permitido');
+      if (inv!.code !== code.trim().toUpperCase()) {
+        inv!.failedAttempts += 1;
+        if (inv!.failedAttempts >= 5) inv!.status = 'revoked';
+        fail(WRONG_INVITATION_CODE, 'invalid');
+      }
       if (roleIn(inv!.teamId, a.id)) fail('Ya perteneces a este equipo', 'invalid');
       inv!.status = 'accepted';
       members.push({

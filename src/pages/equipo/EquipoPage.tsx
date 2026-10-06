@@ -13,6 +13,19 @@ import { PageLayout } from '@/ui/templates';
 
 const describe = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause));
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** Código de invitación (ADR-0008): XXXX-XXXX; el guion es opcional al escribirlo. */
+const CODE = /^[A-Z2-9]{4}-?[A-Z2-9]{4}$/;
+const withDash = (c: string) => (c.includes('-') ? c : `${c.slice(0, 4)}-${c.slice(4)}`);
+
+/** Copia al portapapeles; si no se puede, no pasa nada (el código sigue a la vista). */
+const copy = async (text: string) => {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+};
 const formatDate = (iso: string) => new Date(iso).toLocaleDateString('es-CO', { day: 'numeric', month: 'long' });
 
 /** Ejecuta una acción con estado de «ocupado» y error legible. */
@@ -86,6 +99,7 @@ function MyInvitations() {
   const { cloud, user, refresh, selectTeam } = useSession();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState<MyInvitation | null>(null);
+  const [code, setCode] = useState('');
   const action = useAction();
   const query = useQuery({ queryKey: ['my-invitations', user?.id], queryFn: () => cloud.myInvitations(), enabled: Boolean(user) });
   const list = query.data ?? [];
@@ -104,13 +118,19 @@ function MyInvitations() {
         acceptLabel="Aceptar y unirme"
         busy={action.busy}
         error={action.error}
-        onAccept={() =>
+        onAccept={() => {
+          const clean = code.trim().toUpperCase();
+          if (!CODE.test(clean)) {
+            action.setError('Escribe el código de 8 caracteres que te dio quien te invitó, por ejemplo K7PQ-4XMZ.');
+            return;
+          }
           void action.run(async () => {
-            const teamId = await cloud.acceptInvitation(open.id, CONSENT_VERSION);
+            const teamId = await cloud.acceptInvitation(open.id, withDash(clean), CONSENT_VERSION);
             selectTeam(teamId);
+            setCode('');
             await done();
-          })
-        }
+          });
+        }}
         secondary={
           <>
             <Button disabled={action.busy} onClick={() => void action.run(async () => {
@@ -124,7 +144,17 @@ function MyInvitations() {
             </Button>
           </>
         }
-      />
+      >
+        <FormField
+          label="Código de invitación"
+          value={code}
+          onChange={(e) => setCode(e.target.value.toUpperCase())}
+          maxLength={9}
+          autoComplete="off"
+          className="font-display tracking-widest"
+          hint="Te lo da quien te invitó, en persona o por mensaje. Tiene la forma XXXX-XXXX."
+        />
+      </ConsentPanel>
     );
   }
 
@@ -352,23 +382,24 @@ function Invitations({ team }: { team: MyTeam }) {
   const roles = invitableRoles(team.role);
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<Role>('member');
-  const [notice, setNotice] = useState<string | null>(null);
+  const [created, setCreated] = useState<{ email: string; code: string } | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
   const action = useAction();
   const query = useQuery({ queryKey: ['invitations', team.id], queryFn: () => cloud.teamInvitations(team.id) });
   const reload = () => queryClient.invalidateQueries({ queryKey: ['invitations', team.id] });
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    setNotice(null);
+    setCreated(null);
     const mail = email.trim().toLowerCase();
     if (!EMAIL.test(mail)) {
       action.setError('Escribe un correo válido, por ejemplo nombre@empresa.com.');
       return;
     }
     void action.run(async () => {
-      await cloud.invite(team.id, mail, role);
+      const { code } = await cloud.invite(team.id, mail, role);
       setEmail('');
-      setNotice(`Invitación creada. Avísale a ${mail}: la verá al iniciar sesión en Pulso con ese correo.`);
+      setCreated({ email: mail, code });
       await reload();
     });
   };
@@ -378,7 +409,10 @@ function Invitations({ team }: { team: MyTeam }) {
       <form onSubmit={submit} className="flex flex-col gap-3" noValidate>
         <div>
           <Heading level={2}>Invitar personas</Heading>
-          <p className="mt-1 text-sm text-fg-muted">Pulso no envía correos: la invitación aparece cuando esa persona inicia sesión. Vence a los 7 días.</p>
+          <p className="mt-1 text-sm text-fg-muted">
+            Pulso no envía correos: la persona ve la invitación al entrar con ese correo y se une con el código que tú le compartes. Vence a
+            los 7 días.
+          </p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
           <div className="min-w-0 flex-1">
@@ -399,10 +433,19 @@ function Invitations({ team }: { team: MyTeam }) {
             {action.error}
           </p>
         )}
-        {notice && (
-          <p role="status" className="text-sm text-fg-muted">
-            {notice}
-          </p>
+        {created && (
+          <div role="status" className="flex flex-col gap-2 rounded-md bg-accent-soft p-3">
+            <p className="text-fg">
+              Invitación creada para <strong className="break-all">{created.email}</strong>. Compártele este código en persona o por
+              mensaje:
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="font-display text-2xl font-semibold tracking-widest text-fg">{created.code}</span>
+              <Button size="sm" onClick={() => void copy(created.code).then((ok) => setCopied(ok ? created.code : null))}>
+                {copied === created.code ? 'Copiado' : 'Copiar código'}
+              </Button>
+            </div>
+          </div>
         )}
       </form>
       {(query.data ?? []).length > 0 && (
@@ -412,6 +455,11 @@ function Invitations({ team }: { team: MyTeam }) {
             {(query.data ?? []).map((inv) => (
               <li key={inv.id} className="flex flex-wrap items-center gap-3 py-2">
                 <p className="min-w-0 flex-1 truncate text-fg">{inv.email}</p>
+                {inv.code && (
+                  <span className="font-display text-sm font-semibold tracking-widest text-fg" aria-label={`Código ${inv.code}`}>
+                    {inv.code}
+                  </span>
+                )}
                 <Badge>{ROLE_LABEL[inv.role]}</Badge>
                 <span className="text-sm text-fg-muted">vence el {formatDate(inv.expiresAt)}</span>
                 <Button size="sm" variant="ghost" disabled={action.busy} onClick={() => void action.run(async () => {
