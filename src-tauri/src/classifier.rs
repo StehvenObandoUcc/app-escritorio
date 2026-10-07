@@ -63,6 +63,9 @@ pub struct Rule {
   /// Sitio marcado «no permitido» por el equipo (ADR-0009/0010): se avisa al entrar.
   #[serde(default)]
   pub not_allowed: bool,
+  /// App o sitio que se usa sin teclado (leer, reuniones): la inactividad llega a los 30 min (ADR-0013).
+  #[serde(default)]
+  pub keep_active: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -70,6 +73,8 @@ pub struct Classification {
   pub category: Category,
   pub ai_tool: Option<String>,
   pub not_allowed: bool,
+  /// Alguna regla que coincide (no solo la primera) dice que se usa sin teclado.
+  pub keep_active: bool,
 }
 
 const DEFAULT_RULES_JSON: &str = include_str!("../rules/default.json");
@@ -83,23 +88,26 @@ pub fn default_rules() -> Vec<Rule> {
 pub fn classify(team_rules: &[Rule], defaults: &[Rule], process: &str, title: &str, domain: Option<&str>) -> Classification {
   let process = process.to_lowercase();
   let title = title.to_lowercase();
+  let matches = |rule: &&Rule| {
+    let pattern = rule.pattern.to_lowercase();
+    match rule.kind {
+      MatchKind::Process => process.contains(&pattern),
+      MatchKind::Title => title.contains(&pattern),
+      MatchKind::Domain => domain.is_some_and(|d| d == pattern || d.ends_with(&format!(".{pattern}"))),
+    }
+  };
+  let keep_active = team_rules.iter().chain(defaults).filter(matches).any(|r| r.keep_active);
   team_rules
     .iter()
     .chain(defaults)
-    .find(|rule| {
-      let pattern = rule.pattern.to_lowercase();
-      match rule.kind {
-        MatchKind::Process => process.contains(&pattern),
-        MatchKind::Title => title.contains(&pattern),
-        MatchKind::Domain => domain.is_some_and(|d| d == pattern || d.ends_with(&format!(".{pattern}"))),
-      }
-    })
+    .find(matches)
     .map(|rule| Classification {
       category: rule.category,
       ai_tool: if rule.category == Category::Ai { rule.ai_tool.clone() } else { None },
       not_allowed: rule.not_allowed,
+      keep_active,
     })
-    .unwrap_or(Classification { category: Category::Neutral, ai_tool: None, not_allowed: false })
+    .unwrap_or(Classification { category: Category::Neutral, ai_tool: None, not_allowed: false, keep_active })
 }
 
 #[cfg(test)]
@@ -135,7 +143,7 @@ mod tests {
 
   #[test]
   fn domain_rules_match_subdomains_but_not_lookalikes() {
-    let team = vec![Rule { kind: MatchKind::Domain, pattern: "youtube.com".into(), category: Category::Distraction, ai_tool: None, not_allowed: false }];
+    let team = vec![Rule { kind: MatchKind::Domain, pattern: "youtube.com".into(), category: Category::Distraction, ai_tool: None, not_allowed: false, keep_active: false }];
     let c = |d: &str| classify(&team, &[], "brave", "", Some(d)).category;
     assert_eq!(c("youtube.com"), Category::Distraction);
     assert_eq!(c("m.youtube.com"), Category::Distraction);
@@ -183,7 +191,7 @@ mod tests {
   #[test]
   fn no_match_is_neutral() {
     let c = run("notepad", "sin título");
-    assert_eq!(c, Classification { category: Category::Neutral, ai_tool: None, not_allowed: false });
+    assert_eq!(c, Classification { category: Category::Neutral, ai_tool: None, not_allowed: false, keep_active: false });
   }
 
   #[test]
@@ -194,6 +202,7 @@ mod tests {
       category: Category::Productive,
       ai_tool: None,
       not_allowed: false,
+      keep_active: false,
     }];
     let c = classify(&team, &default_rules(), "chrome", "YouTube - tutorial", None);
     assert_eq!(c.category, Category::Productive);
@@ -206,6 +215,20 @@ mod tests {
   }
 
   #[test]
+  fn reading_and_meeting_apps_are_used_without_keyboard_and_keep_their_category() {
+    for (process, domain) in [("readest", None), ("SumatraPDF", None), ("Zoom", None), ("ms-teams", None), ("brave", Some("meet.google.com"))] {
+      let c = classify(&[], &default_rules(), process, "", domain);
+      assert!(c.keep_active, "{process} {domain:?}");
+    }
+    assert!(!run("code", "main.rs").keep_active);
+    // Una regla del equipo que hace productivo a Readest no le quita «sin teclado».
+    let team = vec![Rule { kind: MatchKind::Process, pattern: "readest".into(), category: Category::Productive, ai_tool: None, not_allowed: false, keep_active: false }];
+    let c = classify(&team, &default_rules(), "readest", "Libro", None);
+    assert_eq!(c.category, Category::Productive);
+    assert!(c.keep_active);
+  }
+
+  #[test]
   fn every_default_rule_matches_itself() {
     for rule in default_rules() {
       let c = match rule.kind {
@@ -213,6 +236,11 @@ mod tests {
         MatchKind::Title => run("", &rule.pattern),
         MatchKind::Domain => run_domain(&rule.pattern),
       };
+      // Las reglas «sin teclado» son neutras a propósito: solo cambian la inactividad.
+      if rule.keep_active {
+        assert!(c.keep_active, "{}", rule.pattern);
+        continue;
+      }
       // Puede ganar una regla anterior, pero nunca debe quedar neutral.
       assert_ne!(c.category, Category::Neutral, "{}", rule.pattern);
     }

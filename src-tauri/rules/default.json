@@ -35,5 +35,20 @@
   { "match": "title", "pattern": "facebook", "category": "distraction", "ai_tool": null },
   { "match": "title", "pattern": "instagram", "category": "distraction", "ai_tool": null },
   { "match": "title", "pattern": "tiktok", "category": "distraction", "ai_tool": null },
-  { "match": "process", "pattern": "spotify", "category": "distraction", "ai_tool": null }
+  { "match": "process", "pattern": "spotify", "category": "distraction", "ai_tool": null },
+  { "match": "process", "pattern": "readest", "category": "neutral", "ai_tool": null, "keep_active": true },
+  { "match": "process", "pattern": "sumatrapdf", "category": "neutral", "ai_tool": null, "keep_active": true },
+  { "match": "process", "pattern": "acrord32", "category": "neutral", "ai_tool": null, "keep_active": true },
+  { "match": "process", "pattern": "acrobat", "category": "neutral", "ai_tool": null, "keep_active": true },
+  { "match": "process", "pattern": "foxitpdfreader", "category": "neutral", "ai_tool": null, "keep_active": true },
+  { "match": "process", "pattern": "kindle", "category": "neutral", "ai_tool": null, "keep_active": true },
+  { "match": "process", "pattern": "calibre", "category": "neutral", "ai_tool": null, "keep_active": true },
+  { "match": "process", "pattern": "vlc", "category": "neutral", "ai_tool": null, "keep_active": true },
+  { "match": "process", "pattern": "zoom", "category": "neutral", "ai_tool": null, "keep_active": true },
+  { "match": "process", "pattern": "teams", "category": "neutral", "ai_tool": null, "keep_active": true },
+  { "match": "process", "pattern": "webex", "category": "neutral", "ai_tool": null, "keep_active": true },
+  { "match": "domain", "pattern": "meet.google.com", "category": "neutral", "ai_tool": null, "keep_active": true },
+  { "match": "domain", "pattern": "teams.microsoft.com", "category": "neutral", "ai_tool": null, "keep_active": true },
+  { "match": "domain", "pattern": "teams.live.com", "category": "neutral", "ai_tool": null, "keep_active": true },
+  { "match": "domain", "pattern": "zoom.us", "category": "neutral", "ai_tool": null, "keep_active": true }
 ]

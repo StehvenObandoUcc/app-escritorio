@@ -104,8 +104,8 @@ pub fn session_clear(t: Tr) -> Result<()> {
 }
 
 #[tauri::command]
-pub fn active_team_set(t: Tr, team_id: Option<String>) -> Result<()> {
-  t.active_team_set(Utc::now(), team_id.as_deref())
+pub fn active_team_set(t: Tr, team_id: Option<String>, user_id: Option<String>) -> Result<()> {
+  t.active_team_set(Utc::now(), team_id.as_deref(), user_id.as_deref())
 }
 
 #[tauri::command]

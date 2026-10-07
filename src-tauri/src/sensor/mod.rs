@@ -87,25 +87,10 @@ impl Sensor {
   }
 }
 
-impl Sensor {
-  /// Solo para la prueba S-5: dominio de una ventana concreta (aunque no esté en primer plano).
-  #[cfg(windows)]
-  pub fn domain_of_window(&mut self, hwnd: isize) -> Option<String> {
-    let hwnd = windows::Win32::Foundation::HWND(hwnd as *mut core::ffi::c_void);
-    self.url.as_mut()?.read(hwnd).as_deref().and_then(host_of)
-  }
-}
-
 impl Default for Sensor {
   fn default() -> Self {
     Self::new()
   }
-}
-
-/// Ventana activa sin dominio (prueba S-1). El sensor de la app usa `Sensor::read`.
-#[cfg(windows)]
-pub fn active_window() -> Option<ActiveWindow> {
-  windows_impl::foreground().map(|(_, w)| w)
 }
 
 /// Nombre del ejecutable de un proceso (también lo usa la lista de apps abiertas, ADR-0010).
@@ -120,11 +105,6 @@ pub(crate) unsafe fn process_name(pid: u32) -> Option<String> {
 #[cfg(windows)]
 pub fn idle_seconds() -> Option<u64> {
   windows_impl::idle_seconds()
-}
-
-#[cfg(not(windows))]
-pub fn active_window() -> Option<ActiveWindow> {
-  None
 }
 
 #[cfg(not(windows))]
