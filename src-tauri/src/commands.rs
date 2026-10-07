@@ -1,4 +1,4 @@
-//! Comandos de Tauri de las fases F1 y F2 (nombres de docs/ARQUITECTURA.md §6).
+//! Comandos de Tauri de las fases F1 a F3 (nombres de docs/ARQUITECTURA.md §6).
 //! Son una capa fina: la lógica y las pruebas viven en `tracker`.
 //! Los argumentos llegan en camelCase desde la interfaz (`taskId` → `task_id`).
 
@@ -121,6 +121,18 @@ pub fn sync_mark_synced(t: Tr, kind: String, ids: Vec<String>) -> Result<()> {
 #[tauri::command]
 pub fn rules_set(t: Tr, json: String) -> Result<()> {
   t.rules_set(&json)
+}
+
+// ---- F3 ----
+
+#[tauri::command]
+pub fn tasks_cache_put(t: Tr, json: String) -> Result<()> {
+  t.tasks_cache_put(Utc::now(), &json)
+}
+
+#[tauri::command]
+pub fn tasks_cache_get(t: Tr) -> Result<Option<String>> {
+  t.tasks_cache_get()
 }
 
 /// ADR-0010: apps instaladas y abiertas para el selector de apps ocultas. Todo local.

@@ -166,6 +166,8 @@ pub fn run() {
       commands::team_policy_set,
       commands::installed_apps,
       commands::notifications_status,
+      commands::tasks_cache_put,
+      commands::tasks_cache_get,
     ])
     .build(context)
     .expect("error while building tauri application");

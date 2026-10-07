@@ -32,6 +32,8 @@ const CLOSURE_MIN_GAP: Duration = Duration::minutes(2);
 const MAX_TEAM_RULES: usize = 500;
 /// Una sesión de Supabase ocupa unos pocos KB; esto es solo un tope de seguridad.
 const MAX_SESSION_BYTES: usize = 64 * 1024;
+/// Tope de la copia local de tareas (spec F3).
+const MAX_TASKS_CACHE_BYTES: usize = 2 * 1024 * 1024;
 
 const KEY_ACTIVE_TEAM: &str = "active_team_id";
 const KEY_ACTIVE_USER: &str = "active_user_id";
@@ -720,6 +722,29 @@ impl Tracker {
   pub fn session_clear(&self) -> Result<()> {
     self.lock()?.store.setting_delete(KEY_SESSION)
   }
+
+  // ---- F3: copia local de tareas (PT-09) ----
+
+  /// Guarda la lista tal cual para el equipo y la cuenta activos; sin ellos no hace nada.
+  pub fn tasks_cache_put(&self, now: DateTime<Utc>, json: &str) -> Result<()> {
+    if json.len() > MAX_TASKS_CACHE_BYTES {
+      return Err("La lista de tareas es demasiado grande para guardarla en el equipo.".into());
+    }
+    serde_json::from_str::<serde_json::Value>(json).map_err(|_| "La copia de tareas no es JSON válido.")?;
+    let g = self.lock()?;
+    match &g.active_team {
+      Some(team) => g.store.tasks_cache_put(now, team, json),
+      None => Ok(()),
+    }
+  }
+
+  pub fn tasks_cache_get(&self) -> Result<Option<String>> {
+    let g = self.lock()?;
+    match &g.active_team {
+      Some(team) => g.store.tasks_cache_get(team),
+      None => Ok(None),
+    }
+  }
 }
 
 #[cfg(test)]
@@ -1031,6 +1056,30 @@ mod tests {
     // Y su Mi día no muestra lo de Ana.
     let d = day(&t, at(13, 0, 1));
     assert!(d.blocks.iter().all(|b| b.app_name != "code"));
+  }
+
+  #[test]
+  fn the_tasks_copy_belongs_to_the_account_and_team() {
+    // AC-17: la copia de Ana no se muestra a Beto en el mismo PC, ni sin equipo.
+    let t = tracker();
+    t.active_team_set(at(12, 0, 0), Some(TEAM), Some(ANA)).unwrap();
+    t.tasks_cache_put(at(12, 0, 1), r#"{"tasks":[1]}"#).unwrap();
+    assert_eq!(t.tasks_cache_get().unwrap().as_deref(), Some(r#"{"tasks":[1]}"#));
+    t.active_team_set(at(12, 0, 2), Some(TEAM), Some(BETO)).unwrap();
+    assert_eq!(t.tasks_cache_get().unwrap(), None);
+    t.active_team_set(at(12, 0, 3), None, None).unwrap();
+    t.tasks_cache_put(at(12, 0, 4), "{}").unwrap();
+    assert_eq!(t.tasks_cache_get().unwrap(), None);
+    t.active_team_set(at(12, 0, 5), Some(TEAM), Some(ANA)).unwrap();
+    assert_eq!(t.tasks_cache_get().unwrap().as_deref(), Some(r#"{"tasks":[1]}"#));
+  }
+
+  #[test]
+  fn the_tasks_copy_rejects_invalid_or_huge_text() {
+    let t = tracker();
+    t.active_team_set(at(12, 0, 0), Some(TEAM), Some(ANA)).unwrap();
+    assert!(t.tasks_cache_put(at(12, 0, 1), "no es json").is_err());
+    assert!(t.tasks_cache_put(at(12, 0, 1), &format!("\"{}\"", "x".repeat(MAX_TASKS_CACHE_BYTES))).is_err());
   }
 
   #[test]
