@@ -5,6 +5,7 @@
 import { createClient, type SupabaseClient, type SupportedStorage, type User } from '@supabase/supabase-js';
 import { z } from 'zod';
 import type { Bridge, SyncBlock, SyncClosure, SyncEntry, TeamRule } from '@/bridge/contract';
+import type { Database } from '@/lib/database.types';
 import {
   CloudError,
   DEFAULT_WORKDAY,
@@ -126,7 +127,9 @@ const TeamRowSchema = z.object({
 });
 
 export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string): Cloud {
-  const client: SupabaseClient = createClient(url, anonKey, {
+  // Tipado con los tipos generados de la base (npm run db:types): nombres de tablas, columnas y funciones
+  // se comprueban al compilar. Las respuestas se siguen validando con zod (ARQUITECTURA §5).
+  const client: SupabaseClient<Database> = createClient<Database>(url, anonKey, {
     auth: {
       storage: bridgeStorage(bridge),
       persistSession: true,
@@ -135,7 +138,8 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
     },
   });
   const auth = client.auth;
-  const rpc = (fn: string, args: Record<string, unknown> = {}) => run(client.rpc(fn, args));
+  type Fn = keyof Database['public']['Functions'];
+  const rpc = <F extends Fn>(fn: F, args?: Database['public']['Functions'][F]['Args']) => run(client.rpc(fn, args));
 
   const requireUser = async () => {
     const { data } = await auth.getSession();

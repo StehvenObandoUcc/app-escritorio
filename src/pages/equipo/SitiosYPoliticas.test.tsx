@@ -102,6 +102,6 @@ describe('Sitios y políticas (ADR-0009)', () => {
     const active = vi.spyOn(bridge, 'activeTeamSet');
     renderWithSession(<EquipoPage />, { path: '/equipo', cloud, bridge });
     expect(await screen.findByRole('button', { name: 'Aceptar la versión nueva' })).toBeInTheDocument();
-    await waitFor(() => expect(active).toHaveBeenLastCalledWith(null));
+    await waitFor(() => expect(active).toHaveBeenLastCalledWith(null, expect.any(String)));
   });
 });

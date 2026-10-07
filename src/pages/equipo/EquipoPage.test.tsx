@@ -36,12 +36,12 @@ describe('Equipo (EQ-01 a EQ-08, PS-02)', () => {
 
     expect(await screen.findByRole('heading', { name: 'Antes de compartir datos con Estudio Norte' })).toBeInTheDocument();
     // Sin consentimiento, Rust no recibe equipo: nada de lo nuevo se sube.
-    await waitFor(() => expect(activeTeam).toHaveBeenLastCalledWith(null));
+    await waitFor(() => expect(activeTeam).toHaveBeenLastCalledWith(null, expect.any(String)));
 
     await acceptConsent('Aceptar y empezar a compartir');
     const [team] = await cloud.myTeams();
     expect(team).toMatchObject({ name: 'Estudio Norte', role: 'owner', consentVersion: CONSENT_VERSION });
-    await waitFor(() => expect(activeTeam).toHaveBeenLastCalledWith(team!.id));
+    await waitFor(() => expect(activeTeam).toHaveBeenLastCalledWith(team!.id, expect.any(String)));
     expect(await screen.findByRole('list', { name: 'Miembros del equipo' })).toHaveTextContent('Ana (tú)');
   });
 
@@ -154,8 +154,8 @@ describe('Equipo (EQ-01 a EQ-08, PS-02)', () => {
     const status = await screen.findByRole('region', { name: 'Sincronización' });
     expect(await within(status).findByText(/Como observador, tu actividad no se comparte/)).toBeInTheDocument();
     expect(within(status).queryByText('Error')).not.toBeInTheDocument();
-    await waitFor(() => expect(active).toHaveBeenLastCalledWith(null));
-    expect(active).not.toHaveBeenCalledWith(team);
+    await waitFor(() => expect(active).toHaveBeenLastCalledWith(null, expect.any(String)));
+    expect(active).not.toHaveBeenCalledWith(team, expect.anything());
   });
 
   it('expulsar pide confirmación y avisa qué se borra (AC-12)', async () => {
@@ -205,9 +205,9 @@ describe('Equipo (EQ-01 a EQ-08, PS-02)', () => {
     const bridge = createMockBridge();
     const activeTeam = vi.spyOn(bridge, 'activeTeamSet');
     renderWithSession(<EquipoPage />, { path: '/equipo', cloud, bridge });
-    await waitFor(() => expect(activeTeam).toHaveBeenLastCalledWith(a));
+    await waitFor(() => expect(activeTeam).toHaveBeenLastCalledWith(a, expect.any(String)));
     await userEvent.selectOptions(await screen.findByLabelText('Equipo activo'), b);
-    await waitFor(() => expect(activeTeam).toHaveBeenLastCalledWith(b));
+    await waitFor(() => expect(activeTeam).toHaveBeenLastCalledWith(b, expect.any(String)));
     expect(screen.getByText('Equipo B', { selector: 'p' })).toBeInTheDocument();
   });
 
@@ -217,7 +217,7 @@ describe('Equipo (EQ-01 a EQ-08, PS-02)', () => {
     await cloud.giveConsent(team, CONSENT_VERSION);
     cloud.debug.setOffline(true);
     const bridge = createMockBridge();
-    await bridge.activeTeamSet(team);
+    await bridge.activeTeamSet(team, id);
     await bridge.timeEntryAdd('2026-10-05T14:00:00Z', '2026-10-05T15:00:00Z');
     renderWithSession(<EquipoPage />, { path: '/equipo', cloud, bridge });
     const status = await screen.findByRole('region', { name: 'Sincronización' });

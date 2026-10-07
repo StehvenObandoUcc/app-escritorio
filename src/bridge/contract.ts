@@ -225,8 +225,11 @@ export interface Bridge {
   sessionSet(json: string): Promise<void>;
   sessionClear(): Promise<void>;
 
-  /** Equipo al que se asignan las filas nuevas (ADR-0007). Solo con consentimiento; si no, `null`. */
-  activeTeamSet(teamId: string | null): Promise<void>;
+  /**
+   * Equipo y cuenta de las filas nuevas (ADR-0007, ADR-0013). El equipo solo con consentimiento (si no,
+   * `null`); la cuenta es la que tiene sesión (`null` al cerrarla). Lo de una cuenta nunca se sube con otra.
+   */
+  activeTeamSet(teamId: string | null, userId: string | null): Promise<void>;
   /** Registros del equipo activo sin subir, sin títulos. */
   syncPending(limit: number): Promise<SyncBatch>;
   syncMarkSynced(kind: SyncKind, ids: string[]): Promise<void>;

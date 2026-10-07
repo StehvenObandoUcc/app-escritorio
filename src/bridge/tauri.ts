@@ -52,8 +52,8 @@ export function createTauriBridge(): Bridge {
     sessionClear: async () => {
       await invoke('session_clear');
     },
-    activeTeamSet: async (teamId) => {
-      await invoke('active_team_set', { teamId });
+    activeTeamSet: async (teamId, userId) => {
+      await invoke('active_team_set', { teamId, userId });
     },
     syncPending: async (limit) => SyncBatchSchema.parse(await invoke('sync_pending', { limit })),
     syncMarkSynced: async (kind, ids) => {

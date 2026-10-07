@@ -44,7 +44,7 @@ describe('motor de sincronización', () => {
   it('sube las entradas del equipo activo y las marca como subidas (AC-15)', async () => {
     const { cloud, ctx } = setup();
     const bridge = createMockBridge();
-    await bridge.activeTeamSet(ctx.teamId);
+    await bridge.activeTeamSet(ctx.teamId, ctx.userId);
     await bridge.timeEntryAdd('2026-10-05T14:00:00Z', '2026-10-05T15:00:00Z');
     const engine = new SyncEngine({ bridge, cloud, setTimer: () => () => {} });
     engine.setContext(ctx);
@@ -74,7 +74,7 @@ describe('motor de sincronización', () => {
   it('sin red queda pendiente y reintenta con espera creciente hasta 5 min (AC-17)', async () => {
     const { cloud, ctx } = setup();
     const bridge = createMockBridge();
-    await bridge.activeTeamSet(ctx.teamId);
+    await bridge.activeTeamSet(ctx.teamId, ctx.userId);
     await bridge.timeEntryAdd('2026-10-05T14:00:00Z', '2026-10-05T15:00:00Z');
     const timers: number[] = [];
     const engine = new SyncEngine({ bridge, cloud, setTimer: (_fn, ms) => (timers.push(ms), () => {}) });
@@ -112,7 +112,7 @@ describe('motor de sincronización', () => {
   it('si el servidor lo rechaza por permisos, muestra Error con qué revisar', async () => {
     const { cloud, ctx } = setup();
     const bridge = createMockBridge();
-    await bridge.activeTeamSet(ctx.teamId);
+    await bridge.activeTeamSet(ctx.teamId, ctx.userId);
     await bridge.timeEntryAdd('2026-10-05T14:00:00Z', '2026-10-05T15:00:00Z');
     const engine = new SyncEngine({ bridge, cloud, setTimer: () => () => {} });
     engine.setContext({ ...ctx, userId: cloud.debug.addAccount('nadie@pulso.test', 'secreto-123', 'Nadie') });
