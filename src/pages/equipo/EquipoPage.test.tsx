@@ -141,6 +141,23 @@ describe('Equipo (EQ-01 a EQ-08, PS-02)', () => {
     expect(screen.queryByText('Ana')).not.toBeInTheDocument();
   });
 
+  it('el observador no sube actividad: no recibe equipo en Rust y el estado lo explica, sin error', async () => {
+    const cloud = createMockCloud();
+    const ana = cloud.debug.addAccount('ana@pulso.test', 'secreto-123', 'Ana');
+    const team = cloud.debug.addTeam('Equipo A', ana);
+    const dani = cloud.debug.addAccount('dani@pulso.test', 'secreto-123', 'Dani');
+    cloud.debug.addMember(team, dani, 'viewer');
+    await cloud.signIn('dani@pulso.test', 'secreto-123');
+    const bridge = createMockBridge();
+    const active = vi.spyOn(bridge, 'activeTeamSet');
+    renderWithSession(<EquipoPage />, { path: '/equipo', cloud, bridge });
+    const status = await screen.findByRole('region', { name: 'Sincronización' });
+    expect(await within(status).findByText(/Como observador, tu actividad no se comparte/)).toBeInTheDocument();
+    expect(within(status).queryByText('Error')).not.toBeInTheDocument();
+    await waitFor(() => expect(active).toHaveBeenLastCalledWith(null));
+    expect(active).not.toHaveBeenCalledWith(team);
+  });
+
   it('expulsar pide confirmación y avisa qué se borra (AC-12)', async () => {
     const { cloud, id } = await signedIn();
     const team = cloud.debug.addTeam('Equipo A', id);
