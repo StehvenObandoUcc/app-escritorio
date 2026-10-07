@@ -259,6 +259,27 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string
+          id: string
+          timezone: string
+        }
+        Insert: {
+          created_at?: string
+          display_name: string
+          id: string
+          timezone?: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string
+          id?: string
+          timezone?: string
+        }
+        Relationships: []
+      }
       project_members: {
         Row: {
           created_at: string
@@ -322,27 +343,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      profiles: {
-        Row: {
-          created_at: string
-          display_name: string
-          id: string
-          timezone: string
-        }
-        Insert: {
-          created_at?: string
-          display_name: string
-          id: string
-          timezone?: string
-        }
-        Update: {
-          created_at?: string
-          display_name?: string
-          id?: string
-          timezone?: string
-        }
-        Relationships: []
       }
       tasks: {
         Row: {
@@ -529,7 +529,15 @@ export type Database = {
         Args: { p_code: string; p_consent_version: string; p_id: string }
         Returns: string
       }
+      assert_assignee: {
+        Args: { p_assignee: string; p_project: string }
+        Returns: undefined
+      }
+      assert_project_open: { Args: { p_project: string }; Returns: undefined }
       caller_email: { Args: never; Returns: string }
+      can_manage_project: { Args: { p_project: string }; Returns: boolean }
+      can_see_project: { Args: { p_project: string }; Returns: boolean }
+      clean_labels: { Args: { p_labels: string[] }; Returns: string[] }
       create_project: {
         Args: { p_name: string; p_team: string }
         Returns: string
@@ -600,6 +608,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      project_role: { Args: { p_project: string }; Returns: string }
       project_tasks: {
         Args: { p_project: string }
         Returns: {
@@ -657,6 +666,7 @@ export type Database = {
         Returns: undefined
       }
       shares_team_with: { Args: { p_user: string }; Returns: boolean }
+      task_seconds: { Args: { p_task: string }; Returns: number }
       team_activity_summary: {
         Args: { p_from: string; p_team: string; p_to: string }
         Returns: {
@@ -699,6 +709,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      valid_labels: { Args: { p_labels: string[] }; Returns: boolean }
       write_audit: {
         Args: {
           p_action: string
