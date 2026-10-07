@@ -1,7 +1,7 @@
 # Spec F3 · Proyectos y tareas
 
 Funcionalidades: PT-01 a PT-09, SY-04, TA-05 (tarea del temporizador)
-Estado: borrador (7 oct). Las decisiones de abajo se confirman al aprobar.
+Estado: borrador v2 (7 oct). La v1 se probó el 7 oct; la v2 (ADR-0014, ADR-0015) responde a esa prueba.
 
 ## Objetivo
 Al terminar, un equipo organiza su trabajo en proyectos con tareas, en lista y en tablero. Cada persona inicia el
@@ -88,6 +88,34 @@ Salida (D-8)
 | A · Rust | `src-tauri/**` | `tasks_cache_put` y `tasks_cache_get`; migración local 5; pruebas de AC-17 |
 | B · Datos | `supabase/migrations/**`, `supabase/tests/**`, `src/lib/database.types.ts` | Migración con tablas, funciones y políticas; pruebas de AC-1 a AC-8, AC-11 a AC-14, AC-16 y AC-18 |
 | C · Interfaz | `src/**`, `docs/**` | Página *Tareas*: proyectos, miembros, lista con filtros, tablero, detalle, avance, temporizador sobre la tarea y modo sin conexión |
+
+## Versión 2 (tras la prueba del 7 oct, ADR-0014 y ADR-0015)
+
+Reemplaza D-2, D-5, D-9, D-11 y D-12 donde contradigan:
+- D-2 v2: el colaborador crea tareas y subtareas para sí o sin responsable, trabaja en las suyas y en las que apoya, y las envía a revisión.
+- D-5 v2: se puede asignar a cualquier persona del equipo que no sea viewer. Si no está en el proyecto, quien gestiona la añade como `contributor`.
+- D-11 v2: el tablero tiene 4 columnas (Por hacer, En curso, En revisión, Hecha).
+- D-12 v2: sigue sin borrado. A *Hecha* solo se llega aprobando una revisión.
+- D-14: proyectos en `/proyectos` y `/proyectos/:id` (la selección vive en la URL); `/tareas` es *Mis tareas*.
+
+Criterios nuevos:
+- AC-19 Una tarea tiene tipo; una subtarea no puede tener subtareas ni cambiar de proyecto.
+- AC-20 El avance de una tarea madre suma el tiempo y las subtareas hechas.
+- AC-21 Asignar a alguien del equipo que no está en el proyecto lo añade como colaborador; a un viewer, no.
+- AC-22 El líder gestiona los apoyos; el responsable solo si la tarea lo permite.
+- AC-23 Nadie pone *Hecha* a mano.
+- AC-24 Enviar a revisión exige el formulario del proyecto (obligatorios) y todos los criterios cumplidos; solo el responsable o un apoyo pueden enviarla.
+- AC-25 Aprueban el revisor pedido, el líder o owner/admin; quien envía no se aprueba a sí mismo, salvo líder u owner/admin. *Pedir cambios* devuelve a En curso con comentario.
+- AC-26 Aprobar fija `completed_at`; empezar fija `started_at`.
+- AC-27 Cada cambio queda en el historial con quién y cuándo.
+- AC-28 La evidencia en archivos solo la ven quienes ven el proyecto.
+- AC-29 Una sola lectura (`team_work`) trae todo el trabajo visible y sirve de copia sin conexión.
+- AC-30 La estimación se escribe con unidad y se muestra en días y horas.
+- AC-31 Tras subir un temporizador, el tiempo de la tarea se actualiza solo.
+- AC-32 Volver a un proyecto lo muestra a él, no otro.
+- AC-33 Archivar pide confirmación; no se inicia el temporizador en una tarea hecha.
+- AC-34 Toda la app se usa en español o en inglés y el cambio es inmediato.
+- AC-35 Todo mensaje de error del servidor y de Rust tiene traducción.
 
 ## Fuera de alcance
 - Editar tareas sin conexión (PT-10, F8).
