@@ -27,8 +27,19 @@ const addEntry = (q: Query, team: string, user: string, task: string | null, fro
     [randomUUID(), team, user, minsAgo(from), to === null ? null : minsAgo(to), task],
   );
 
-const visibleProjects = (user: string) =>
-  db.as(user, (q) => q<{ name: string }>('select name from my_projects($1)', [teamA])).then((r) => r.map((p) => p.name));
+/** Lectura única del trabajo visible (ADR-0014). */
+interface Work {
+  projects: { id: string; name: string; archivedAt: string | null; tasksTotal: number; tasksDone: number; loggedSeconds: number; estimateMinutes: number }[];
+  tasks: (Record<string, unknown> & { id: string; projectId: string; title: string; assigneeId: string | null; loggedSeconds: number })[];
+  members: Record<string, { userId: string; role: string }[]>;
+}
+const work = (user: string, team = teamA) => db.as(user, (q) => q<{ w: Work }>('select team_work($1) as w', [team])).then((r) => r[0]!.w);
+const visibleProjects = (user: string) => work(user).then((w) => w.projects.map((p) => p.name));
+/** Envía a revisión y aprueba (a «Hecha» solo se llega así). */
+const finish = async (user: string, task: string) => {
+  const review = (await db.as(user, (q) => q<{ id: string }>(`select submit_for_review($1, '{"summary": "listo"}') as id`, [task])))[0]!.id;
+  await db.as(user, (q) => q('select review_task($1, true)', [review]));
+};
 
 beforeAll(async () => {
   db = await createTestDb();
@@ -55,7 +66,7 @@ afterAll(() => db.close());
 describe('proyectos (filas 16 y 17)', () => {
   it('owner y admin crean proyectos y quedan como lead (AC-1)', async () => {
     const id = (await db.as(beto, (q) => q<{ id: string }>("select create_project($1, 'Interno') as id", [teamA])))[0]!.id;
-    const members = await db.as(beto, (q) => q<{ user_id: string; role: string }>('select user_id, role from project_member_list($1)', [id]));
+    const members = (await work(beto)).members[id]!.map((m) => ({ user_id: m.userId, role: m.role }));
     expect(members).toEqual([{ user_id: beto, role: 'lead' }]);
   });
 
@@ -72,7 +83,7 @@ describe('proyectos (filas 16 y 17)', () => {
     expect(await visibleProjects(vero)).toEqual([]);
     expect(await visibleProjects(eva)).toEqual([]);
     expect(await db.as(fede, (q) => q('select id from tasks'))).toEqual([]);
-    expect(await failure(() => db.as(eva, (q) => q('select * from project_tasks($1)', [project])))).toMatch(/No permitido/);
+    expect((await work(eva)).tasks).toEqual([]);
   });
 
   it('lead, owner y admin gestionan miembros; un contributor no; un viewer no entra (AC-3)', async () => {
@@ -91,8 +102,7 @@ describe('proyectos (filas 16 y 17)', () => {
     expect(await failure(() => db.as(caro, (q) => q('select set_project_archived($1, true)', [id])))).toMatch(/No permitido/);
     await db.as(beto, (q) => q('select set_project_archived($1, true)', [id]));
     expect(await failure(() => db.as(caro, (q) => createTask(q, id, 'Nueva')))).toMatch(/archivado/);
-    const row = await db.as(caro, (q) => q<{ archived_at: string | null }>('select archived_at from my_projects($1) where id = $2', [teamA, id]));
-    expect(row[0]!.archived_at).not.toBeNull();
+    expect((await work(caro)).projects.find((p) => p.id === id)!.archivedAt).not.toBeNull();
     await db.as(ana, (q) => q('select set_project_archived($1, false)', [id]));
     await db.as(caro, (q) => createTask(q, id, 'Nueva'));
   });
@@ -106,21 +116,21 @@ describe('proyectos (filas 16 y 17)', () => {
 describe('tareas (filas 18 y 19)', () => {
   it('un lead crea una tarea con todos los campos (AC-5)', async () => {
     const id = await db.as(caro, (q) => createTask(q, project, 'Portada', dani, 120));
-    const [task] = await db.as(dani, (q) => q('select * from project_tasks($1) where id = $2', [project, id]));
+    const task = (await work(dani)).tasks.find((t) => t.id === id);
     expect(task).toMatchObject({
       title: 'Portada',
       description: 'descripción',
-      assignee_id: dani,
+      assigneeId: dani,
       status: 'todo',
       labels: ['diseño', 'ui'],
-      estimate_minutes: 120,
-      logged_seconds: 0,
+      estimateMinutes: 120,
+      loggedSeconds: 0,
+      dueDate: '2026-10-20',
     });
-    expect(String(task!.due_date)).toContain('2026');
   });
 
   it('la tarea asignada aparece entre las de esa persona (AC-6)', async () => {
-    const mine = await db.as(dani, (q) => q<{ title: string }>('select title from project_tasks($1) where assignee_id = $2', [project, dani]));
+    const mine = (await work(dani)).tasks.filter((t) => t.assigneeId === dani);
     expect(mine.map((t) => t.title)).toContain('Portada');
   });
 
@@ -134,11 +144,11 @@ describe('tareas (filas 18 y 19)', () => {
     const own = await db.as(caro, (q) => createTask(q, project, 'De Dani', dani));
     const other = await db.as(caro, (q) => createTask(q, project, 'De Caro', caro));
     await db.as(dani, (q) => q("select set_task_status($1, 'doing')", [own]));
-    expect(await failure(() => db.as(dani, (q) => q("select set_task_status($1, 'done')", [other])))).toMatch(/No permitido/);
+    expect(await failure(() => db.as(dani, (q) => q("select set_task_status($1, 'doing')", [other])))).toMatch(/No permitido/);
     expect(
       await failure(() => db.as(dani, (q) => q("select update_task($1, 'Cambio', 'todo', '', $2)", [own, dani]))),
     ).toMatch(/No permitido/);
-    await db.as(caro, (q) => q("select set_task_status($1, 'done')", [other]));
+    await db.as(caro, (q) => q("select set_task_status($1, 'doing')", [other]));
     await db.as(caro, (q) => q("select update_task($1, 'Cambio', 'doing', 'x', $2, null, '{}', 30)", [own, caro]));
     const [row] = await db.as(ana, (q) => q('select title, assignee_id, status from tasks where id = $1', [own]));
     expect(row).toEqual({ title: 'Cambio', assignee_id: caro, status: 'doing' });
@@ -151,8 +161,9 @@ describe('tareas (filas 18 y 19)', () => {
   });
 
   it('solo un miembro del proyecto puede ser responsable (AC-8)', async () => {
-    expect(await failure(() => db.as(caro, (q) => createTask(q, project, 'X', fede)))).toMatch(/miembro del proyecto/);
-    expect(await failure(() => db.as(ana, (q) => createTask(q, project, 'X', eva)))).toMatch(/miembro del proyecto/);
+    // v2: a alguien del equipo fuera del proyecto se le añade al asignarlo (AC-21); a un viewer o a alguien de fuera, no.
+    expect(await failure(() => db.as(caro, (q) => createTask(q, project, 'X', vero)))).toMatch(/viewer/);
+    expect(await failure(() => db.as(ana, (q) => createTask(q, project, 'X', eva)))).toMatch(/viewer/);
   });
 
   it('gana la última modificación y updated_at lo pone el servidor (AC-16, SY-04)', async () => {
@@ -173,27 +184,22 @@ describe('avance y tiempo (PT-07, PT-08, fila 13 «P»)', () => {
     const id = (await db.as(ana, (q) => q<{ id: string }>("select create_project($1, 'Medido') as id", [teamA])))[0]!.id;
     await db.as(ana, (q) => q("select set_project_member($1, $2, 'contributor')", [id, dani]));
     estimated = await db.as(ana, (q) => createTask(q, id, 'Con estimación', dani, 60));
-    const done = await db.as(ana, (q) => createTask(q, id, 'Hecha', null, 30));
-    await db.as(ana, (q) => q("select set_task_status($1, 'done')", [done]));
+    const done = await db.as(ana, (q) => createTask(q, id, 'Hecha', ana, 30));
+    await finish(ana, done);
     await db.as(dani, (q) => addEntry(q, teamA, dani, estimated, 50, 30));
     await db.as(ana, (q) => addEntry(q, teamA, ana, estimated, 20, 10));
     await db.as(ana, (q) => addEntry(q, teamA, ana, done, 9, 4));
 
-    const tasks = await db.as(dani, (q) => q<{ title: string; logged_seconds: bigint }>('select title, logged_seconds from project_tasks($1)', [id]));
-    const byTitle = Object.fromEntries(tasks.map((t) => [t.title, Number(t.logged_seconds)]));
+    const tasks = (await work(dani)).tasks.filter((t) => t.projectId === id);
+    const byTitle = Object.fromEntries(tasks.map((t) => [t.title, Number(t.loggedSeconds)]));
     expect(byTitle['Con estimación']).toBeCloseTo(30 * 60, -1);
     expect(byTitle['Hecha']).toBeCloseTo(5 * 60, -1);
 
-    const [proj] = await db.as(dani, (q) =>
-      q<{ tasks_total: bigint; tasks_done: bigint; logged_seconds: bigint; estimate_minutes: bigint }>(
-        'select tasks_total, tasks_done, logged_seconds, estimate_minutes from my_projects($1) where id = $2',
-        [teamA, id],
-      ),
-    );
-    expect(Number(proj!.tasks_total)).toBe(2);
-    expect(Number(proj!.tasks_done)).toBe(1);
-    expect(Number(proj!.estimate_minutes)).toBe(90);
-    expect(Number(proj!.logged_seconds)).toBe((byTitle['Con estimación'] ?? 0) + (byTitle['Hecha'] ?? 0));
+    const proj = (await work(dani)).projects.find((p) => p.id === id)!;
+    expect(proj.tasksTotal).toBe(2);
+    expect(proj.tasksDone).toBe(1);
+    expect(proj.estimateMinutes).toBe(90);
+    expect(proj.loggedSeconds).toBe((byTitle['Con estimación'] ?? 0) + (byTitle['Hecha'] ?? 0));
 
     // Fila 13 «P»: por persona, solo owner, admin y lead.
     const summary = await db.as(ana, (q) =>
