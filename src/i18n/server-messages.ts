@@ -54,6 +54,11 @@ export const SERVER_MESSAGES: Record<string, string> = {
   'Versión de consentimiento inválida': 'Invalid consent version',
   'Ya hay una invitación pendiente para ese correo': 'There is already a pending invitation for that email',
   'Ya perteneces a este equipo': 'You already belong to this team',
+  'El campo «Qué se hizo» debe existir y ser texto obligatorio': 'The “What was done” field must exist and be required text',
+  'La tarea ya está hecha': 'The task is already done',
+  'La tarea ya tiene responsable': 'The task already has an owner',
+  'Escribe el nombre exacto del proyecto para borrarlo': 'Type the exact project name to delete it',
+  'El archivo no se subió: inténtalo de nuevo': 'The file was not uploaded: try again',
   'El nombre debe tener entre 2 y 80 caracteres': 'The name must have between 2 and 80 characters',
   'El título debe tener entre 1 y 200 caracteres': 'The title must have between 1 and 200 characters',
   // ---- Rust ----

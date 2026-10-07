@@ -45,6 +45,10 @@ obliga a cambiar la migración y su prueba en el mismo cambio.
 | 28 | Aprobar o pedir cambios en una revisión (revisor pedido, o quien gestiona el proyecto; nadie se aprueba a sí mismo salvo líder u owner/admin) | ✔ | ✔ | P | S (si es el revisor pedido) | — | F3 |
 | 29 | Gestionar los apoyos de una tarea | ✔ | ✔ | P | S (responsable con permiso) | — | F3 |
 | 30 | Configurar el formulario de entrega del proyecto | ✔ | ✔ | P | — | — | F3 |
+| 31 | Tomar una tarea sin responsable | ✔ | ✔ | ✔ | ✔ (en sus proyectos) | — | F3 |
+| 32 | Completar una tarea directamente, con el formulario de entrega | ✔ | ✔ | P | — | — | F3 |
+| 33 | Borrar un proyecto (escribiendo su nombre) | ✔ | ✔ | — | — | — | F3 |
+| 34 | Borrar una tarea | ✔ | ✔ | P | — | — | F3 |
 
 ## Reglas de integridad
 

@@ -77,7 +77,7 @@ La interfaz muestra la etiqueta "Datos de ejemplo" siempre que usa el puente sim
 - Textos en español e inglés con `src/i18n` (ADR-0015): ningún texto visible escrito a mano en JSX (`npm run check:i18n`).
 - Igual que el puente, Supabase se usa solo a través de `src/cloud` (contrato `Cloud`: implementación real y simulada). Las páginas no llaman a `supabase-js` directamente.
 - Sin sesión no se entra a la app (F2): se muestra solo la pantalla de acceso (registro, inicio de sesión y recuperar contraseña), sin navegación. Cerrar sesión está en *Ajustes*. El sensor sigue registrando en el equipo; nada se sube sin sesión ni consentimiento.
-- Rutas (HashRouter), con sesión: `/mi-dia`, `/tareas` (*Mis tareas*, ADR-0014), `/proyectos` y `/proyectos/:id` (F3), `/equipo`, `/equipo/privacidad` (qué se mide y quién lo ve; F2), `/reportes`, `/ajustes`, `/dev/galeria` (solo desarrollo).
+- Rutas (HashRouter), con sesión: `/mi-dia`, `/tareas` (*Mis tareas*, ADR-0014), `/proyectos`, `/proyectos/:id` y `/proyectos/:id/tareas/:tarea` (F3), `/equipo`, `/equipo/privacidad` (qué se mide y quién lo ve; F2), `/reportes`, `/ajustes`, `/dev/galeria` (solo desarrollo).
 
 ## 6. Núcleo Rust: módulos y comandos (lista cerrada)
 
@@ -111,6 +111,7 @@ Comandos (nombres exactos; `src/bridge/contract.ts` es su espejo en TypeScript):
 | F2 | `team_policy_set(policy)` (ADR-0009, ADR-0010) | — (política del equipo: apps ocultas y avisos de sitio no permitido) |
 | F2 | `installed_apps()` (ADR-0010) | apps instaladas y abiertas para elegir cuáles ocultar; solo local |
 | F2 | `notifications_status()` (ADR-0011) | `{ windowsToastsEnabled }`: si Windows muestra notificaciones de apps |
+| F3 | `open_external(url)` (ADR-0017) | — (abre un enlace `https://` en el navegador del sistema) |
 | F3 | `tasks_cache_put(json)` · `tasks_cache_get()` | copia local de tareas del equipo y la cuenta activos (máx. 2 MB); `tasks_cache_get` devuelve `null` si no hay |
 | F4 | `ai_config_set(base_url, model, key)` · `ai_config_get()` · `ai_config_clear()` | `ai_config_get` devuelve `{base_url, model, has_key}`, **nunca la clave** |
 | F4 | `ai_chat(messages)` | texto de la respuesta |
@@ -121,7 +122,7 @@ Agregar un comando exige actualizar esta tabla, `contract.ts` y `mock.ts` en el 
 Seguridad de Tauri:
 - `src-tauri/capabilities/default.json` solo contiene lo necesario. Prohibidos los plugins `shell`, `fs` y `http` expuestos a la interfaz.
 - La interfaz no carga páginas remotas.
-- La política CSP se activa y se prueba en F6 (objetivo: `default-src 'self'`; conexiones solo a Supabase y al canal interno de Tauri).
+- La política CSP está activa desde F3 (ADR-0017): `default-src 'self'`; conexiones solo a Supabase y al canal interno de Tauri. F6 la comprueba con la app compilada.
 
 Presupuesto de rendimiento (se mide en F1 y F6): RAM en reposo < 120 MB, CPU media < 1 %, inicio < 2 s, instalador < 20 MB.
 
