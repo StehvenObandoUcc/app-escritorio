@@ -138,7 +138,7 @@ Resumen: 106 funcionalidades en total: 88 antes de la entrega y 18 después (TA-
 | PS-08 | Sesión y clave de IA en el almacén seguro del sistema | 23 | F2, F4 | No aparecen en archivos ni en el almacenamiento del navegador |
 | PS-09 | Comunicación cifrada (HTTPS) | 23 | F2 | Revisión de F6 |
 | PS-10 | Permisos mínimos de la app y política de contenido (CSP) | 23 | F6 | Revisión de F6 con la app real |
-| PS-11 | Sitios no permitidos por el equipo: se marcan como distracción, no se bloquean (ADR-0009) | 22 | F2 | El admin marca un sitio y el miembro lo ve «No permitido» |
+| PS-11 | Sitios no permitidos por el equipo: se marcan como distracción y avisan con sonido (frecuencia elegida por owner/admin); no se bloquean (ADR-0009, ADR-0010) | 22 | F2 | El admin marca un sitio; el miembro oye el aviso y lo ve «No permitido» |
 
 ## J. Sin conexión y sincronización (RF-26, RF-27)
 

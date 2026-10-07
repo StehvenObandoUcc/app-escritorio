@@ -269,7 +269,8 @@ previsto, sin margen: F2 empieza el martes 6.
 | Rust: sesión cifrada, `active_team_set` (ADR-0007), `sync_pending`, `sync_mark_synced`, `rules_set`, cierres | Hecho; 80 pruebas en verde |
 | Interfaz: acceso con código, equipos, invitaciones, consentimiento, perfil, privacidad, sincronización | Hecha contra la nube simulada; falta probarla con Supabase real |
 | Registro sin verificar el correo y código de invitación (ADR-0008) | Hecho y aplicado en `pulso-dev` |
-| Sitios por dominio, sitios no permitidos y política de apps ocultas (ADR-0009, S-5) | Hecho con pruebas; falta aplicar `20261007000001` y probar en la app real |
+| Sitios por dominio, sitios no permitidos y política de apps ocultas (ADR-0009, S-5) | Hecho, aplicado y probado en la app real |
+| Avisos con sonido, reglas siempre al día, subida a los 15 s y selector de apps instaladas (ADR-0010) | Hecho con pruebas; falta aplicar `20261007000002` y probar en la app real |
 | Puerta G2 | Pendiente (jueves 8): dos cuentas reales, 30 min sin red, viewer y persona de otro equipo |
 
 Decisiones abiertas:

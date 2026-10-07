@@ -37,7 +37,7 @@ obliga a cambiar la migración y su prueba en el mismo cambio.
 | 20 | Generar un reporte personal | S | S | S | S | — | F4 |
 | 21 | Generar un reporte de proyecto | ✔ | ✔ | P | — | — | F4 |
 | 22 | Generar un reporte de equipo | ✔ | ✔ | — | — | ver los ya generados | F4 |
-| 23 | Editar reglas de clasificación y políticas de privacidad | ✔ | ✔ | — | — | — | F2 (sitios y apps ocultas, ADR-0009) / F5 (resto) |
+| 23 | Editar reglas de clasificación y políticas de privacidad | ✔ | ✔ | — | — | — | F2 (sitios, avisos y apps ocultas, ADR-0009/0010) / F5 (resto) |
 | 24 | Ver quién está activo ahora | ✔ | ✔ | P | si el equipo lo permite | — | F5 |
 | 25 | Exportar los datos propios | S | S | S | S | S | F5 |
 | 26 | Ver los cierres de Pulso dentro de la jornada (A-1) | ✔ | ✔ | S | S | — | F2 |
