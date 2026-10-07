@@ -46,6 +46,7 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
   const [hidden, setHidden] = useState<string[]>([]);
   const [recent, setRecent] = useState<AppCandidate[]>([]);
   const [installed, setInstalled] = useState<AppCandidate[]>([]);
+  const [toastsOff, setToastsOff] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -65,6 +66,11 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
       });
     recentApps(bridge)
       .then((apps) => !cancelled && setRecent(apps))
+      .catch(() => {});
+    // ADR-0011: si Windows tiene las notificaciones apagadas, se explica qué pasará con los avisos.
+    bridge
+      .notificationsStatus()
+      .then((s) => !cancelled && setToastsOff(!s.windowsToastsEnabled))
       .catch(() => {});
     // ADR-0010: apps instaladas y abiertas ahora (registro de Windows y ventanas visibles). Todo local.
     bridge
@@ -116,6 +122,12 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
   return (
     <PageLayout title="Ajustes" subtitle="Cuenta y seguimiento en este equipo" actions={sampleTag}>
       <PerfilSection />
+      {toastsOff && (
+        <p role="note" className="rounded-md bg-sunken p-3 text-sm text-fg">
+          Las notificaciones de Windows están apagadas: si entras a un sitio no permitido, Pulso sonará y su icono parpadeará en la
+          barra de tareas, pero no verás el mensaje. Para verlo, actívalas en Configuración → Sistema → Notificaciones.
+        </p>
+      )}
       {loadError ? (
         <EmptyState
           title="No se pudieron leer los ajustes"

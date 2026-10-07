@@ -69,6 +69,14 @@ describe('Ajustes', () => {
     expect(screen.getByRole('list', { name: 'Ocultas ahora' })).toHaveTextContent('Spotify');
   });
 
+  it('avisa si Windows tiene las notificaciones apagadas (ADR-0011)', async () => {
+    const off: Bridge = { ...createMockBridge(), notificationsStatus: async () => ({ windowsToastsEnabled: false }) };
+    render(<AjustesPage bridge={off} />);
+    expect(await screen.findByText(/notificaciones de Windows están apagadas/)).toBeInTheDocument();
+    render(<AjustesPage bridge={createMockBridge()} />);
+    expect(screen.getAllByText(/notificaciones de Windows están apagadas/)).toHaveLength(1);
+  });
+
   it('si no puede leer los ajustes, lo explica', async () => {
     const bridge: Bridge = {
       ...createMockBridge(),

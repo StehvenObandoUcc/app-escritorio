@@ -174,6 +174,13 @@ export const InstalledAppSchema = z.object({
   source: z.enum(['open', 'installed']),
 });
 export type InstalledApp = z.infer<typeof InstalledAppSchema>;
+
+/** Estado de las notificaciones de Windows (ADR-0011). */
+export const NotificationsStatusSchema = z.object({
+  /** `false`: Windows tiene apagado «Recibir notificaciones de apps»; Pulso solo suena y parpadea. */
+  windowsToastsEnabled: z.boolean(),
+});
+export type NotificationsStatus = z.infer<typeof NotificationsStatusSchema>;
 export type TeamRule = z.infer<typeof TeamRuleSchema>;
 
 export interface Bridge {
@@ -222,4 +229,6 @@ export interface Bridge {
   teamPolicySet(policy: TeamPolicy): Promise<void>;
   /** Apps instaladas y con ventana abierta (ADR-0010). La lista nunca sale del equipo. */
   installedApps(): Promise<InstalledApp[]>;
+  /** Si Windows muestra notificaciones de apps (ADR-0011). */
+  notificationsStatus(): Promise<NotificationsStatus>;
 }

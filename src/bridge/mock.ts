@@ -224,6 +224,7 @@ export function createMockBridge(now: () => Date = () => new Date()): Bridge {
       rules.forEach((r) => TeamRuleSchema.parse(r));
     },
     teamPolicySet: async () => {},
+    notificationsStatus: async () => ({ windowsToastsEnabled: true }),
     // Datos de ejemplo: unas pocas apps instaladas y abiertas.
     installedApps: async () => [
       { process: 'slack', label: 'Slack', source: 'open' },
