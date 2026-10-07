@@ -74,9 +74,10 @@ La interfaz muestra la etiqueta "Datos de ejemplo" siempre que usa el puente sim
 - Capas y reglas: `docs/DISENO.md`. ESLint impide que una capa importe de otra superior.
 - Solo `src/pages`, `src/app` y `src/dev` usan el puente; los componentes de `src/ui` reciben datos por props.
 - Todo dato que llega del puente o de Supabase se valida con zod antes de usarse.
+- Textos en español e inglés con `src/i18n` (ADR-0015): ningún texto visible escrito a mano en JSX (`npm run check:i18n`).
 - Igual que el puente, Supabase se usa solo a través de `src/cloud` (contrato `Cloud`: implementación real y simulada). Las páginas no llaman a `supabase-js` directamente.
 - Sin sesión no se entra a la app (F2): se muestra solo la pantalla de acceso (registro, inicio de sesión y recuperar contraseña), sin navegación. Cerrar sesión está en *Ajustes*. El sensor sigue registrando en el equipo; nada se sube sin sesión ni consentimiento.
-- Rutas (HashRouter), con sesión: `/mi-dia`, `/tareas`, `/equipo`, `/equipo/privacidad` (qué se mide y quién lo ve; F2), `/reportes`, `/ajustes`, `/dev/galeria` (solo desarrollo).
+- Rutas (HashRouter), con sesión: `/mi-dia`, `/tareas` (*Mis tareas*, ADR-0014), `/proyectos` y `/proyectos/:id` (F3), `/equipo`, `/equipo/privacidad` (qué se mide y quién lo ve; F2), `/reportes`, `/ajustes`, `/dev/galeria` (solo desarrollo).
 
 ## 6. Núcleo Rust: módulos y comandos (lista cerrada)
 
@@ -101,7 +102,7 @@ Comandos (nombres exactos; `src/bridge/contract.ts` es su espejo en TypeScript):
 | F1 | `privacy_pause(minutes)` · `privacy_resume()` | `SensorStatus` |
 | F1 | `time_entry_add(start, end, task_id?)` · `time_entry_update(id, start, end, task_id?)` · `time_entry_delete(id)` | entrada (`add`) · nada (`update`, `delete`) |
 | F1 | `time_entries(date)` (ADR-0005) | entradas de tiempo del día local |
-| F1 | `settings_get()` · `settings_set(patch)` | ajustes locales (umbral de inactividad, ocultar apps) |
+| F1 | `settings_get()` · `settings_set(patch)` | ajustes locales (umbral de inactividad, ocultar apps, idioma `es`/`en` desde F3, ADR-0015) |
 | F2 | `session_get()` · `session_set(json)` · `session_clear()` | sesión de Supabase |
 | F2 | `active_team_set(team_id?, user_id?)` (ADR-0007, ADR-0013) | — (equipo y cuenta de las filas nuevas) |
 | F2 | `sync_pending(limit)` | bloques, entradas y cierres del equipo activo sin subir, **sin títulos** |
@@ -140,7 +141,8 @@ Presupuesto de rendimiento (se mide en F1 y F6): RAM en reposo < 120 MB, CPU med
 | `time_entries` | inicio, fin, tarea opcional, origen (`timer`/`manual`) | F2 ✔ |
 | `classification_rules` | prioridad, tipo (`process`/`title`/`domain`), patrón, categoría, `not_allowed` (sitio no permitido: se marca, no se bloquea) | F2 ✔ |
 | `projects`, `project_members` | proyecto (archivable) y rol de proyecto (`lead`/`contributor`) | F3 (migración `20261008000001`) |
-| `tasks` | título, descripción, responsable, estado (`todo`/`doing`/`done`), fecha límite, etiquetas, estimación; `time_entries.task_id` apunta aquí | F3 (migración `20261008000001`) |
+| `tasks` | título, descripción, tipo, tarea madre (un nivel), responsable, estado (`todo`/`doing`/`review`/`done`), fecha límite, etiquetas, estimación, inicio y fin; `time_entries.task_id` apunta aquí | F3 (`20261008000001`, v2 en `20261008000002`, ADR-0014) |
+| `task_collaborators`, `task_criteria`, `task_reviews`, `task_attachments`, `task_events` | apoyos, criterios de aceptación, revisiones con formulario y evidencia (Storage `task-evidence`) e historial | F3 (`20261008000002`) |
 | `report_runs` | alcance, periodo, hechos, narrativa, modo de IA, resultado de la validación | F4 |
 | `ai_usage` | contador diario de la IA gratuita | F4 |
 

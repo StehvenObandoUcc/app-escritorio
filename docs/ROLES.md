@@ -41,6 +41,10 @@ obliga a cambiar la migración y su prueba en el mismo cambio.
 | 24 | Ver quién está activo ahora | ✔ | ✔ | P | si el equipo lo permite | — | F5 |
 | 25 | Exportar los datos propios | S | S | S | S | S | F5 |
 | 26 | Ver los cierres de Pulso dentro de la jornada (A-1) | ✔ | ✔ | S | S | — | F2 |
+| 27 | Enviar una tarea a revisión (responsable o apoyo) | S | S | S | S | — | F3 |
+| 28 | Aprobar o pedir cambios en una revisión (revisor pedido, o quien gestiona el proyecto; nadie se aprueba a sí mismo salvo líder u owner/admin) | ✔ | ✔ | P | S (si es el revisor pedido) | — | F3 |
+| 29 | Gestionar los apoyos de una tarea | ✔ | ✔ | P | S (responsable con permiso) | — | F3 |
+| 30 | Configurar el formulario de entrega del proyecto | ✔ | ✔ | P | — | — | F3 |
 
 ## Reglas de integridad
 
