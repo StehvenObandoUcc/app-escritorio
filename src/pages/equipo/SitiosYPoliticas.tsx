@@ -1,3 +1,4 @@
+import { errorMessage, t } from '@/i18n';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Trash2 } from 'lucide-react';
 import { useMemo, useState, type FormEvent } from 'react';
@@ -9,7 +10,7 @@ import { formatShortDuration } from '@/lib/time';
 import { Button, Heading, ProgressBar, Select, Surface } from '@/ui/atoms';
 import { FormField, SegmentedControl } from '@/ui/molecules';
 
-const describe = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause));
+const describe = errorMessage;
 
 /** Lo que se escribe como sitio: se acepta una URL y se queda solo el dominio. */
 export function toDomain(input: string): string | null {
@@ -20,12 +21,12 @@ export function toDomain(input: string): string | null {
   return /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(host) ? host : null;
 }
 
-const REPEAT_LABEL = (m: number) => (m === 0 ? 'Solo al entrar' : `Cada ${m} min`);
+const REPEAT_LABEL = (m: number) => (m === 0 ? t('sites.onEnter') : t('sites.every', { n: m }));
 
 type Range = 'hoy' | 'semana';
-const RANGES: { value: Range; label: string }[] = [
-  { value: 'hoy', label: 'Hoy' },
-  { value: 'semana', label: 'Últimos 7 días' },
+const ranges = (): { value: Range; label: string }[] => [
+  { value: 'hoy', label: t('sites.today') },
+  { value: 'semana', label: t('sites.last7') },
 ];
 
 /**
@@ -72,7 +73,7 @@ export function SitiosYPoliticas({ team }: { team: MyTeam }) {
     e.preventDefault();
     const d = toDomain(domain);
     if (!d) {
-      setError('Escribe un sitio como youtube.com (sirve pegar la dirección completa: se guarda solo el dominio).');
+      setError(t('sites.domainError'));
       return;
     }
     void run(async () => {
@@ -84,7 +85,7 @@ export function SitiosYPoliticas({ team }: { team: MyTeam }) {
     });
   };
 
-  const names = new Map((members.data ?? []).map((m) => [m.userId, m.displayName ?? 'Persona sin nombre']));
+  const names = new Map((members.data ?? []).map((m) => [m.userId, m.displayName ?? t('common.noName')]));
   const byPerson = useMemo(() => {
     const map = new Map<string, { domain: string; seconds: number }[]>();
     for (const u of usage.data ?? []) {
@@ -100,10 +101,10 @@ export function SitiosYPoliticas({ team }: { team: MyTeam }) {
   const notAllowed = new Set((rules.data ?? []).filter((r) => r.notAllowed).map((r) => r.domain));
 
   return (
-    <Surface as="section" aria-label="Sitios y políticas" className="flex flex-col gap-5">
+    <Surface as="section" aria-label={t('sites.title')} className="flex flex-col gap-5">
       <div>
-        <Heading level={2}>Sitios y políticas</Heading>
-        <p className="mt-1 text-sm text-fg-muted">Solo lo ven propietarios y administradores. Se registra el dominio, nunca la página ni la búsqueda.</p>
+        <Heading level={2}>{t('sites.title')}</Heading>
+        <p className="mt-1 text-sm text-fg-muted">{t('sites.hint')}</p>
       </div>
 
       <label className="flex items-start gap-3">
@@ -120,16 +121,16 @@ export function SitiosYPoliticas({ team }: { team: MyTeam }) {
           }
         />
         <span>
-          <span className="block font-medium text-fg">Permitir que cada persona oculte apps</span>
+          <span className="block font-medium text-fg">{t('sites.allowHidden')}</span>
           <span className="block text-sm text-fg-muted">
-            Si lo desactivas, las apps se registran con su nombre desde ese momento. Lo que ya se ocultó no se puede recuperar.
+            {t('sites.allowHiddenHint')}
           </span>
         </span>
       </label>
 
       <div className="flex flex-col gap-3">
-        <Heading level={3}>Sitios no permitidos</Heading>
-        <p className="text-sm text-fg-muted">Cuentan como distracción y se marcan «No permitido». Pulso no los bloquea.</p>
+        <Heading level={3}>{t('sites.notAllowed')}</Heading>
+        <p className="text-sm text-fg-muted">{t('sites.notAllowedHint')}</p>
         <div className="flex flex-col gap-2 rounded-md bg-sunken p-3">
           <label className="flex items-start gap-3">
             <input
@@ -145,15 +146,15 @@ export function SitiosYPoliticas({ team }: { team: MyTeam }) {
               }
             />
             <span>
-              <span className="block font-medium text-fg">Avisar con sonido al entrar a un sitio no permitido</span>
-              <span className="block text-sm text-fg-muted">Notificación de Windows en el equipo de la persona. No se registra nada más.</span>
+              <span className="block font-medium text-fg">{t('sites.alert')}</span>
+              <span className="block text-sm text-fg-muted">{t('sites.alertHint')}</span>
             </span>
           </label>
           <div className="flex flex-wrap items-center gap-2 pl-7">
-            <span className="text-sm text-fg">Repetir el aviso si sigue en el sitio:</span>
+            <span className="text-sm text-fg">{t('sites.repeatLabel')}</span>
             <Select
               size="sm"
-              aria-label="Repetir el aviso"
+              aria-label={t('sites.repeat')}
               value={String(team.alertRepeatMinutes)}
               disabled={busy || !team.alertNotAllowed}
               onChange={(e) =>
@@ -168,14 +169,14 @@ export function SitiosYPoliticas({ team }: { team: MyTeam }) {
         </div>
         <form onSubmit={add} className="flex flex-wrap items-end gap-2" noValidate>
           <div className="min-w-0 flex-1">
-            <FormField label="Sitio" placeholder="youtube.com" value={domain} onChange={(e) => setDomain(e.target.value)} />
+            <FormField label={t('sites.site')} placeholder="youtube.com" value={domain} onChange={(e) => setDomain(e.target.value)} />
           </div>
           <Button type="submit" disabled={busy}>
-            Marcar como no permitido
+            {t('sites.mark')}
           </Button>
         </form>
         {(rules.data ?? []).filter((r) => r.notAllowed).length > 0 && (
-          <ul className="flex flex-col divide-y divide-line" aria-label="Sitios no permitidos">
+          <ul className="flex flex-col divide-y divide-line" aria-label={t('sites.notAllowed')}>
             {(rules.data ?? [])
               .filter((r) => r.notAllowed)
               .map((r) => (
@@ -194,7 +195,7 @@ export function SitiosYPoliticas({ team }: { team: MyTeam }) {
                       })
                     }
                   >
-                    Quitar
+                    {t('common.remove')}
                   </Button>
                 </li>
               ))}
@@ -210,30 +211,30 @@ export function SitiosYPoliticas({ team }: { team: MyTeam }) {
 
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <Heading level={3}>Tiempo por sitio y persona</Heading>
-          <SegmentedControl label="Periodo" options={RANGES} value={range} onChange={setRange} />
+          <Heading level={3}>{t('sites.usage')}</Heading>
+          <SegmentedControl label={t('sites.period')} options={ranges()} value={range} onChange={setRange} />
         </div>
         {usage.isPending ? (
           <p role="status" className="text-fg-muted">
-            Cargando…
+            {t('common.loading')}
           </p>
         ) : usage.error ? (
           <p role="alert" className="text-sm text-danger">
             {describe(usage.error)}
           </p>
         ) : byPerson.length === 0 ? (
-          <p className="text-sm text-fg-muted">Aún no hay sitios registrados en este periodo. Llegan cuando cada persona sincroniza.</p>
+          <p className="text-sm text-fg-muted">{t('sites.noUsage')}</p>
         ) : (
-          <ul className="flex flex-col gap-4" aria-label="Tiempo por sitio y persona">
+          <ul className="flex flex-col gap-4" aria-label={t('sites.usage')}>
             {byPerson.map(([userId, sites]) => (
               <li key={userId} className="flex flex-col gap-2">
-                <p className="font-medium text-fg">{names.get(userId) ?? 'Persona'}</p>
+                <p className="font-medium text-fg">{names.get(userId) ?? t('common.noName')}</p>
                 <ul className="flex flex-col gap-2">
                   {sites.slice(0, 8).map((s) => (
                     <li key={s.domain} className="flex flex-col gap-1">
                       <div className="flex flex-wrap items-center gap-2 text-sm">
                         <span className="min-w-0 flex-1 truncate text-fg">{s.domain}</span>
-                        {notAllowed.has(s.domain) && <span className="text-xs font-medium text-danger">No permitido</span>}
+                        {notAllowed.has(s.domain) && <span className="text-xs font-medium text-danger">{t('activity.notAllowed')}</span>}
                         <span className="text-fg-muted tabular-nums">{formatShortDuration(s.seconds)}</span>
                       </div>
                       <ProgressBar value={sites[0]!.seconds ? s.seconds / sites[0]!.seconds : 0} label={`${s.domain}: ${formatShortDuration(s.seconds)}`} fill={appColor(s.domain)} />

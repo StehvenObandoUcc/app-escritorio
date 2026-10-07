@@ -123,9 +123,28 @@ Criterios nuevos:
 - Arrastrar y soltar en el tablero (D-11).
 - Uso de IA por proyecto (D-13, F5).
 
+## Estado de cada criterio (7 oct)
+
+| Criterio | Evidencia |
+|---|---|
+| AC-1 a AC-8, AC-11 a AC-14, AC-16, AC-18 | `supabase/tests/proyectos_y_tareas.test.ts` (adaptado a v2) |
+| AC-9, AC-10, AC-15 | `src/lib/tasks.test.ts` y `src/pages/proyectos/Proyectos.test.tsx` |
+| AC-17 | Prueba de Rust `the_tasks_copy_belongs_to_the_account_and_team` |
+| AC-19 a AC-29 | `supabase/tests/trabajo_v2.test.ts` y `src/pages/proyectos/Proyectos.test.tsx` |
+| AC-30 a AC-33 | `src/lib/tasks.test.ts` y `src/pages/proyectos/Proyectos.test.tsx` |
+| AC-34, AC-35 | `src/app/locale.test.tsx`, `src/i18n/server-messages.test.ts` y `npm run check:i18n` |
+| Prueba real con dos cuentas | **Pendiente**: requiere aplicar `20261008000002` en `pulso-dev` |
+
 ## Cómo se comprueba
 Puerta G3 de `docs/PLAN.md` más estos pasos con dos cuentas reales:
 1. La cuenta `owner` crea un proyecto, añade a la otra como `contributor` y le asigna una tarea.
 2. La otra cuenta ve la tarea en «Mis tareas», no puede editar una tarea ajena y mueve la suya a *En curso*.
 3. Inicia el temporizador sobre su tarea, lo detiene a los 2 min: el tiempo de la tarea y el del proyecto suben.
 4. Sin red, la lista sigue visible y no deja editar.
+
+Versión 2:
+1. El owner asigna una tarea a alguien del equipo sin añadirlo antes al proyecto: queda como colaborador.
+2. Estima «2 días», crea 2 subtareas y añade un apoyo.
+3. La otra cuenta trabaja con el temporizador y envía a revisión con un enlace y un archivo.
+4. El owner pide cambios: la tarea vuelve a *En curso*. Se reenvía y se aprueba: queda *Hecha* con su historial.
+5. *Ajustes → Idioma → English*: toda la app y el aviso de Windows salen en inglés.

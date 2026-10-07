@@ -1,3 +1,4 @@
+import { errorMessage, t } from '@/i18n';
 import { ArrowLeft, Mail } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
@@ -12,18 +13,17 @@ import { AuthLayout } from '@/ui/templates';
 
 type Mode = 'entrar' | 'registro' | 'verificar' | 'recuperar' | 'nueva-clave';
 
-const describe = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause));
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /** CU-01 pide 6 dígitos; se aceptan hasta 10 por si el proyecto de Supabase usa otra longitud. */
 const CODE = /^\d{6,10}$/;
 const MIN_PASSWORD = 8;
 
-const TITLES: Record<Mode, { title: string; subtitle: string }> = {
-  entrar: { title: 'Hola de nuevo', subtitle: 'Entra para ver tu día y trabajar con tu equipo.' },
-  registro: { title: 'Crea tu cuenta', subtitle: 'Toma un minuto. Para unirte a un equipo, pide el código de invitación.' },
-  verificar: { title: 'Revisa tu correo', subtitle: 'Escribe el código de 6 dígitos que te enviamos.' },
-  recuperar: { title: '¿Olvidaste tu contraseña?', subtitle: 'Te enviaremos un código para crear una nueva.' },
-  'nueva-clave': { title: 'Crea una contraseña nueva', subtitle: 'Escribe el código del correo y tu contraseña nueva.' },
+const MODE_KEY: Record<Mode, 'signIn' | 'signUp' | 'verify' | 'recover' | 'newPassword'> = {
+  entrar: 'signIn',
+  registro: 'signUp',
+  verificar: 'verify',
+  recuperar: 'recover',
+  'nueva-clave': 'newPassword',
 };
 
 /**
@@ -62,32 +62,32 @@ export function AccesoPage() {
     try {
       await action();
     } catch (cause) {
-      setError(describe(cause));
+      setError(errorMessage(cause));
     } finally {
       setBusy(false);
     }
   };
 
-  const emailProblem = () => (EMAIL.test(email.trim()) ? null : 'Escribe un correo válido, por ejemplo nombre@empresa.com.');
+  const emailProblem = () => (EMAIL.test(email.trim()) ? null : t('access.errors.email'));
   const passwordProblem = () =>
-    password.length >= MIN_PASSWORD ? null : `La contraseña debe tener al menos ${MIN_PASSWORD} caracteres.`;
-  const codeProblem = () => (CODE.test(code.trim()) ? null : 'El código tiene 6 dígitos. Revisa el correo que te enviamos.');
+    password.length >= MIN_PASSWORD ? null : t('access.errors.passwordLength', { n: MIN_PASSWORD });
+  const codeProblem = () => (CODE.test(code.trim()) ? null : t('access.errors.code'));
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const mail = email.trim();
     if (mode === 'entrar') {
       void attempt(
-        () => emailProblem() ?? (password ? null : 'Escribe tu contraseña.'),
+        () => emailProblem() ?? (password ? null : t('access.errors.password')),
         async () => {
           try {
             await cloud.signIn(mail, password);
             navigate('/mi-dia');
           } catch (cause) {
-            if (/verificado/i.test(describe(cause))) {
+            if (cause instanceof CloudError && cause.message === t('cloud.auth.emailNotConfirmed')) {
               await cloud.resendSignUpCode(mail).catch(() => {});
               go('verificar');
-              setNotice('Tu correo aún no está verificado. Te enviamos un código nuevo.');
+              setNotice(t('access.notices.notVerified'));
               return;
             }
             throw cause;
@@ -97,7 +97,7 @@ export function AccesoPage() {
     } else if (mode === 'registro') {
       void attempt(
         () =>
-          (name.trim().length >= 1 && name.trim().length <= 80 ? null : 'Escribe tu nombre (hasta 80 caracteres).') ??
+          (name.trim().length >= 1 && name.trim().length <= 80 ? null : t('access.errors.name')) ??
           emailProblem() ??
           passwordProblem(),
         async () => {
@@ -106,7 +106,7 @@ export function AccesoPage() {
           } catch (cause) {
             // Un 5xx al registrarse suele ser el correo de confirmación (si sigue activado en Supabase).
             if (cause instanceof CloudError && cause.kind === 'network') {
-              throw new CloudError(`No pudimos crear la cuenta: ${cause.message} Si la cuenta ya quedó creada, ve a «Iniciar sesión».`, 'network');
+              throw new CloudError(t('access.errors.signUpNetwork', { error: cause.message }), 'network');
             }
             throw cause;
           }
@@ -117,7 +117,7 @@ export function AccesoPage() {
           }
           // Si el proyecto de Supabase aún exige confirmar el correo, se pide el código.
           go('verificar');
-          setNotice(`Enviamos un código a ${mail}. Puede tardar un minuto; revisa también el correo no deseado.`);
+          setNotice(t('access.notices.codeSent', { email: mail }));
         },
       );
     } else if (mode === 'verificar') {
@@ -129,7 +129,7 @@ export function AccesoPage() {
       void attempt(emailProblem, async () => {
         await cloud.requestPasswordReset(mail);
         go('nueva-clave');
-        setNotice(`Si existe una cuenta con ${mail}, te llegará un código.`);
+        setNotice(t('access.notices.resetSent', { email: mail }));
       });
     } else {
       void attempt(
@@ -142,16 +142,11 @@ export function AccesoPage() {
     }
   };
 
-  const { title, subtitle } = TITLES[mode];
+  const title = t(`access.modes.${MODE_KEY[mode]}.title`);
+  const subtitle = t(`access.modes.${MODE_KEY[mode]}.subtitle`);
   const isTab = mode === 'entrar' || mode === 'registro';
   const needsCode = mode === 'verificar' || mode === 'nueva-clave';
-  const submitLabel: Record<Mode, string> = {
-    entrar: 'Iniciar sesión',
-    registro: 'Crear cuenta',
-    verificar: 'Verificar correo',
-    recuperar: 'Enviar código',
-    'nueva-clave': 'Guardar contraseña',
-  };
+  const submitLabel = t(`access.modes.${MODE_KEY[mode]}.submit`);
 
   return (
     <AuthLayout
@@ -161,14 +156,14 @@ export function AccesoPage() {
       footer={
         cloud.source === 'mock' && (
           <div className="flex flex-wrap items-center gap-2 text-sm text-fg-muted">
-            <Badge tone="accent">Datos de ejemplo</Badge>
-            <span>Sin conexión a Supabase: las cuentas viven en memoria.</span>
+            <Badge tone="accent">{t('common.sample')}</Badge>
+            <span>{t('access.mockNote')}</span>
           </div>
         )
       }
     >
       {isTab && (
-        <div role="tablist" aria-label="Acceso" className="grid grid-cols-2 gap-1 rounded-lg bg-sunken p-1">
+        <div role="tablist" aria-label={t('access.tabs')} className="grid grid-cols-2 gap-1 rounded-lg bg-sunken p-1">
           {(['entrar', 'registro'] as const).map((tab) => (
             <button
               key={tab}
@@ -181,7 +176,7 @@ export function AccesoPage() {
                 mode === tab ? 'border border-line bg-surface text-fg' : 'text-fg-muted hover:text-fg',
               )}
             >
-              {tab === 'entrar' ? 'Iniciar sesión' : 'Crear cuenta'}
+              {tab === 'entrar' ? t('access.modes.signIn.submit') : t('access.modes.signUp.submit')}
             </button>
           ))}
         </div>
@@ -193,43 +188,43 @@ export function AccesoPage() {
           <p className="min-w-0 text-sm text-fg-muted">
             {email.trim() ? (
               <>
-                Lo enviamos a <strong className="break-all text-fg">{email.trim()}</strong>.
+                {t('access.sentTo')} <strong className="break-all text-fg">{email.trim()}</strong>.
               </>
             ) : (
-              'Revisa tu correo.'
+              t('access.checkEmail')
             )}{' '}
-            Si no llega en un minuto, revisa el correo no deseado.
+            {t('access.spamHint')}
           </p>
         </div>
       )}
 
       <form onSubmit={submit} className="flex flex-col gap-4" noValidate aria-label={title}>
         {mode === 'registro' && (
-          <FormField label="Nombre visible" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} hint="Así te verá tu equipo." />
+          <FormField label={t('access.fields.name')} autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} hint={t('access.fields.nameHint')} />
         )}
         {mode !== 'verificar' && (
-          <FormField label="Correo" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <FormField label={t('access.fields.email')} type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         )}
         {needsCode && (
           <FormField
-            label="Código"
+            label={t('access.fields.code')}
             inputMode="numeric"
             autoComplete="one-time-code"
             maxLength={10}
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
             className="text-center font-display text-xl tracking-widest"
-            hint={cloud.source === 'mock' ? `Datos de ejemplo: el código es ${MOCK_CODE}.` : undefined}
+            hint={cloud.source === 'mock' ? t('access.fields.mockCode', { code: MOCK_CODE }) : undefined}
           />
         )}
         {(mode === 'entrar' || mode === 'registro' || mode === 'nueva-clave') && (
           <PasswordField
             key={mode}
-            label={mode === 'nueva-clave' ? 'Contraseña nueva' : 'Contraseña'}
+            label={mode === 'nueva-clave' ? t('access.fields.newPassword') : t('access.fields.password')}
             autoComplete={mode === 'entrar' ? 'current-password' : 'new-password'}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            hint={mode === 'entrar' ? undefined : `Al menos ${MIN_PASSWORD} caracteres.`}
+            hint={mode === 'entrar' ? undefined : t('access.fields.passwordHint', { n: MIN_PASSWORD })}
           />
         )}
         {error && (
@@ -243,14 +238,14 @@ export function AccesoPage() {
           </p>
         )}
         <Button type="submit" variant="primary" disabled={busy} className="w-full">
-          {busy ? 'Un momento…' : submitLabel[mode]}
+          {busy ? t('access.busy') : submitLabel}
         </Button>
       </form>
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         {mode === 'entrar' && (
           <Button variant="ghost" size="sm" onClick={() => go('recuperar')}>
-            Olvidé mi contraseña
+            {t('access.forgot')}
           </Button>
         )}
         {mode === 'verificar' && (
@@ -261,16 +256,16 @@ export function AccesoPage() {
             onClick={() =>
               void attempt(emailProblem, async () => {
                 await cloud.resendSignUpCode(email.trim());
-                setNotice('Te enviamos un código nuevo.');
+                setNotice(t('access.notices.codeResent'));
               })
             }
           >
-            Reenviar código
+            {t('access.resend')}
           </Button>
         )}
         {!isTab && (
           <Button variant="ghost" size="sm" icon={<ArrowLeft size={16} aria-hidden="true" />} onClick={() => go('entrar')}>
-            Volver a iniciar sesión
+            {t('access.backToSignIn')}
           </Button>
         )}
       </div>

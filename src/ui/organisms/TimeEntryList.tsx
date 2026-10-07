@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { useState } from 'react';
 import type { TimeEntry } from '@/bridge/contract';
 import { formatDuration, formatHour, localDate, localDateTimeToIso } from '@/lib/time';
@@ -10,7 +11,6 @@ export interface TimeEntryListProps {
   onDelete: (id: string) => Promise<void>;
 }
 
-const SOURCE_LABEL: Record<TimeEntry['source'], string> = { timer: 'Temporizador', manual: 'Manual' };
 
 const toValues = (e: TimeEntry): TimeEntryValues => ({
   date: localDate(new Date(e.startedAt)),
@@ -35,15 +35,15 @@ export function TimeEntryList({ entries, onUpdate, onDelete }: TimeEntryListProp
   };
 
   return (
-    <ul aria-label="Entradas de tiempo" className="divide-y divide-line">
+    <ul aria-label={t('entries.label')} className="divide-y divide-line">
       {entries.map((entry) => {
-        const range = `${formatHour(entry.startedAt)}–${entry.endedAt ? formatHour(entry.endedAt) : 'en curso'}`;
+        const range = `${formatHour(entry.startedAt)}–${entry.endedAt ? formatHour(entry.endedAt) : t('entries.running')}`;
         if (editing === entry.id) {
           return (
             <li key={entry.id} className="px-4 py-3 md:px-5">
               <TimeEntryForm
                 initial={toValues(entry)}
-                submitLabel="Guardar cambios"
+                submitLabel={t('common.save')}
                 onCancel={() => setEditing(null)}
                 onSubmit={async (v) => {
                   await onUpdate(entry.id, localDateTimeToIso(v.date, v.start), localDateTimeToIso(v.date, v.end));
@@ -59,34 +59,34 @@ export function TimeEntryList({ entries, onUpdate, onDelete }: TimeEntryListProp
             <span className="w-20 shrink-0 text-sm text-fg-muted tabular-nums">
               {entry.endedAt ? formatDuration((Date.parse(entry.endedAt) - Date.parse(entry.startedAt)) / 1000) : '—'}
             </span>
-            <Badge>{SOURCE_LABEL[entry.source]}</Badge>
+            <Badge>{t(`entries.source.${entry.source}`)}</Badge>
             <span className="flex min-w-0 flex-1 basis-48 flex-wrap items-center justify-end gap-2">
               {entry.endedAt &&
                 (confirming === entry.id ? (
                   <>
-                    <span className="text-sm text-fg">¿Eliminar esta entrada?</span>
+                    <span className="text-sm text-fg">{t('entries.confirmDelete')}</span>
                     <Button size="sm" variant="danger" onClick={() => remove(entry.id)}>
-                      Sí, eliminar
+                      {t('entries.yesDelete')}
                     </Button>
                     <Button size="sm" variant="ghost" onClick={() => setConfirming(null)}>
-                      Cancelar
+                      {t('common.cancel')}
                     </Button>
                   </>
                 ) : (
                   <>
-                    <Button size="sm" variant="ghost" aria-label={`Editar entrada de ${range}`} onClick={() => setEditing(entry.id)}>
-                      Editar
+                    <Button size="sm" variant="ghost" aria-label={t('entries.editOf', { range })} onClick={() => setEditing(entry.id)}>
+                      {t('entries.edit')}
                     </Button>
                     <Button
                       size="sm"
                       variant="ghost"
-                      aria-label={`Eliminar entrada de ${range}`}
+                      aria-label={t('entries.deleteOf', { range })}
                       onClick={() => {
                         setDeleteError(null);
                         setConfirming(entry.id);
                       }}
                     >
-                      Eliminar
+                      {t('entries.delete')}
                     </Button>
                   </>
                 ))}

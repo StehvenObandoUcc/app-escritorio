@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { assignableRoles, canRemove, ROLE_LABEL, type Role } from '@/lib/permissions';
 import { Avatar, Badge, Button, Select } from '@/ui/atoms';
 
@@ -27,12 +28,12 @@ export function MemberList({
   onRemove: (userId: string, name: string) => void;
 }) {
   const sorted = [...members].sort(
-    (a, b) => ORDER.indexOf(a.role) - ORDER.indexOf(b.role) || (a.displayName ?? '').localeCompare(b.displayName ?? '', 'es'),
+    (a, b) => ORDER.indexOf(a.role) - ORDER.indexOf(b.role) || (a.displayName ?? '').localeCompare(b.displayName ?? ''),
   );
   return (
-    <ul className="flex flex-col divide-y divide-line" aria-label="Miembros del equipo">
+    <ul className="flex flex-col divide-y divide-line" aria-label={t('team.membersLabel')}>
       {sorted.map((m) => {
-        const name = m.displayName ?? 'Persona sin nombre';
+        const name = m.displayName ?? t('common.noName');
         const isMe = m.userId === myUserId;
         const roles = isMe ? [] : assignableRoles(myRole, m.role);
         return (
@@ -41,13 +42,13 @@ export function MemberList({
             <div className="min-w-0 flex-1">
               <p className="truncate font-medium text-fg">
                 {name}
-                {isMe && <span className="text-fg-muted"> (tú)</span>}
+                {isMe && <span className="text-fg-muted"> {t('common.you')}</span>}
               </p>
             </div>
             {roles.length > 0 ? (
               <Select
                 size="sm"
-                aria-label={`Rol de ${name}`}
+                aria-label={t('team.roleOf', { name })}
                 value={m.role}
                 disabled={busy}
                 onChange={(e) => onChangeRole(m.userId, e.target.value as Role)}
@@ -58,7 +59,7 @@ export function MemberList({
             )}
             {!isMe && canRemove(myRole, m.role) && (
               <Button size="sm" variant="ghost" disabled={busy} onClick={() => onRemove(m.userId, name)}>
-                Expulsar
+                {t('team.remove')}
               </Button>
             )}
           </li>
