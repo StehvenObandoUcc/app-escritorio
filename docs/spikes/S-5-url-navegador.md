@@ -10,7 +10,7 @@ presupuesto de CPU (<1 %) ni de memoria (<120 MB, ADR-0006)?
 - `GetCurrentPropertyValue(UIA_ValueValuePropertyId)` da el texto. `host_of` (en `sensor/mod.rs`) deja solo el dominio.
 - El elemento se guarda en caché por ventana: buscarlo es lo caro.
 
-**Qué se probó.** `src-tauri/examples/s5_url.rs`, compilado en *release*, leyendo cada 2 s durante 120 s la
+**Qué se probó.** `src-tauri/examples/s5_url.rs` (retirado tras la prueba; está en el historial de git), compilado en *release*, leyendo cada 2 s durante 120 s la
 ventana de Brave abierta, sin traerla al frente. Antes, 120 s de referencia sin leer. Medición con
 `TotalProcessorTime` (script de PowerShell en el informe de la sesión). Windows 11, 8 núcleos, 6 de octubre de 2026.
 

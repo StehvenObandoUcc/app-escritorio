@@ -103,7 +103,7 @@ Comandos (nombres exactos; `src/bridge/contract.ts` es su espejo en TypeScript):
 | F1 | `time_entries(date)` (ADR-0005) | entradas de tiempo del día local |
 | F1 | `settings_get()` · `settings_set(patch)` | ajustes locales (umbral de inactividad, ocultar apps) |
 | F2 | `session_get()` · `session_set(json)` · `session_clear()` | sesión de Supabase |
-| F2 | `active_team_set(team_id?)` (ADR-0007) | — (equipo al que se asignan las filas nuevas) |
+| F2 | `active_team_set(team_id?, user_id?)` (ADR-0007, ADR-0013) | — (equipo y cuenta de las filas nuevas) |
 | F2 | `sync_pending(limit)` | bloques, entradas y cierres del equipo activo sin subir, **sin títulos** |
 | F2 | `sync_mark_synced(kind, ids)` | — (`kind`: `blocks` · `entries` · `closures`) |
 | F2 | `rules_set(json)` | — (reglas del equipo para el clasificador, también por dominio) |
@@ -153,7 +153,7 @@ Reglas de toda migración (ya aplicadas en la primera, que sirve de modelo):
 
 ### 7.2 En el equipo (SQLite, solo Rust)
 
-`activity_blocks_local` (con `title_enc`, `team_id` y `synced_at`), `time_entries_local` (con `team_id`), `app_closures_local`, `tasks_cache`, `kv_settings` (ajustes, equipo activo, reglas del equipo y la sesión cifrada).
+`activity_blocks_local` (con `title_enc`, `team_id`, `user_id` y `synced_at`), `time_entries_local` (con `team_id` y `user_id`), `app_closures_local` (con `user_id`), `tasks_cache`, `kv_settings` (ajustes, equipo activo, reglas del equipo y la sesión cifrada).
 
 ### 7.3 Sincronización (TypeScript)
 

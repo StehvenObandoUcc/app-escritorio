@@ -33,6 +33,7 @@ Pedidas por el responsable tras las pruebas reales; cada una tiene su ADR.
 | 0010 | **Avisos con sonido** al entrar a un sitio no permitido, con repetición configurable por owner/admin; reglas del equipo siempre al día; subida a los 15 s; selector de **apps instaladas** |
 | 0011 | El aviso **suena aunque Windows tenga apagadas las notificaciones** (sonido propio y parpadeo del icono) y Ajustes explica si están apagadas |
 | 0012 | **Aviso dentro de la app**, en cualquier pantalla, hasta que se cierra; y **Pulso no se registra a sí mismo** |
+| 0013 | **Apps sin teclado** (lectura y reunión) no cuentan como inactividad hasta 30 min; **una cuenta por fila local** |
 
 Criterios añadidos:
 - AC-26 El sensor guarda solo el dominio del sitio; la base de datos rechaza cualquier valor con `/`, `?`, `#` o espacios (TA-14).
@@ -43,13 +44,15 @@ Criterios añadidos:
 - AC-31 El observador no sube actividad ni ve error de sincronización.
 - AC-32 Al entrar a un sitio no permitido aparece un aviso en cualquier pantalla de la app, que queda hasta cerrarlo.
 - AC-33 La ventana de Pulso no crea bloques: el tiempo con Pulso delante no se asigna a ninguna app.
+- AC-34 Leer en Readest (u otra app de la lista) sin teclado cuenta como Readest hasta 30 min (TA-15).
+- AC-35 Lo registrado con una cuenta no aparece en *Mi día* ni en la subida de otra cuenta del mismo PC.
 
 ## Contratos
 
 ### Puente (`src/bridge/contract.ts`, `mock.ts`, `tauri.ts`, `docs/ARQUITECTURA.md` §6)
 Comandos de la tabla de §6: `session_get()`, `session_set(json)`, `session_clear()`, `sync_pending(limit)`,
 `sync_mark_synced(kind, ids)`, `rules_set(json)`.
-Comando nuevo (ADR-0007): `active_team_set(team_id | null)`, que fija el equipo al que se asignan las filas nuevas.
+Comando nuevo (ADR-0007, ampliado en ADR-0013): `active_team_set(team_id | null, user_id | null)`, que fija el equipo y la cuenta de las filas nuevas.
 Los tipos nuevos (`SyncBatch`, `SessionJson`, reglas) se validan con zod.
 
 `sync_pending(limit)` devuelve `{ blocks: [...], entries: [...] }` solo del equipo activo, **sin título**. Tipos: bloque
@@ -137,14 +140,15 @@ y un cliente de Supabase falso en pruebas.
 |---|---|
 | AC-1, AC-2, AC-4 a AC-14, AC-24, AC-25 | Pruebas automáticas (`supabase/tests`, `src/**/*.test.tsx`) y prueba real con dos cuentas el 6 oct |
 | AC-3 Recuperar contraseña | Prueba real del 7 oct: el correo con el código llega (SMTP de Gmail, puerto 465) |
-| AC-15 a AC-17 Subida, repetición y reintentos | Pruebas automáticas; **pendiente** la prueba real de 30 min sin red |
+| AC-15 a AC-17 Subida, repetición y reintentos | Pruebas automáticas; prueba real del 7 oct: lo registrado sin red se subió al volver |
 | AC-18, AC-20, AC-26 | Pruebas de Rust y de interfaz; en Supabase, 11 columnas sin título y 0 dominios con ruta (6 oct) |
 | AC-19, AC-21 | Pruebas automáticas |
 | AC-22 Cierres | Pruebas de Rust y de la base; **pendiente** la prueba real en horario de jornada |
 | AC-23 | Pruebas de la base |
 | AC-27, AC-29 a AC-31 | Pruebas automáticas y prueba real el 6 oct |
 | AC-28 Aviso | Pruebas de Rust; prueba real del 7 oct: suena. La notificación de Windows depende de que estén activadas |
-| AC-32, AC-33 | Pruebas automáticas; **pendiente** la prueba real |
+| AC-32, AC-33 | Pruebas automáticas; prueba real del 7 oct |
+| AC-34, AC-35 | Pruebas de Rust; **pendiente** la prueba real |
 
 ## Cómo se comprueba
 Puerta G2 de `docs/PLAN.md` más los pasos manuales con dos cuentas reales de `pulso-dev`:

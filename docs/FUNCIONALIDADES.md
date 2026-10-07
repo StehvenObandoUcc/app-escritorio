@@ -7,7 +7,7 @@ en que se construyen y cómo se comprueba cada una. Nada se construye si no tien
 - **F7–F9**: después de la entrega. Están diseñadas, no olvidadas.
 - **✂** = recortable: es lo primero que sale si una fase se atrasa (orden en `docs/PLAN.md` §4).
 
-Resumen: 106 funcionalidades en total: 88 antes de la entrega y 18 después (TA-14 y PS-11 se añadieron el 6 oct, ADR-0009).
+Resumen: 107 funcionalidades en total: 89 antes de la entrega y 18 después (TA-14 y PS-11 se añadieron el 6 oct, ADR-0009; TA-15 el 7 oct, ADR-0013).
 
 ## A. Cuenta y acceso (RF-01, RF-03)
 
@@ -55,6 +55,7 @@ Resumen: 106 funcionalidades en total: 88 antes de la entrega y 18 después (TA-
 | TA-12 | Abrir con el sistema e icono en la bandeja | — | F6 ✂ | Reiniciar: Pulso arranca solo |
 | TA-13 | macOS y Linux (X11) | — | F7 | — |
 | TA-14 | Tiempo por sitio web: solo el dominio, nunca la página ni la búsqueda (ADR-0009) | 05 | F2 | Abrir perplexity.ai: *Mi día → Por sitio* lo muestra |
+| TA-15 | Apps de lectura y reunión sin teclado no cuentan como inactividad hasta 30 min (ADR-0013). Lista fija en F2; editable con TA-11 en F5 | 05 | F2 | Leer 10 min en Readest sin tocar nada: *Mi día* muestra 10 min de Readest |
 
 ## D. Proyectos y tareas (RF-07, RF-08, RF-09)
 

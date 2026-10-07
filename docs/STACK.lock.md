@@ -77,7 +77,7 @@ Están aprobadas pero aún no instaladas. Quien las instale anota aquí la versi
 | `rusqlite` (con SQLite incluido) | F1 | Base local | 0.40.2 |
 | `aes-gcm` | F1 | Cifrado de títulos | 0.11.1 |
 | `keyring` | F1 | Almacén seguro del sistema (modo `v1`; trae `keyring-core` 1.0.0 y `windows-native-keyring-store` 1.1.0) | 4.2.0 |
-| `uuid`, `chrono` | F1 | Identificadores y fechas | 1.27.0 · 0.4.45 |
+| `uuid`, `chrono` | F1 | Identificadores y fechas (`chrono` con la feature `serde`, ADR-0013) | 1.27.0 · 0.4.45 |
 | `reqwest` (TLS con rustls) | F4 | Llamada a la IA con clave propia | pendiente |
 | `tauri-plugin-notification` | F2 (adelantado, ADR-0010) | Avisos del sistema; se usa solo desde Rust | 2.5.1 |
 | `tauri-plugin-autostart` | F6 | Abrir con el sistema | pendiente |

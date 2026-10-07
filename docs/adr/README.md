@@ -18,5 +18,6 @@ decisión de `docs/ARQUITECTURA.md` §3 o cambiar una celda de `docs/ROLES.md`.
 | [0010](./0010-avisos-de-sitio-y-apps-instaladas.md) | Avisos de sitio no permitido y lista de apps instaladas | Aceptado |
 | [0011](./0011-aviso-con-sonido-propio.md) | El aviso suena aunque Windows tenga las notificaciones apagadas | Aceptado |
 | [0012](./0012-aviso-dentro-de-la-app-y-pulso-sin-registrar.md) | Aviso dentro de la app y Pulso no se registra a sí mismo | Aceptado |
+| [0013](./0013-apps-sin-teclado-y-cuenta-por-fila.md) | Apps sin teclado (mínimo) y una cuenta por fila local | Aceptado |
 
 Plantilla: copia cualquiera de los anteriores. Numeración consecutiva de cuatro dígitos.
