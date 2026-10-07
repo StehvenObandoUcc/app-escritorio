@@ -122,6 +122,31 @@ describe('política de apps ocultas (fila 23)', () => {
   });
 });
 
+describe('política de avisos de sitios no permitidos (ADR-0010, fila 23)', () => {
+  const policies = async (team: string) =>
+    (await db.admin<{ p: Record<string, unknown> }>("select settings -> 'policies' as p from teams where id = $1", [team]))[0]!.p;
+
+  it('owner y admin activan el aviso y eligen la repetición; se conserva la otra política', async () => {
+    await db.as(beto, (q) => q('select set_alert_policy($1, true, 2)', [teamA]));
+    expect(await policies(teamA)).toMatchObject({ alert_not_allowed: true, alert_repeat_minutes: 2, allow_hidden_apps: true });
+    await db.as(ana, (q) => q('select set_alert_policy($1, false, 0)', [teamA]));
+    expect(await policies(teamA)).toMatchObject({ alert_not_allowed: false, alert_repeat_minutes: 0 });
+  });
+
+  it('solo acepta las repeticiones previstas', async () => {
+    for (const bad of [1, 3, 60, -5]) {
+      expect(await failure(() => db.as(ana, (q) => q('select set_alert_policy($1, true, $2)', [teamA, bad])))).toMatch(/repetición/);
+    }
+  });
+
+  it('member, viewer, gente de fuera y anon no la cambian', async () => {
+    for (const user of [caro, dani, eva]) {
+      expect(await failure(() => db.as(user, (q) => q('select set_alert_policy($1, true, 10)', [teamA])))).toMatch(/No permitido/);
+    }
+    expect(await failure(() => db.as(null, (q) => q('select set_alert_policy($1, true, 10)', [teamA])))).toMatch(/permission denied/);
+  });
+});
+
 describe('tiempo por sitio y persona (fila 13)', () => {
   beforeAll(async () => {
     await db.as(beto, (q) => addBlock(q, teamA, beto, 'claude.ai', 120, 90, 'ai'));
