@@ -105,11 +105,11 @@ Funcionalidades: CU-01 a CU-04, EQ-01 a EQ-08, EQ-10 (datos), PS-01, PS-02, PS-0
 | C · Interfaz | Registro, inicio de sesión, recuperar contraseña, crear equipo, invitar, aceptar con consentimiento, cambiar de equipo, sincronización |
 
 **Puerta G2**
-- [ ] `npm run test:db` cubre todas las filas F0 y F2 de la matriz.
-- [ ] Dos cuentas reales: una crea el equipo e invita; la otra acepta.
-- [ ] La actividad de la segunda cuenta aparece en Supabase **sin títulos**.
-- [ ] 30 minutos sin red y luego con red: llega todo, sin duplicados.
-- [ ] Un `viewer` no ve la lista de miembros; alguien de otro equipo no ve nada.
+- [x] `npm run test:db` cubre todas las filas F0 y F2 de la matriz.
+- [x] Dos cuentas reales: una crea el equipo e invita; la otra acepta.
+- [x] La actividad de la segunda cuenta aparece en Supabase **sin títulos**.
+- [x] 30 minutos sin red y luego con red: llega todo, sin duplicados.
+- [x] Un `viewer` no ve la lista de miembros; alguien de otro equipo no ve nada.
 
 ### F3 · Proyectos y tareas (vie 9 – sáb 10)
 
@@ -238,7 +238,7 @@ Lo de arriba es el plan original y sigue vigente. Esta sección añade lo acorda
 |---|---|---|
 | F0 · Fundaciones | Hecha | G0 incompleta: faltan los informes S-2 (detección de IA por título) y S-4 (DeepSeek) |
 | **F1 · Sensor y *Mi día*** | **Hecha. Spec aprobada el 5 oct** | **G1 pasa** (evidencia en `docs/spikes/F1-medicion-app-real.md`) |
-| F2 · Cuentas, equipos y sincronización | En curso (rama `feat/f2-cuentas-equipos-sync`): migración, Rust e interfaz hechos con pruebas; falta aplicar la migración en `pulso-dev`, configurar el correo de Supabase y la prueba con dos cuentas reales | G2 pendiente |
+| **F2 · Cuentas, equipos y sincronización** | **Hecha. Spec aprobada el 7 oct** (ADR-0007 a ADR-0013) | **G2 pasa** (pruebas reales del 6 y 7 oct, estado en la spec) |
 | F3 a F6 | Por empezar | — |
 
 Funcionalidades antes de la entrega (`docs/FUNCIONALIDADES.md`): **86**.
