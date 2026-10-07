@@ -225,6 +225,8 @@ export function createMockBridge(now: () => Date = () => new Date()): Bridge {
     },
     teamPolicySet: async () => {},
     notificationsStatus: async () => ({ windowsToastsEnabled: true }),
+    // Datos de ejemplo: nunca hay avisos reales.
+    onNotAllowedAlert: () => () => {},
     // Datos de ejemplo: unas pocas apps instaladas y abiertas.
     installedApps: async () => [
       { process: 'slack', label: 'Slack', source: 'open' },

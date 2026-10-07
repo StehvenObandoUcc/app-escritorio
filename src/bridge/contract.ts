@@ -175,6 +175,13 @@ export const InstalledAppSchema = z.object({
 });
 export type InstalledApp = z.infer<typeof InstalledAppSchema>;
 
+/** Aviso de Rust al entrar a un sitio no permitido (ADR-0012). Solo el dominio y la hora. */
+export const NotAllowedAlertSchema = z.object({
+  domain: z.string().min(1),
+  at: z.iso.datetime({ offset: true }),
+});
+export type NotAllowedAlert = z.infer<typeof NotAllowedAlertSchema>;
+
 /** Estado de las notificaciones de Windows (ADR-0011). */
 export const NotificationsStatusSchema = z.object({
   /** `false`: Windows tiene apagado «Recibir notificaciones de apps»; Pulso solo suena y parpadea. */
@@ -231,4 +238,6 @@ export interface Bridge {
   installedApps(): Promise<InstalledApp[]>;
   /** Si Windows muestra notificaciones de apps (ADR-0011). */
   notificationsStatus(): Promise<NotificationsStatus>;
+  /** Avisos de sitio no permitido, para mostrarlos en cualquier pantalla (ADR-0012). Devuelve cómo dejar de escuchar. */
+  onNotAllowedAlert(listener: (alert: NotAllowedAlert) => void): () => void;
 }

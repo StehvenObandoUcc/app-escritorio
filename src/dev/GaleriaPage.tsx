@@ -6,7 +6,7 @@ import { CATEGORY_STYLE } from '@/lib/categories';
 import { Avatar, Badge, Button, CategoryMark, Heading, Input, ProgressBar, Select, Surface } from '@/ui/atoms';
 import { CategoryBreakdown, EmptyState, FormField, PasswordField, SegmentedControl, SyncStatus, TimeEntryForm, TimerControl } from '@/ui/molecules';
 import { appTotals, buildTimeline } from '@/lib/activity';
-import { ActivityList, ActivityTimeline, AppSummary, ConsentPanel, HiddenAppsPicker, MemberList, PulseStrip, TimeEntryList } from '@/ui/organisms';
+import { ActivityList, ActivityTimeline, AlertBanner, AppSummary, ConsentPanel, HiddenAppsPicker, MemberList, PulseStrip, TimeEntryList } from '@/ui/organisms';
 import { AuthLayout, PageLayout } from '@/ui/templates';
 
 const SWATCHES = [
@@ -182,6 +182,9 @@ export function GaleriaPage() {
               Iniciar sesión
             </Button>
           </AuthLayout>
+        </div>
+        <div className="relative min-h-32">
+          <AlertBanner alerts={[{ domain: 'youtube.com', at: new Date().toISOString() }]} onDismiss={() => {}} />
         </div>
         <ConsentPanel teamName="Equipo de ejemplo" acceptLabel="Aceptar y unirme" onAccept={() => {}} secondary={<Button>Rechazar invitación</Button>} />
       </Section>
