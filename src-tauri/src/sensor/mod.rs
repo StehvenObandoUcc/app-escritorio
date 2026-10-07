@@ -108,6 +108,14 @@ pub fn active_window() -> Option<ActiveWindow> {
   windows_impl::foreground().map(|(_, w)| w)
 }
 
+/// Nombre del ejecutable de un proceso (también lo usa la lista de apps abiertas, ADR-0010).
+/// SAFETY: debe llamarse con un `pid` obtenido del sistema.
+#[cfg(windows)]
+pub(crate) unsafe fn process_name(pid: u32) -> Option<String> {
+  // SAFETY: lo garantiza quien llama.
+  unsafe { windows_impl::process_name(pid) }
+}
+
 /// Segundos desde la última interacción con teclado o ratón.
 #[cfg(windows)]
 pub fn idle_seconds() -> Option<u64> {

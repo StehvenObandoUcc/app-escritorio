@@ -1,3 +1,4 @@
+pub mod apps;
 pub mod classifier;
 pub mod commands;
 pub mod crypto;
@@ -20,8 +21,23 @@ const SAMPLE_EVERY: Duration = Duration::from_secs(2);
 /// Si el proceso sigue vivo este tiempo después de cerrar la ventana, se termina a la fuerza.
 const EXIT_WATCHDOG: Duration = Duration::from_secs(5);
 
+/// Notificación de Windows con sonido para un sitio no permitido (ADR-0010). Solo local.
+fn notify_not_allowed(handle: &AppHandle, alert: &tracker::Alert) {
+  use tauri_plugin_notification::NotificationExt;
+  let shown = handle
+    .notification()
+    .builder()
+    .title(format!("Sitio no permitido: {}", alert.domain))
+    .body("Tu equipo marcó este sitio como no permitido. Pulso no lo bloquea: el tiempo cuenta como distracción.")
+    .sound("Default")
+    .show();
+  if let Err(e) = shown {
+    log::error!("aviso de sitio no permitido: {e}");
+  }
+}
+
 /// Hilo del sensor: lee la ventana y la inactividad y alimenta al servicio.
-fn spawn_sensor(tracker: Arc<tracker::Tracker>) {
+fn spawn_sensor(tracker: Arc<tracker::Tracker>, handle: AppHandle) {
   std::thread::Builder::new()
     .name("pulso-sensor".into())
     .spawn(move || {
@@ -29,8 +45,10 @@ fn spawn_sensor(tracker: Arc<tracker::Tracker>) {
       let mut reader = sensor::Sensor::new();
       loop {
         let (window, idle) = (reader.read(), sensor::idle_seconds());
-        if let Err(e) = tracker.tick(Utc::now(), window, idle) {
-          log::error!("sensor: {e}");
+        match tracker.tick(Utc::now(), window, idle) {
+          Ok(Some(alert)) => notify_not_allowed(&handle, &alert),
+          Ok(None) => {}
+          Err(e) => log::error!("sensor: {e}"),
         }
         std::thread::sleep(SAMPLE_EVERY);
       }
@@ -85,6 +103,8 @@ pub fn run() {
         .level(log::LevelFilter::Info)
         .build(),
     )
+    // Avisos de sitio no permitido (ADR-0010): se usan solo desde Rust, sin permisos para la interfaz.
+    .plugin(tauri_plugin_notification::init())
     .setup(|app| {
       let dir = app.path().app_data_dir()?;
       std::fs::create_dir_all(&dir)?;
@@ -96,7 +116,7 @@ pub fn run() {
         log::error!("al registrar el cierre anterior: {e}");
       }
 
-      spawn_sensor(tracker.clone());
+      spawn_sensor(tracker.clone(), app.handle().clone());
       app.manage(tracker);
       log::info!("inicio: sensor en marcha");
       Ok(())
@@ -125,6 +145,7 @@ pub fn run() {
       commands::sync_mark_synced,
       commands::rules_set,
       commands::team_policy_set,
+      commands::installed_apps,
     ])
     .build(context)
     .expect("error while building tauri application");

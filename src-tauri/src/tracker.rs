@@ -23,8 +23,9 @@ const HIDDEN_APP_NAME: &str = "App oculta";
 const MAX_PAUSE_MINUTES: u32 = 480;
 const MAX_HIDDEN_APPS: usize = 200;
 
-/// Un bloque se sube cuando lleva este tiempo cerrado: para entonces ya no se fusiona (AC-2).
-const SYNC_STABLE_AFTER: Duration = Duration::minutes(2);
+/// Un bloque se sube cuando empezó hace este tiempo, aunque siga abierto (ADR-0010): las fusiones de
+/// bloques cortos (AC-2) ocurren antes de 10 s, así que para entonces el bloque ya no desaparece.
+const SYNC_STABLE_AFTER: Duration = Duration::seconds(15);
 const SYNC_MAX_LIMIT: u32 = 500;
 /// Un hueco mayor que esto al volver a abrir se guarda como cierre de Pulso (A-1).
 const CLOSURE_MIN_GAP: Duration = Duration::minutes(2);
@@ -36,6 +37,10 @@ const KEY_ACTIVE_TEAM: &str = "active_team_id";
 const KEY_TEAM_RULES: &str = "team_rules";
 const KEY_SESSION: &str = "session_enc";
 const KEY_ALLOW_HIDDEN: &str = "team_allow_hidden_apps";
+const KEY_ALERT: &str = "team_alert_not_allowed";
+const KEY_ALERT_REPEAT: &str = "team_alert_repeat_minutes";
+const DEFAULT_ALERT_REPEAT: u32 = 10;
+const ALERT_REPEATS: &[u32] = &[0, 2, 5, 10, 15, 30];
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -94,6 +99,19 @@ struct Inner {
   entry_versions: HashMap<String, DateTime<Utc>>,
   /// Política del equipo (ADR-0009): con `false`, la lista de apps ocultas no se aplica.
   allow_hidden: bool,
+  /// Avisos de sitio no permitido (ADR-0010).
+  alert_enabled: bool,
+  alert_repeat_minutes: u32,
+  /// Último aviso: dominio y cuándo. Se borra al salir del sitio para avisar otra vez al volver.
+  last_alert: Option<(String, DateTime<Utc>)>,
+}
+
+fn default_true() -> bool {
+  true
+}
+
+fn default_repeat() -> u32 {
+  DEFAULT_ALERT_REPEAT
 }
 
 /// Política del equipo que llega de la interfaz (`team_policy_set`).
@@ -101,6 +119,16 @@ struct Inner {
 #[serde(rename_all = "camelCase")]
 pub struct TeamPolicy {
   pub allow_hidden_apps: bool,
+  #[serde(default = "default_true")]
+  pub alert_not_allowed: bool,
+  #[serde(default = "default_repeat")]
+  pub alert_repeat_minutes: u32,
+}
+
+/// Aviso para mostrar como notificación: la persona está en un sitio que su equipo no permite.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Alert {
+  pub domain: String,
 }
 
 pub struct Tracker {
@@ -236,27 +264,51 @@ impl Inner {
     }
   }
 
-  fn observe(&self, w: &ActiveWindow) -> Observation {
+  fn observe(&self, w: &ActiveWindow) -> (Observation, bool) {
     // ADR-0009: si el equipo no permite apps ocultas, la lista personal no se aplica.
     let hidden = self.allow_hidden && self.settings.hidden_apps.iter().any(|a| a.eq_ignore_ascii_case(&w.process));
     if hidden {
       // AC-20: una app oculta no se clasifica (ni por proceso, título ni dominio): siempre neutral.
-      return Observation {
-        app_name: HIDDEN_APP_NAME.to_string(),
-        title: None,
-        category: Category::Neutral,
-        ai_tool: None,
-        domain: None,
-      };
+      return (
+        Observation { app_name: HIDDEN_APP_NAME.to_string(), title: None, category: Category::Neutral, ai_tool: None, domain: None },
+        false,
+      );
     }
     let c = classifier::classify(&self.team_rules, &self.default_rules, &w.process, &w.title, w.domain.as_deref());
-    Observation {
-      app_name: w.process.clone(),
-      title: Some(w.title.clone()).filter(|t| !t.is_empty()),
-      category: c.category,
-      ai_tool: c.ai_tool,
-      domain: w.domain.clone(),
+    let not_allowed = c.not_allowed && w.domain.is_some();
+    (
+      Observation {
+        app_name: w.process.clone(),
+        title: Some(w.title.clone()).filter(|t| !t.is_empty()),
+        category: c.category,
+        ai_tool: c.ai_tool,
+        domain: w.domain.clone(),
+      },
+      not_allowed,
+    )
+  }
+
+  /// Decide si hay que avisar: al entrar a un sitio no permitido y luego cada `alert_repeat_minutes`
+  /// (0 = solo al entrar). Al salir del sitio se olvida el aviso, para avisar de nuevo al volver.
+  fn alert_for(&mut self, now: DateTime<Utc>, obs: Option<&Observation>, not_allowed: bool) -> Option<Alert> {
+    let domain = match obs.and_then(|o| o.domain.clone()) {
+      Some(d) if not_allowed && self.alert_enabled => d,
+      _ => {
+        self.last_alert = None;
+        return None;
+      }
+    };
+    let due = match &self.last_alert {
+      Some((last, at)) if *last == domain => {
+        self.alert_repeat_minutes > 0 && now - *at >= Duration::minutes(i64::from(self.alert_repeat_minutes))
+      }
+      _ => true,
+    };
+    if !due {
+      return None;
     }
+    self.last_alert = Some((domain.clone(), now));
+    Some(Alert { domain })
   }
 
   fn status(&mut self, now: DateTime<Utc>) -> Result<SensorStatus> {
@@ -296,6 +348,12 @@ impl Tracker {
     // Reglas guardadas la última vez: sin red, el clasificador sigue usándolas.
     let team_rules = store.setting_get(KEY_TEAM_RULES)?.and_then(|j| parse_team_rules(&j).ok()).unwrap_or_default();
     let allow_hidden = store.setting_get(KEY_ALLOW_HIDDEN)?.is_none_or(|v| v != "false");
+    let alert_enabled = store.setting_get(KEY_ALERT)?.is_none_or(|v| v != "false");
+    let alert_repeat_minutes = store
+      .setting_get(KEY_ALERT_REPEAT)?
+      .and_then(|v| v.parse::<u32>().ok())
+      .filter(|m| ALERT_REPEATS.contains(m))
+      .unwrap_or(DEFAULT_ALERT_REPEAT);
     Ok(Self {
       inner: Mutex::new(Inner {
         store,
@@ -312,6 +370,9 @@ impl Tracker {
         active_team,
         entry_versions: HashMap::new(),
         allow_hidden,
+        alert_enabled,
+        alert_repeat_minutes,
+        last_alert: None,
       }),
     })
   }
@@ -336,21 +397,27 @@ impl Tracker {
     self.inner.lock().map_err(|_| "El estado interno quedó inconsistente; reinicia Pulso.".to_string())
   }
 
-  /// Una lectura del sensor (cada ~2 s). Vuelca a disco cada 10 s.
-  pub fn tick(&self, now: DateTime<Utc>, window: Option<ActiveWindow>, idle_secs: Option<u64>) -> Result<()> {
+  /// Una lectura del sensor (cada ~2 s). Vuelca a disco cada 10 s. Devuelve un aviso si la persona
+  /// está en un sitio no permitido y toca avisar (ADR-0010).
+  pub fn tick(&self, now: DateTime<Utc>, window: Option<ActiveWindow>, idle_secs: Option<u64>) -> Result<Option<Alert>> {
     let mut g = self.lock()?;
     if g.stopped {
-      return Ok(());
+      return Ok(None);
     }
     let mode = g.mode(now);
-    let obs = if mode == Mode::Tracking { window.as_ref().map(|w| g.observe(w)) } else { None };
+    let seen = if mode == Mode::Tracking { window.as_ref().map(|w| g.observe(w)) } else { None };
+    let not_allowed = seen.as_ref().is_some_and(|(_, n)| *n);
+    let obs = seen.map(|(o, _)| o);
     let thr = g.idle_threshold();
+    // Sin uso de teclado ni ratón por encima del umbral no se avisa: la persona no está ahí.
+    let idle = idle_secs.unwrap_or(0) >= thr;
+    let alert = g.alert_for(now, obs.as_ref().filter(|_| !idle), not_allowed);
     let changes = g.engine.tick(now, obs.as_ref(), idle_secs.unwrap_or(0), mode, thr);
     g.record(changes);
     if g.last_flush.is_none_or(|t| now - t >= FLUSH_EVERY) {
       g.flush(now)?;
     }
-    Ok(())
+    Ok(alert)
   }
 
   /// Al cerrar la app: cierra el bloque abierto, vuelca todo y deja de registrar para siempre.
@@ -586,9 +653,16 @@ impl Tracker {
 
   /// Política del equipo activo (ADR-0009). Se guarda para aplicarla también sin red.
   pub fn team_policy_set(&self, policy: TeamPolicy) -> Result<()> {
+    if !ALERT_REPEATS.contains(&policy.alert_repeat_minutes) {
+      return Err("La repetición del aviso debe ser 0, 2, 5, 10, 15 o 30 minutos.".into());
+    }
     let mut g = self.lock()?;
     g.store.setting_set(KEY_ALLOW_HIDDEN, if policy.allow_hidden_apps { "true" } else { "false" })?;
+    g.store.setting_set(KEY_ALERT, if policy.alert_not_allowed { "true" } else { "false" })?;
+    g.store.setting_set(KEY_ALERT_REPEAT, &policy.alert_repeat_minutes.to_string())?;
     g.allow_hidden = policy.allow_hidden_apps;
+    g.alert_enabled = policy.alert_not_allowed;
+    g.alert_repeat_minutes = policy.alert_repeat_minutes;
     Ok(())
   }
 
@@ -941,13 +1015,17 @@ mod tests {
   }
 
   #[test]
-  fn recent_blocks_wait_until_they_are_stable() {
+  fn a_block_is_uploaded_15s_after_it_starts_even_if_still_open() {
     let t = tracker();
     t.active_team_set(at(11, 59, 0), Some(TEAM)).unwrap();
-    feed(&t, 0, 30, win("code", "a.rs"));
-    // El bloque sigue abierto (o acaba de cerrarse): todavía no se entrega.
-    assert!(t.sync_pending(at(12, 0, 32), 200).unwrap().blocks.is_empty());
-    assert_eq!(t.sync_pending(at(12, 3, 0), 200).unwrap().blocks.len(), 1);
+    feed(&t, 0, 10, win("code", "a.rs"));
+    // Empezó hace menos de 15 s: todavía puede fusionarse, no se entrega.
+    assert!(t.sync_pending(at(12, 0, 10), 200).unwrap().blocks.is_empty());
+    feed(&t, 12, 30, win("code", "a.rs"));
+    // Sigue abierto, pero ya empezó hace más de 15 s: se entrega con el tiempo hasta la última lectura.
+    let batch = t.sync_pending(at(12, 0, 31), 200).unwrap();
+    assert_eq!(batch.blocks.len(), 1);
+    assert_eq!(batch.blocks[0].ended_at, "2026-10-05T12:00:30Z");
   }
 
   #[test]
@@ -1090,12 +1168,12 @@ mod tests {
   fn when_the_team_forbids_hidden_apps_the_real_name_is_recorded() {
     let t = tracker();
     t.settings_set(SettingsPatch { idle_minutes: None, hidden_apps: Some(vec!["windowsterminal".into()]) }).unwrap();
-    t.team_policy_set(TeamPolicy { allow_hidden_apps: false }).unwrap();
+    t.team_policy_set(TeamPolicy { allow_hidden_apps: false, alert_not_allowed: true, alert_repeat_minutes: 10 }).unwrap();
     feed(&t, 0, 20, win("WindowsTerminal", "pwsh"));
     let d = day(&t, at(12, 1, 0));
     assert_eq!(d.blocks[0].app_name, "WindowsTerminal");
     // Al volver a permitirlas, se ocultan de nuevo desde ese momento.
-    t.team_policy_set(TeamPolicy { allow_hidden_apps: true }).unwrap();
+    t.team_policy_set(TeamPolicy { allow_hidden_apps: true, alert_not_allowed: true, alert_repeat_minutes: 10 }).unwrap();
     feed(&t, 22, 40, win("WindowsTerminal", "pwsh"));
     let d = day(&t, at(12, 1, 0));
     assert_eq!(d.blocks.last().unwrap().app_name, HIDDEN_APP_NAME);
@@ -1106,6 +1184,64 @@ mod tests {
     let t = tracker();
     assert!(t.rules_set(r#"[{"match":"domain","pattern":"youtube.com","category":"distraction","ai_tool":null}]"#).is_ok());
     assert!(t.rules_set(r#"[{"match":"domain","pattern":"youtube.com/shorts","category":"distraction","ai_tool":null}]"#).is_err());
+  }
+
+  // ---- ADR-0010: avisos de sitio no permitido ----
+
+  const NOT_ALLOWED_YOUTUBE: &str = r#"[{"match":"domain","pattern":"youtube.com","category":"distraction","ai_tool":null,"not_allowed":true}]"#;
+
+  /// Lecturas cada 2 s en un sitio; devuelve los segundos (desde 12:00:00) en que hubo aviso.
+  fn alerts(t: &Tracker, from: u32, to: u32, w: Option<ActiveWindow>) -> Vec<u32> {
+    let mut out = Vec::new();
+    let mut s = from;
+    while s <= to {
+      if t.tick(at(12 + s / 3600, (s / 60) % 60, s % 60), w.clone(), Some(0)).unwrap().is_some() {
+        out.push(s);
+      }
+      s += 2;
+    }
+    out
+  }
+
+  #[test]
+  fn alerts_when_entering_a_not_allowed_site_and_repeats_as_configured() {
+    let t = tracker();
+    t.rules_set(NOT_ALLOWED_YOUTUBE).unwrap();
+    t.team_policy_set(TeamPolicy { allow_hidden_apps: true, alert_not_allowed: true, alert_repeat_minutes: 2 }).unwrap();
+    // 5 minutos en YouTube: aviso al entrar, a los 2 y a los 4 minutos.
+    assert_eq!(alerts(&t, 0, 300, site("Video", "m.youtube.com")), vec![0, 120, 240]);
+    // Sale y vuelve: avisa otra vez al volver.
+    assert!(alerts(&t, 302, 320, site("Correo", "mail.google.com")).is_empty());
+    assert_eq!(alerts(&t, 322, 330, site("Video", "youtube.com")), vec![322]);
+  }
+
+  #[test]
+  fn only_on_entry_when_repeat_is_zero_and_never_when_disabled() {
+    let t = tracker();
+    t.rules_set(NOT_ALLOWED_YOUTUBE).unwrap();
+    t.team_policy_set(TeamPolicy { allow_hidden_apps: true, alert_not_allowed: true, alert_repeat_minutes: 0 }).unwrap();
+    assert_eq!(alerts(&t, 0, 600, site("Video", "youtube.com")), vec![0]);
+    let t = tracker();
+    t.rules_set(NOT_ALLOWED_YOUTUBE).unwrap();
+    t.team_policy_set(TeamPolicy { allow_hidden_apps: true, alert_not_allowed: false, alert_repeat_minutes: 2 }).unwrap();
+    assert!(alerts(&t, 0, 300, site("Video", "youtube.com")).is_empty());
+  }
+
+  #[test]
+  fn no_alert_during_a_privacy_pause_or_for_allowed_sites() {
+    let t = tracker();
+    t.rules_set(NOT_ALLOWED_YOUTUBE).unwrap();
+    // youtube.com sin «no permitido» del equipo: solo distracción por la regla de serie, sin aviso.
+    let plain = tracker();
+    assert!(alerts(&plain, 0, 60, site("Video", "youtube.com")).is_empty());
+    t.privacy_pause(at(12, 0, 0), 15).unwrap();
+    assert!(alerts(&t, 0, 60, site("Video", "youtube.com")).is_empty());
+  }
+
+  #[test]
+  fn an_invalid_repeat_is_rejected() {
+    let t = tracker();
+    assert!(t.team_policy_set(TeamPolicy { allow_hidden_apps: true, alert_not_allowed: true, alert_repeat_minutes: 7 }).is_err());
   }
 
   #[test]

@@ -60,12 +60,16 @@ pub struct Rule {
   pub pattern: String,
   pub category: Category,
   pub ai_tool: Option<String>,
+  /// Sitio marcado «no permitido» por el equipo (ADR-0009/0010): se avisa al entrar.
+  #[serde(default)]
+  pub not_allowed: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Classification {
   pub category: Category,
   pub ai_tool: Option<String>,
+  pub not_allowed: bool,
 }
 
 const DEFAULT_RULES_JSON: &str = include_str!("../rules/default.json");
@@ -93,8 +97,9 @@ pub fn classify(team_rules: &[Rule], defaults: &[Rule], process: &str, title: &s
     .map(|rule| Classification {
       category: rule.category,
       ai_tool: if rule.category == Category::Ai { rule.ai_tool.clone() } else { None },
+      not_allowed: rule.not_allowed,
     })
-    .unwrap_or(Classification { category: Category::Neutral, ai_tool: None })
+    .unwrap_or(Classification { category: Category::Neutral, ai_tool: None, not_allowed: false })
 }
 
 #[cfg(test)]
@@ -130,7 +135,7 @@ mod tests {
 
   #[test]
   fn domain_rules_match_subdomains_but_not_lookalikes() {
-    let team = vec![Rule { kind: MatchKind::Domain, pattern: "youtube.com".into(), category: Category::Distraction, ai_tool: None }];
+    let team = vec![Rule { kind: MatchKind::Domain, pattern: "youtube.com".into(), category: Category::Distraction, ai_tool: None, not_allowed: false }];
     let c = |d: &str| classify(&team, &[], "brave", "", Some(d)).category;
     assert_eq!(c("youtube.com"), Category::Distraction);
     assert_eq!(c("m.youtube.com"), Category::Distraction);
@@ -178,7 +183,7 @@ mod tests {
   #[test]
   fn no_match_is_neutral() {
     let c = run("notepad", "sin título");
-    assert_eq!(c, Classification { category: Category::Neutral, ai_tool: None });
+    assert_eq!(c, Classification { category: Category::Neutral, ai_tool: None, not_allowed: false });
   }
 
   #[test]
@@ -188,6 +193,7 @@ mod tests {
       pattern: "youtube".into(),
       category: Category::Productive,
       ai_tool: None,
+      not_allowed: false,
     }];
     let c = classify(&team, &default_rules(), "chrome", "YouTube - tutorial", None);
     assert_eq!(c.category, Category::Productive);

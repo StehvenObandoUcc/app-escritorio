@@ -123,7 +123,14 @@ pub fn rules_set(t: Tr, json: String) -> Result<()> {
   t.rules_set(&json)
 }
 
-/// ADR-0009: política del equipo activo (por ahora, si se permiten apps ocultas).
+/// ADR-0010: apps instaladas y abiertas para el selector de apps ocultas. Todo local.
+/// Asíncrono para no bloquear la ventana mientras se lee el registro.
+#[tauri::command]
+pub async fn installed_apps() -> Vec<crate::apps::AppEntry> {
+  crate::apps::installed_apps()
+}
+
+/// ADR-0009/0010: política del equipo activo (apps ocultas y avisos de sitio no permitido).
 #[tauri::command]
 pub fn team_policy_set(t: Tr, policy: TeamPolicy) -> Result<()> {
   t.team_policy_set(policy)
