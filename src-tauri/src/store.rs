@@ -383,14 +383,14 @@ impl Store {
 
   // ---- Sincronización (F2) ----
 
-  /// Bloques de `team` sin subir que terminaron antes de `stable_before`, sin título.
+  /// Bloques de `team` sin subir que empezaron antes de `stable_before` (aunque sigan abiertos), sin título.
   pub fn pending_blocks(&self, team: &str, stable_before: DateTime<Utc>, limit: usize) -> Result<Vec<PendingBlock>> {
     let mut stmt = self
       .conn
       .prepare(
         "SELECT id, team_id, started_at, ended_at, app_name, category, ai_tool, domain
          FROM activity_blocks_local
-         WHERE synced_at IS NULL AND team_id = ?1 AND ended_at <= ?2
+         WHERE synced_at IS NULL AND team_id = ?1 AND started_at <= ?2
          ORDER BY started_at LIMIT ?3",
       )
       .map_err(db)?;
@@ -712,7 +712,7 @@ mod tests {
     s.insert_block(&team_block("mine", Some(TEAM), t(9, 0), t(10, 0))).unwrap();
     s.insert_block(&team_block("no-team", None, t(9, 0), t(10, 0))).unwrap();
     s.insert_block(&team_block("other", Some(OTHER), t(9, 0), t(10, 0))).unwrap();
-    s.insert_block(&team_block("recent", Some(TEAM), t(10, 0), t(10, 59))).unwrap();
+    s.insert_block(&team_block("recent", Some(TEAM), t(10, 40), t(10, 59))).unwrap();
     let got = s.pending_blocks(TEAM, t(10, 30), 200).unwrap();
     assert_eq!(got.iter().map(|b| b.id.as_str()).collect::<Vec<_>>(), ["mine"]);
     assert_eq!(got[0].team_id, TEAM);

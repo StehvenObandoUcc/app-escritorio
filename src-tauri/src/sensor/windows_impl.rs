@@ -38,7 +38,7 @@ pub fn foreground() -> Option<(HWND, ActiveWindow)> {
 }
 
 /// SAFETY: debe llamarse con un `pid` obtenido del sistema.
-unsafe fn process_name(pid: u32) -> Option<String> {
+pub(crate) unsafe fn process_name(pid: u32) -> Option<String> {
   unsafe {
     let handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).ok()?;
     let mut buf = [0u16; 1024];
