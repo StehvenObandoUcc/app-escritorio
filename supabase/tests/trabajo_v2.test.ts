@@ -241,12 +241,12 @@ describe('evidencia en archivos (AC-28)', () => {
     const id = await db.as(caro, (q) => createTask(q, 'Con archivo', { assignee: dani }));
     const path = `${teamA}/${project}/${id}/captura.png`;
     const upload = (user: string, name: string) =>
-      db.as(user, (q) => q("insert into storage.objects (bucket_id, name) values ('task-evidence', $1)", [name]));
+      db.as(user, (q) => q(`insert into storage.objects (bucket_id, name, metadata) values ('task-evidence', $1, '{"size": 2048}')`, [name]));
     await upload(dani, path);
     expect(await failure(() => upload(eva, `${teamA}/${project}/${id}/otro.png`))).toMatch(/row-level security/);
     expect(await failure(() => upload(dani, `${teamA}/${randomUUID()}/${id}/x.png`))).toMatch(/row-level security/);
     expect(await failure(() => upload(dani, `../${project}/${id}/x.png`))).toMatch(/row-level security/);
-    await db.as(dani, (q) => q("select add_task_attachment($1, $2, 'captura.png', 2048)", [id, path]));
+    await db.as(dani, (q) => q("select add_task_attachment($1, $2, 'captura.png')", [id, path]));
     const seen = (user: string) => db.as(user, (q) => q("select name from storage.objects where bucket_id = 'task-evidence'"));
     expect(await seen(fede)).toHaveLength(1);
     expect(await seen(eva)).toEqual([]);

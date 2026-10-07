@@ -123,6 +123,27 @@ Criterios nuevos:
 - Arrastrar y soltar en el tablero (D-11).
 - Uso de IA por proyecto (D-13, F5).
 
+## Versión 3 (ADR-0016 y ADR-0017, tras la prueba de la v2)
+
+- D-12 v3: se borran proyectos (owner y admin, escribiendo el nombre) y tareas (quien gestiona). El tiempo se conserva.
+- D-15: quien gestiona puede completar una tarea directamente con el formulario de entrega; cualquiera del proyecto toma una tarea sin responsable.
+- D-16: la tarea se abre en su propia pantalla `/proyectos/:id/tareas/:tarea`; las subtareas se crean con el mismo formulario.
+
+Criterios nuevos:
+- AC-36 Quien gestiona completa una tarea con el formulario: queda hecha, con una revisión aprobada por él.
+- AC-37 Un miembro del proyecto toma una tarea sin responsable; no puede tomar la de otra persona.
+- AC-38 El campo «Qué se hizo» siempre es texto obligatorio; las plantillas guardadas se corrigen.
+- AC-39 Owner y admin borran un proyecto solo escribiendo su nombre; queda en la auditoría y el tiempo se conserva.
+- AC-40 Quien gestiona borra una tarea con sus subtareas; el tiempo se conserva sin tarea.
+- AC-41 La evidencia toma el tamaño de Storage y solo admite los tipos permitidos.
+- AC-42 Cada formulario muestra el error junto al campo, lleva el foco al primero y no se envía dos veces.
+- AC-43 Enter pasa al siguiente campo vacío y envía en el último; Esc cancela.
+- AC-44 Las pestañas se recorren con las flechas; la lista y el tablero también.
+- AC-45 El selector de estado ofrece los 4 estados; En revisión y Hecha abren el formulario.
+- AC-46 Al abrir la app no hay parpadeo de tema.
+- AC-47 Los enlaces `https://` de la evidencia se abren en el navegador; otros se rechazan.
+- AC-48 La CSP está activa.
+
 ## Estado de cada criterio (7 oct)
 
 | Criterio | Evidencia |
