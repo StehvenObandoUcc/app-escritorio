@@ -36,6 +36,8 @@ const MAX_SESSION_BYTES: usize = 64 * 1024;
 const KEY_ACTIVE_TEAM: &str = "active_team_id";
 const KEY_TEAM_RULES: &str = "team_rules";
 const KEY_SESSION: &str = "session_enc";
+/// Nombre de proceso de Pulso: su propia ventana no se registra (ADR-0012).
+const OWN_PROCESS: &str = "pulso";
 const KEY_ALLOW_HIDDEN: &str = "team_allow_hidden_apps";
 const KEY_ALERT: &str = "team_alert_not_allowed";
 const KEY_ALERT_REPEAT: &str = "team_alert_repeat_minutes";
@@ -405,6 +407,17 @@ impl Tracker {
       return Ok(None);
     }
     let mode = g.mode(now);
+    // ADR-0012: mirar Pulso no es trabajo. Su ventana no crea bloques: el bloque anterior se cierra aquí y
+    // el siguiente empieza al volver a otra app. Así el tiempo no se le asigna a «pulso».
+    if mode == Mode::Tracking && window.as_ref().is_some_and(|w| w.process.eq_ignore_ascii_case(OWN_PROCESS)) {
+      g.last_alert = None;
+      let changes = g.engine.close_open(now);
+      g.record(changes);
+      if g.last_flush.is_none_or(|t| now - t >= FLUSH_EVERY) {
+        g.flush(now)?;
+      }
+      return Ok(None);
+    }
     let seen = if mode == Mode::Tracking { window.as_ref().map(|w| g.observe(w)) } else { None };
     let not_allowed = seen.as_ref().is_some_and(|(_, n)| *n);
     let obs = seen.map(|(o, _)| o);
@@ -1184,6 +1197,35 @@ mod tests {
     let t = tracker();
     assert!(t.rules_set(r#"[{"match":"domain","pattern":"youtube.com","category":"distraction","ai_tool":null}]"#).is_ok());
     assert!(t.rules_set(r#"[{"match":"domain","pattern":"youtube.com/shorts","category":"distraction","ai_tool":null}]"#).is_err());
+  }
+
+  // ---- ADR-0012: Pulso no se registra a sí mismo ----
+
+  #[test]
+  fn looking_at_pulso_creates_no_block_and_splits_the_app_in_two() {
+    let t = tracker();
+    feed(&t, 0, 20, win("brave", "Docs"));
+    feed(&t, 22, 40, win("pulso", "Pulso"));
+    feed(&t, 42, 60, win("brave", "Docs"));
+    t.shutdown(at(12, 1, 1)).unwrap();
+    let d = day(&t, at(12, 2, 0));
+    assert!(d.blocks.iter().all(|b| b.app_name != "pulso"), "Pulso no es una app más: {:?}", d.blocks);
+    assert_eq!(d.blocks.len(), 2);
+    // El tiempo con Pulso delante no se cuenta para nadie: ni para Pulso ni para Brave.
+    // Brave tuvo 20 s antes y 18 s después (más ~2 s de lectura en cada cambio); los 20 s de Pulso no cuentan.
+    let counted: i64 = d.totals.values().sum();
+    assert!((36..=44).contains(&counted), "se contaron {counted} s");
+    assert!(d.blocks[0].ended_at <= d.blocks[1].started_at);
+  }
+
+  #[test]
+  fn no_alert_while_looking_at_pulso_and_it_alerts_again_after_coming_back() {
+    let t = tracker();
+    t.rules_set(NOT_ALLOWED_YOUTUBE).unwrap();
+    t.team_policy_set(TeamPolicy { allow_hidden_apps: true, alert_not_allowed: true, alert_repeat_minutes: 0 }).unwrap();
+    assert_eq!(alerts(&t, 0, 20, site("Video", "youtube.com")), vec![0]);
+    assert!(alerts(&t, 22, 40, win("pulso", "Pulso")).is_empty());
+    assert_eq!(alerts(&t, 42, 60, site("Video", "youtube.com")), vec![42]);
   }
 
   // ---- ADR-0010: avisos de sitio no permitido ----
