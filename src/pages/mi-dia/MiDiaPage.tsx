@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { useEffect, useMemo, useState } from 'react';
 import type { Bridge, Category } from '@/bridge/contract';
 import { useOptionalSession } from '@/app/session';
@@ -17,11 +18,11 @@ const BREAKDOWN: Category[] = ['productive', 'ai', 'neutral', 'distraction', 'br
 const PAUSE_MINUTES = 15;
 
 type ActivityView = 'resumen' | 'sitios' | 'linea' | 'detalle';
-const VIEWS: { value: ActivityView; label: string }[] = [
-  { value: 'resumen', label: 'Por app' },
-  { value: 'sitios', label: 'Por sitio' },
-  { value: 'linea', label: 'Línea de tiempo' },
-  { value: 'detalle', label: 'Detalle' },
+const views = (): { value: ActivityView; label: string }[] => [
+  { value: 'resumen', label: t('myDay.views.apps') },
+  { value: 'sitios', label: t('myDay.views.sites') },
+  { value: 'linea', label: t('myDay.views.timeline') },
+  { value: 'detalle', label: t('myDay.views.detail') },
 ];
 
 /** Título de la tarea del temporizador, desde la copia local de tareas (sin red también). */
@@ -33,7 +34,7 @@ function useTaskTitle(bridge: Bridge, taskId: string | null) {
     void bridge
       .tasksCacheGet()
       .then((json) => {
-        const tasks = Object.values(parseTasksCache(json)?.tasks ?? {}).flat();
+        const tasks = parseTasksCache(json)?.tasks ?? [];
         if (alive) setTitle(tasks.find((t) => t.id === taskId)?.title ?? null);
       })
       .catch(() => {});
@@ -64,13 +65,13 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
   const totalsBySite = useMemo(() => (blocks ? domainTotals(blocks) : []), [blocks]);
   const session = useOptionalSession();
   const notAllowed = useMemo(() => new Set(session?.notAllowedDomains ?? []), [session?.notAllowedDomains]);
-  const sampleTag = bridge.source === 'mock' && <Badge tone="accent">Datos de ejemplo</Badge>;
+  const sampleTag = bridge.source === 'mock' && <Badge tone="accent">{t('common.sample')}</Badge>;
 
   if (state.phase === 'loading') {
     return (
-      <PageLayout title="Mi día" subtitle={formatLongDate(date)} actions={sampleTag}>
+      <PageLayout title={t('nav.myDay')} subtitle={formatLongDate(date)} actions={sampleTag}>
         <p className="text-fg-muted" role="status">
-          Cargando tu día…
+          {t('myDay.loading')}
         </p>
       </PageLayout>
     );
@@ -78,10 +79,10 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
 
   if (state.phase === 'error') {
     return (
-      <PageLayout title="Mi día" subtitle={formatLongDate(date)} actions={sampleTag}>
+      <PageLayout title={t('nav.myDay')} subtitle={formatLongDate(date)} actions={sampleTag}>
         <EmptyState
-          title="No se pudo leer tu actividad"
-          description={`El sensor respondió con un error: ${state.message}. Cierra y vuelve a abrir Pulso; si se repite, revisa el registro en Ajustes.`}
+          title={t('myDay.readError')}
+          description={t('myDay.readErrorHint', { error: state.message })}
         />
       </PageLayout>
     );
@@ -91,18 +92,18 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
   const worked = WORK_CATEGORIES.reduce((sum, c) => sum + day.totals[c], 0);
   const summary =
     day.workdayStart && day.workdayEnd
-      ? `Jornada de ${formatHour(day.workdayStart)} a ${formatHour(day.workdayEnd)}. ${formatDuration(worked)} de trabajo, ${formatDuration(day.totals.ai)} con IA.`
-      : 'Todavía no hay actividad registrada hoy.';
+      ? t('myDay.summary', { start: formatHour(day.workdayStart), end: formatHour(day.workdayEnd), worked: formatDuration(worked), ai: formatDuration(day.totals.ai) })
+      : t('myDay.noActivity');
 
   return (
-    <PageLayout title="Mi día" subtitle={formatLongDate(date)} actions={sampleTag}>
-      <Surface as="section" aria-label="Ritmo del día">
+    <PageLayout title={t('nav.myDay')} subtitle={formatLongDate(date)} actions={sampleTag}>
+      <Surface as="section" aria-label={t('myDay.rhythm')}>
         <p className="mb-4 text-fg">{summary}</p>
         <PulseStrip blocks={day.blocks} summary={summary} />
       </Surface>
 
       <div className="flex flex-col gap-5 lg:flex-row">
-        <Surface as="section" aria-label="Temporizador" className="lg:flex-1">
+        <Surface as="section" aria-label={t('timer.label')} className="lg:flex-1">
           <TimerControl
             running={state.status.timer.running}
             elapsedSeconds={elapsed}
@@ -122,17 +123,17 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
             }
           />
         </Surface>
-        <Surface as="section" aria-label="Reparto del tiempo" className="lg:flex-1">
+        <Surface as="section" aria-label={t('myDay.breakdown')} className="lg:flex-1">
           <CategoryBreakdown totals={day.totals} categories={BREAKDOWN} />
         </Surface>
       </div>
 
       <section className="flex flex-col gap-3">
-        <Heading level={2}>Registro de tiempo</Heading>
-        <Surface as="section" aria-label="Añadir tiempo manualmente">
+        <Heading level={2}>{t('myDay.timeLog')}</Heading>
+        <Surface as="section" aria-label={t('myDay.addManual')}>
           <TimeEntryForm
             initial={{ date, start: '', end: '' }}
-            submitLabel="Guardar entrada"
+            submitLabel={t('myDay.saveEntry')}
             clearOnSuccess
             onSubmit={async (v) => {
               await bridge.timeEntryAdd(localDateTimeToIso(v.date, v.start), localDateTimeToIso(v.date, v.end));
@@ -142,8 +143,8 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
         </Surface>
         {entries.length === 0 ? (
           <EmptyState
-            title="Sin entradas de tiempo"
-            description="Inicia el temporizador o añade una entrada con su día, inicio y fin."
+            title={t('myDay.noEntries')}
+            description={t('myDay.noEntriesHint')}
           />
         ) : (
           <Surface padding="flush">
@@ -164,29 +165,29 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
 
       <section className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <Heading level={2}>Actividad</Heading>
-          {day.blocks.length > 0 && <SegmentedControl label="Vista de la actividad" options={VIEWS} value={view} onChange={setView} />}
+          <Heading level={2}>{t('myDay.activity')}</Heading>
+          {day.blocks.length > 0 && <SegmentedControl label={t('myDay.activityView')} options={views()} value={view} onChange={setView} />}
         </div>
         {hasHidden && (
           <label className="flex items-center gap-2 text-sm text-fg-muted">
             <input type="checkbox" className="size-4 accent-accent" checked={showHidden} onChange={(e) => setShowHidden(e.target.checked)} />
-            Mostrar apps ocultas
-            <span className="text-xs">(sus nombres no se guardan; puedes dejar de ocultarlas en Ajustes)</span>
+            {t('myDay.showHidden')}
+            <span className="text-xs">{t('myDay.showHiddenHint')}</span>
           </label>
         )}
         {day.blocks.length === 0 ? (
           <EmptyState
-            title="Aún no hay bloques"
-            description="Pulso empieza a registrar en cuanto usas el computador. Los títulos de ventana se quedan en este equipo."
+            title={t('myDay.noBlocks')}
+            description={t('myDay.noBlocksHint')}
           />
         ) : (
           <Surface padding="flush">
             {view === 'resumen' && aiTools.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3 md:px-5" aria-label="IA usadas hoy">
-                <span className="text-sm font-medium text-fg">IA usadas hoy:</span>
-                {aiTools.map((t) => (
-                  <Badge key={t.tool} tone="accent">
-                    {t.tool} · {formatShortDuration(t.seconds)}
+              <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3 md:px-5" aria-label={t('myDay.aiToday')}>
+                <span className="text-sm font-medium text-fg">{t('myDay.aiTodayLabel')}</span>
+                {aiTools.map((x) => (
+                  <Badge key={x.tool} tone="accent">
+                    {x.tool} · {formatShortDuration(x.seconds)}
                   </Badge>
                 ))}
               </div>
@@ -195,15 +196,14 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
               (totalsByApp.length ? (
                 <AppSummary totals={totalsByApp} />
               ) : (
-                <p className="p-4 text-fg-muted md:p-5">Hoy solo hay inactividad, pausas o descansos.</p>
+                <p className="p-4 text-fg-muted md:p-5">{t('myDay.onlyIdle')}</p>
               ))}
             {view === 'sitios' &&
               (totalsBySite.length ? (
                 <AppSummary totals={totalsBySite} kind="site" flagged={notAllowed} />
               ) : (
                 <p className="p-4 text-fg-muted md:p-5">
-                  Aún no hay sitios web registrados hoy. Pulso lee el dominio de la barra de direcciones de Brave, Chrome, Edge, Opera,
-                  Vivaldi y Firefox; nunca la página ni lo que buscas.
+                  {t('myDay.noSites')}
                 </p>
               ))}
             {view === 'linea' && <ActivityTimeline rows={timeline} />}

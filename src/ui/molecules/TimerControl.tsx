@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { Coffee, EyeOff, Play, Square } from 'lucide-react';
 import { formatClock } from '@/lib/time';
 import { Button } from '@/ui/atoms';
@@ -15,12 +16,6 @@ export interface TimerControlProps {
   onPauseToggle: () => void;
 }
 
-const STATE_TEXT: Record<TimerControlProps['state'], string> = {
-  tracking: 'Registrando tu actividad',
-  break: 'En descanso',
-  paused: 'Seguimiento en pausa: no se registra nada',
-  stopped: 'El sensor está detenido',
-};
 
 export function TimerControl({
   running,
@@ -37,31 +32,31 @@ export function TimerControl({
       <div>
         <p
           role="timer"
-          aria-label="Temporizador"
+          aria-label={t('timer.label')}
           className="font-display text-display font-semibold tracking-tight text-fg tabular-nums"
         >
           {formatClock(elapsedSeconds)}
         </p>
         <p className="mt-1 text-sm text-fg-muted" aria-live="polite">
-          {STATE_TEXT[state]}
+          {t(`timer.state.${state}`)}
         </p>
-        {running && taskTitle && <p className="text-sm text-fg">En la tarea: {taskTitle}</p>}
+        {running && taskTitle && <p className="text-sm text-fg">{t('timer.onTask', { title: taskTitle })}</p>}
       </div>
       <div className="flex flex-wrap gap-2">
         {running ? (
           <Button variant="primary" icon={<Square size={16} aria-hidden="true" />} onClick={onStop}>
-            Detener temporizador
+            {t('timer.stop')}
           </Button>
         ) : (
           <Button variant="primary" icon={<Play size={16} aria-hidden="true" />} onClick={onStart}>
-            Iniciar temporizador
+            {t('timer.start')}
           </Button>
         )}
         <Button icon={<Coffee size={16} aria-hidden="true" />} onClick={onBreakToggle}>
-          {state === 'break' ? 'Terminar descanso' : 'Tomar un descanso'}
+          {state === 'break' ? t('timer.endBreak') : t('timer.takeBreak')}
         </Button>
         <Button variant="ghost" icon={<EyeOff size={16} aria-hidden="true" />} onClick={onPauseToggle}>
-          {state === 'paused' ? 'Reanudar seguimiento' : 'Pausar 15 min'}
+          {state === 'paused' ? t('timer.resume') : t('timer.pause')}
         </Button>
       </div>
     </div>

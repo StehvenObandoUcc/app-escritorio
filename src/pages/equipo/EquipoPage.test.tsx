@@ -151,6 +151,7 @@ describe('Equipo (EQ-01 a EQ-08, PS-02)', () => {
     const bridge = createMockBridge();
     const active = vi.spyOn(bridge, 'activeTeamSet');
     renderWithSession(<EquipoPage />, { path: '/equipo', cloud, bridge });
+    await userEvent.click(await screen.findByRole('tab', { name: 'General' }));
     const status = await screen.findByRole('region', { name: 'Sincronización' });
     expect(await within(status).findByText(/Como observador, tu actividad no se comparte/)).toBeInTheDocument();
     expect(within(status).queryByText('Error')).not.toBeInTheDocument();
@@ -191,6 +192,7 @@ describe('Equipo (EQ-01 a EQ-08, PS-02)', () => {
     const { cloud, id } = await signedIn();
     await cloud.giveConsent(cloud.debug.addTeam('Equipo A', id), CONSENT_VERSION);
     renderWithSession(<EquipoPage />, { path: '/equipo', cloud });
+    await userEvent.click(await screen.findByRole('tab', { name: 'General' }));
     await userEvent.click(await screen.findByRole('button', { name: 'Salir del equipo' }));
     await userEvent.click(screen.getByRole('button', { name: 'Sí, salir de Equipo A' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('al menos un owner');
@@ -220,6 +222,7 @@ describe('Equipo (EQ-01 a EQ-08, PS-02)', () => {
     await bridge.activeTeamSet(team, id);
     await bridge.timeEntryAdd('2026-10-05T14:00:00Z', '2026-10-05T15:00:00Z');
     renderWithSession(<EquipoPage />, { path: '/equipo', cloud, bridge });
+    await userEvent.click(await screen.findByRole('tab', { name: 'General' }));
     const status = await screen.findByRole('region', { name: 'Sincronización' });
     expect(await within(status).findByText('Pendiente')).toBeInTheDocument();
     expect(status).toHaveTextContent('Sin conexión');

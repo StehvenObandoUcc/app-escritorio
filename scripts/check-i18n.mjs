@@ -11,12 +11,16 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const LETTERS = /[A-Za-zÁÉÍÓÚáéíóúÑñ]{2,}/;
+const LETTERS = /[a-záéíóúñ]{2,}/;
+/** Nombres propios que no se traducen. */
+const ALLOWED = new Set(['Pulso', 'youtube.com']);
 const ATTRS = 'label|aria-label|title|placeholder|alt|subtitle|description|hint|submitLabel|acceptLabel|what|error';
 
 export const RULES = [
   // Texto entre una etiqueta que cierra (>) y la siguiente que abre (<), sin llaves.
-  { name: 'texto en JSX', re: />\s*([^<>{}`=;()]*[A-Za-zÁÉÍÓÚáéíóúÑñ]{2,}[^<>{}`=;()]*)\s*</g },
+  { name: 'texto en JSX', re: /(?<![=-])>\s*([^<>{}`=;()]*[A-Za-zÁÉÍÓÚáéíóúÑñ]{2,}[^<>{}`=;()]*)\s*</g },
+  // Texto solo en su línea, entre una etiqueta que abre y otra que cierra (JSX en varias líneas).
+  { name: 'línea de texto en JSX', re: /^\s*([¿¡A-ZÁÉÍÓÚ][^<>{}`=;:()'"[\]|&]*)$/g },
   { name: 'atributo de texto', re: new RegExp(`\\b(?:${ATTRS})="([^"]*)"`, 'g') },
 ];
 
@@ -27,7 +31,8 @@ export function findViolations(text) {
     if (content.trimStart().startsWith('//') || content.trimStart().startsWith('*')) return;
     for (const { name, re } of RULES) {
       for (const m of content.matchAll(re)) {
-        if (LETTERS.test(m[1] ?? '')) found.push({ line: i + 1, rule: name, match: m[0].trim() });
+        const text = (m[1] ?? '').trim();
+        if (LETTERS.test(text) && !ALLOWED.has(text)) found.push({ line: i + 1, rule: name, match: m[0].trim() });
       }
     }
   });

@@ -1,9 +1,10 @@
+import { errorMessage, t } from '@/i18n';
 import { useState, type FormEvent } from 'react';
 import { useOptionalSession, type SessionValue } from '@/app/session';
 import { Avatar, Button, Heading, Surface } from '@/ui/atoms';
 import { FormField } from '@/ui/molecules';
 
-const describe = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause));
+const describe = errorMessage;
 
 const validTimezone = (tz: string) => {
   try {
@@ -28,7 +29,7 @@ function Perfil({ session }: { session: SessionValue }) {
   if (!profile) {
     return (
       <p role="status" className="text-fg-muted">
-        Cargando tu perfil…
+        {t('common.loading')}
       </p>
     );
   }
@@ -56,14 +57,14 @@ function PerfilForm({
     e.preventDefault();
     setNotice(null);
     const clean = name.trim();
-    if (clean.length < 1 || clean.length > 80) return setError('El nombre debe tener entre 1 y 80 caracteres.');
-    if (!validTimezone(tz.trim())) return setError('La zona horaria no existe. Usa el formato Región/Ciudad, por ejemplo America/Bogota.');
+    if (clean.length < 1 || clean.length > 80) return setError(t('profile.nameError'));
+    if (!validTimezone(tz.trim())) return setError(t('profile.timezoneError'));
     setError(null);
     setBusy(true);
     try {
       await session.cloud.saveProfile(clean, tz.trim());
       await session.refresh();
-      setNotice('Perfil guardado.');
+      setNotice(t('profile.saved'));
     } catch (cause) {
       setError(describe(cause));
     } finally {
@@ -72,21 +73,21 @@ function PerfilForm({
   };
 
   return (
-    <Surface as="section" aria-label="Perfil">
+    <Surface as="section" aria-label={t('profile.title')}>
       <form onSubmit={submit} className="flex max-w-prose flex-col gap-4" noValidate>
         <div className="flex items-center gap-3">
           <Avatar name={name || email} />
           <div className="min-w-0">
-            <Heading level={2}>Perfil</Heading>
+            <Heading level={2}>{t('profile.title')}</Heading>
             <p className="truncate text-sm text-fg-muted">{email}</p>
           </div>
         </div>
-        <FormField label="Nombre visible" value={name} onChange={(e) => setName(e.target.value)} hint="Así te ven en la lista del equipo." />
+        <FormField label={t('profile.name')} value={name} onChange={(e) => setName(e.target.value)} hint={t('profile.nameHint')} />
         <FormField
-          label="Zona horaria"
+          label={t('profile.timezone')}
           value={tz}
           onChange={(e) => setTz(e.target.value)}
-          hint="Define tu jornada y tu día. Formato Región/Ciudad, por ejemplo America/Bogota."
+          hint={t('profile.timezoneHint')}
         />
         {error && (
           <p role="alert" className="text-sm text-danger">
@@ -100,9 +101,9 @@ function PerfilForm({
         )}
         <div className="flex flex-wrap gap-2">
           <Button type="submit" variant="primary" disabled={busy}>
-            Guardar perfil
+            {t('profile.save')}
           </Button>
-          <Button onClick={() => void session.cloud.signOut()}>Cerrar sesión</Button>
+          <Button onClick={() => void session.cloud.signOut()}>{t('profile.signOut')}</Button>
         </div>
       </form>
     </Surface>

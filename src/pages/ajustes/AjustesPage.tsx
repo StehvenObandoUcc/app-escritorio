@@ -1,8 +1,10 @@
+import { useLocale } from '@/app/locale';
+import { errorMessage, LOCALES, t } from '@/i18n';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { IDLE_MINUTES_MAX, IDLE_MINUTES_MIN, type Bridge, type Settings } from '@/bridge/contract';
 import { displayAppName, HIDDEN_APP } from '@/lib/apps';
 import { localDate } from '@/lib/time';
-import { Badge, Button, Heading, Surface } from '@/ui/atoms';
+import { Badge, Button, Heading, Select, Surface } from '@/ui/atoms';
 import { EmptyState, FormField } from '@/ui/molecules';
 import { HiddenAppsPicker, type AppCandidate } from '@/ui/organisms';
 import { PageLayout } from '@/ui/templates';
@@ -35,7 +37,7 @@ async function recentApps(bridge: Bridge): Promise<AppCandidate[]> {
     .map(([process]) => ({ process, label: label.get(process) ?? displayAppName(process), group: 'recent' as const }));
 }
 
-const describe = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause));
+const describe = errorMessage;
 
 /** Ajustes locales de este equipo: umbral de inactividad y apps ocultas (F1). */
 export function AjustesPage({ bridge }: { bridge: Bridge }) {
@@ -97,14 +99,14 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
     return [...byProcess.values()];
   }, [recent, installed, saved, hidden]);
 
-  const sampleTag = bridge.source === 'mock' && <Badge tone="accent">Datos de ejemplo</Badge>;
+  const sampleTag = bridge.source === 'mock' && <Badge tone="accent">{t('common.sample')}</Badge>;
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setNotice(null);
     const n = Number(minutes);
     if (!Number.isInteger(n) || n < IDLE_MINUTES_MIN || n > IDLE_MINUTES_MAX) {
-      setFormError(`Escribe un número entero de minutos entre ${IDLE_MINUTES_MIN} y ${IDLE_MINUTES_MAX}.`);
+      setFormError(t('settings.idleError', { min: IDLE_MINUTES_MIN, max: IDLE_MINUTES_MAX }));
       return;
     }
     setFormError(null);
@@ -113,48 +115,47 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
       setSaved(next);
       setMinutes(String(next.idleMinutes));
       setHidden(next.hiddenApps);
-      setNotice('Cambios guardados.');
+      setNotice(t('common.saved'));
     } catch (cause) {
       setFormError(describe(cause));
     }
   };
 
   return (
-    <PageLayout title="Ajustes" subtitle="Cuenta y seguimiento en este equipo" actions={sampleTag}>
+    <PageLayout title={t('nav.settings')} subtitle={t('settings.subtitle')} actions={sampleTag}>
       <PerfilSection />
+      <LanguageSection />
       {toastsOff && (
         <p role="note" className="rounded-md bg-sunken p-3 text-sm text-fg">
-          Las notificaciones de Windows están apagadas: si entras a un sitio no permitido, Pulso sonará y su icono parpadeará en la
-          barra de tareas, pero no verás el mensaje. Para verlo, actívalas en Configuración → Sistema → Notificaciones.
+          {t('settings.toastsOff')}
         </p>
       )}
       {loadError ? (
         <EmptyState
-          title="No se pudieron leer los ajustes"
-          description={`El núcleo respondió con un error: ${loadError}. Cierra y vuelve a abrir Pulso.`}
+          title={t('settings.loadError')}
+          description={t('settings.loadErrorHint', { error: loadError })}
         />
       ) : saved === null ? (
         <p className="text-fg-muted" role="status">
-          Cargando ajustes…
+          {t('common.loading')}
         </p>
       ) : (
-        <Surface as="section" aria-label="Seguimiento">
+        <Surface as="section" aria-label={t('settings.tracking')}>
           <form onSubmit={submit} className="flex max-w-prose flex-col gap-4" noValidate>
-            <Heading level={2}>Seguimiento</Heading>
+            <Heading level={2}>{t('settings.tracking')}</Heading>
             <FormField
-              label="Minutos de inactividad"
+              label={t('settings.idleMinutes')}
               type="number"
               inputMode="numeric"
               min={IDLE_MINUTES_MIN}
               max={IDLE_MINUTES_MAX}
               value={minutes}
               onChange={(e) => setMinutes(e.target.value)}
-              hint={`Entre ${IDLE_MINUTES_MIN} y ${IDLE_MINUTES_MAX}. Sin teclado ni ratón durante ese tiempo, el bloque se cierra en tu última acción y empieza uno sin actividad. Leyendo o en reunión (Readest, lectores de PDF, Zoom, Teams, Meet) espera hasta 30 min.`}
+              hint={t('settings.idleHint', { min: IDLE_MINUTES_MIN, max: IDLE_MINUTES_MAX })}
             />
             {teamForbidsHidden && (
               <p role="note" className="rounded-md bg-sunken p-3 text-sm text-fg">
-                Tu equipo ({session?.activeTeam?.name}) no permite ocultar apps: se registran con su nombre mientras trabajes en él. Tu lista se
-                conserva y vuelve a aplicarse si el equipo lo permite.
+                {t('settings.hiddenForbidden', { team: session?.activeTeam?.name ?? '' })}
               </p>
             )}
             <HiddenAppsPicker candidates={candidates} selected={hidden} onChange={setHidden} disabled={teamForbidsHidden} />
@@ -170,16 +171,44 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
             )}
             <div>
               <Button type="submit" variant="primary">
-                Guardar cambios
+                {t('common.save')}
               </Button>
             </div>
           </form>
         </Surface>
       )}
       <EmptyState
-        title="Más ajustes llegan después"
-        description="Proveedor de IA (F4), reglas y jornada del equipo, y avisos (F5)."
+        title={t('settings.moreLater')}
+        description={t('settings.moreLaterHint')}
       />
     </PageLayout>
+  );
+}
+
+/** Idioma de la app y de las notificaciones de Windows (ADR-0015). El cambio es inmediato. */
+function LanguageSection() {
+  const { locale, change } = useLocale();
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <Surface as="section" aria-label={t('settings.language')} className="flex max-w-prose flex-col gap-2">
+      <Heading level={2}>{t('settings.language')}</Heading>
+      <label className="flex flex-col gap-1 text-sm font-medium text-fg">
+        {t('settings.languageLabel')}
+        <Select
+          value={locale}
+          onChange={(e) => {
+            setError(null);
+            change(e.target.value as (typeof LOCALES)[number]).catch((cause: unknown) => setError(errorMessage(cause)));
+          }}
+          options={LOCALES.map((l) => ({ value: l, label: t(`settings.languages.${l}`) }))}
+        />
+      </label>
+      <p className="text-sm text-fg-muted">{t('settings.languageHint')}</p>
+      {error && (
+        <p role="alert" className="text-sm text-danger">
+          {error}
+        </p>
+      )}
+    </Surface>
   );
 }

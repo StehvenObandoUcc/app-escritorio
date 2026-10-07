@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { useState, type FormEvent } from 'react';
 import { Button } from '@/ui/atoms';
 import { FormField } from './FormField';
@@ -31,7 +32,7 @@ export function TimeEntryForm({ initial, submitLabel, onSubmit, onCancel, clearO
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!values.date || !values.start || !values.end) {
-      setError('Completa el día, el inicio y el fin.');
+      setError(t('entries.errorMissing'));
       return;
     }
     setBusy(true);
@@ -50,13 +51,13 @@ export function TimeEntryForm({ initial, submitLabel, onSubmit, onCancel, clearO
     <form onSubmit={submit} className="flex flex-col gap-3" noValidate>
       <div className="flex flex-wrap items-start gap-3">
         <div className="min-w-40 flex-1">
-          <FormField label="Día" type="date" value={values.date} onChange={change('date')} />
+          <FormField label={t('entries.day')} type="date" value={values.date} onChange={change('date')} />
         </div>
         <div className="min-w-32 flex-1">
-          <FormField label="Inicio" type="time" value={values.start} onChange={change('start')} />
+          <FormField label={t('entries.start')} type="time" value={values.start} onChange={change('start')} />
         </div>
         <div className="min-w-32 flex-1">
-          <FormField label="Fin" type="time" value={values.end} onChange={change('end')} />
+          <FormField label={t('entries.end')} type="time" value={values.end} onChange={change('end')} />
         </div>
       </div>
       {error && (
@@ -70,7 +71,7 @@ export function TimeEntryForm({ initial, submitLabel, onSubmit, onCancel, clearO
         </Button>
         {onCancel && (
           <Button size="sm" variant="ghost" onClick={onCancel} disabled={busy}>
-            Cancelar
+            {t('common.cancel')}
           </Button>
         )}
       </div>
