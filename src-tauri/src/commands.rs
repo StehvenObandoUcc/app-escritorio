@@ -130,6 +130,12 @@ pub async fn installed_apps() -> Vec<crate::apps::AppEntry> {
   crate::apps::installed_apps()
 }
 
+/// ADR-0011: si Windows tiene encendidas las notificaciones de apps (para explicarlo en Ajustes).
+#[tauri::command]
+pub fn notifications_status() -> crate::system::NotificationsStatus {
+  crate::system::notifications_status()
+}
+
 /// ADR-0009/0010: política del equipo activo (apps ocultas y avisos de sitio no permitido).
 #[tauri::command]
 pub fn team_policy_set(t: Tr, policy: TeamPolicy) -> Result<()> {

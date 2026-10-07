@@ -7,6 +7,7 @@ pub mod secrets;
 pub mod sensor;
 pub mod store;
 pub mod sync;
+pub mod system;
 pub mod tracker;
 pub mod views;
 
@@ -21,9 +22,20 @@ const SAMPLE_EVERY: Duration = Duration::from_secs(2);
 /// Si el proceso sigue vivo este tiempo después de cerrar la ventana, se termina a la fuerza.
 const EXIT_WATCHDOG: Duration = Duration::from_secs(5);
 
-/// Notificación de Windows con sonido para un sitio no permitido (ADR-0010). Solo local.
+/// Aviso de sitio no permitido (ADR-0010, ADR-0011). Solo local:
+/// - sonido propio y parpadeo del icono en la barra de tareas, que funcionan aunque Windows tenga las
+///   notificaciones apagadas;
+/// - y la notificación de Windows, que solo se ve si están encendidas.
 fn notify_not_allowed(handle: &AppHandle, alert: &tracker::Alert) {
   use tauri_plugin_notification::NotificationExt;
+  system::beep();
+  if let Some(window) = handle.get_webview_window("main")
+    && let Err(e) = window.request_user_attention(Some(tauri::UserAttentionType::Informational))
+  {
+    log::error!("aviso: no se pudo hacer parpadear la ventana: {e}");
+  }
+  // Sin el dominio: los registros no llevan datos personales (ARQUITECTURA §10).
+  log::info!("aviso de sitio no permitido enviado");
   let shown = handle
     .notification()
     .builder()
@@ -146,6 +158,7 @@ pub fn run() {
       commands::rules_set,
       commands::team_policy_set,
       commands::installed_apps,
+      commands::notifications_status,
     ])
     .build(context)
     .expect("error while building tauri application");
