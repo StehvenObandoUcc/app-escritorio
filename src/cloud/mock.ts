@@ -15,6 +15,10 @@ import {
   type Member,
   type MyTeam,
   type Profile,
+  type Project,
+  type ProjectRole,
+  type Task,
+  type TaskInput,
   type TeamRole,
 } from './contract';
 
@@ -150,6 +154,38 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
       if (!m || m.role === 'viewer' || !m.consentAt) fail('No tienes permiso para esta acción.');
     }
   };
+  // ---- Proyectos y tareas: imita project_role, can_manage_project y las funciones de la migración F3 ----
+  const projects: { id: string; teamId: string; name: string; archivedAt: string | null }[] = [];
+  const projectMembers: { projectId: string; userId: string; role: ProjectRole }[] = [];
+  const tasks: (Omit<Task, 'loggedSeconds'> & { projectId: string })[] = [];
+  const entryOwner = new Map<string, string>();
+  const projectRole = (projectId: string, userId: string): Project['myRole'] | null => {
+    const p = projects.find((x) => x.id === projectId);
+    if (!p) return null;
+    const team = roleIn(p.teamId, userId);
+    if (team === 'owner' || team === 'admin') return 'manager';
+    if (team !== 'member') return null;
+    return projectMembers.find((m) => m.projectId === projectId && m.userId === userId)?.role ?? null;
+  };
+  const canManageProject = (projectId: string, userId: string) => ['manager', 'lead'].includes(projectRole(projectId, userId) ?? '');
+  const assertOpen = (projectId: string) => {
+    if (projects.find((p) => p.id === projectId)?.archivedAt) fail('El proyecto está archivado: desarchívalo para hacer cambios', 'invalid');
+  };
+  const assertAssignee = (projectId: string, assignee: string | null) => {
+    if (assignee && !projectMembers.some((m) => m.projectId === projectId && m.userId === assignee)) {
+      fail('El responsable debe ser miembro del proyecto', 'invalid');
+    }
+  };
+  const cleanTask = (t: TaskInput): TaskInput => {
+    if (t.title.trim().length < 1 || t.title.trim().length > 200) fail('El título debe tener entre 1 y 200 caracteres', 'invalid');
+    return { ...t, title: t.title.trim(), labels: [...new Set(t.labels.map((l) => l.trim()).filter(Boolean))].sort() };
+  };
+  const taskSeconds = (taskId: string) =>
+    uploaded.entries
+      .filter((e) => e.taskId === taskId && !e.deletedAt)
+      .reduce((sum, e) => sum + Math.round(((e.endedAt ? Date.parse(e.endedAt) : now().getTime()) - Date.parse(e.startedAt)) / 1000), 0);
+  const findTask = (taskId: string) => tasks.find((x) => x.id === taskId) ?? fail('No permitido');
+
   const pendingFor = (email: string) =>
     invitations.filter((i) => i.email === email && i.status === 'pending' && Date.parse(i.expiresAt) > now().getTime());
 
@@ -418,6 +454,110 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
       }
       return [...totals.values()];
     },
+    myProjects: async (teamId) => {
+      const a = me();
+      return projects
+        .filter((p) => p.teamId === teamId && projectRole(p.id, a.id))
+        .map((p): Project => {
+          const own = tasks.filter((t) => t.projectId === p.id);
+          return {
+            id: p.id,
+            name: p.name,
+            archivedAt: p.archivedAt,
+            myRole: projectRole(p.id, a.id) ?? 'contributor',
+            tasksTotal: own.length,
+            tasksDone: own.filter((t) => t.status === 'done').length,
+            loggedSeconds: own.reduce((s, t) => s + taskSeconds(t.id), 0),
+            estimateMinutes: own.reduce((s, t) => s + (t.estimateMinutes ?? 0), 0),
+          };
+        })
+        .sort((x, y) => Number(!!x.archivedAt) - Number(!!y.archivedAt) || x.name.localeCompare(y.name));
+    },
+    createProject: async (teamId, name) => {
+      const a = me();
+      if (!canManage(teamId, a.id)) fail('No permitido');
+      if (name.trim().length < 2 || name.trim().length > 80) fail('El nombre debe tener entre 2 y 80 caracteres', 'invalid');
+      const id = crypto.randomUUID();
+      projects.push({ id, teamId, name: name.trim(), archivedAt: null });
+      projectMembers.push({ projectId: id, userId: a.id, role: 'lead' });
+      return id;
+    },
+    setProjectArchived: async (projectId, archived) => {
+      if (projectRole(projectId, me().id) !== 'manager') fail('No permitido');
+      const p = projects.find((x) => x.id === projectId);
+      if (p) p.archivedAt = archived ? (p.archivedAt ?? now().toISOString()) : null;
+    },
+    projectMembers: async (projectId) => {
+      if (!projectRole(projectId, me().id)) fail('No permitido');
+      return projectMembers
+        .filter((m) => m.projectId === projectId)
+        .map((m) => ({ userId: m.userId, role: m.role, displayName: profiles.get(m.userId)?.displayName ?? byId(m.userId)?.displayName ?? null }));
+    },
+    setProjectMember: async (projectId, userId, role) => {
+      if (!canManageProject(projectId, me().id)) fail('No permitido');
+      const team = projects.find((p) => p.id === projectId)?.teamId ?? '';
+      if (!['owner', 'admin', 'member'].includes(roleIn(team, userId) ?? '')) {
+        fail('Solo se añaden owners, admins o members del equipo; un viewer no pertenece a proyectos', 'invalid');
+      }
+      const existing = projectMembers.find((m) => m.projectId === projectId && m.userId === userId);
+      if (existing) existing.role = role;
+      else projectMembers.push({ projectId, userId, role });
+    },
+    removeProjectMember: async (projectId, userId) => {
+      if (!canManageProject(projectId, me().id)) fail('No permitido');
+      const i = projectMembers.findIndex((m) => m.projectId === projectId && m.userId === userId);
+      if (i >= 0) projectMembers.splice(i, 1);
+      for (const t of tasks) if (t.projectId === projectId && t.assigneeId === userId) t.assigneeId = null;
+    },
+    projectTasks: async (projectId) => {
+      if (!projectRole(projectId, me().id)) fail('No permitido');
+      return tasks
+        .filter((t) => t.projectId === projectId)
+        .map((t): Task => ({ ...t, loggedSeconds: taskSeconds(t.id) }));
+    },
+    createTask: async (projectId, input) => {
+      const a = me();
+      if (!projectRole(projectId, a.id)) fail('No permitido');
+      if (!canManageProject(projectId, a.id) && input.assigneeId && input.assigneeId !== a.id) {
+        fail('No permitido: solo puedes crear tareas para ti');
+      }
+      assertOpen(projectId);
+      assertAssignee(projectId, input.assigneeId);
+      const id = crypto.randomUUID();
+      tasks.push({ ...cleanTask(input), id, projectId, createdBy: a.id, updatedAt: now().toISOString() });
+      return id;
+    },
+    updateTask: async (taskId, input) => {
+      const t = findTask(taskId);
+      if (!canManageProject(t.projectId, me().id)) fail('No permitido');
+      assertOpen(t.projectId);
+      assertAssignee(t.projectId, input.assigneeId);
+      Object.assign(t, cleanTask(input), { updatedAt: now().toISOString() });
+    },
+    setTaskStatus: async (taskId, status) => {
+      const a = me();
+      const t = findTask(taskId);
+      if (!(canManageProject(t.projectId, a.id) || (t.assigneeId === a.id && projectRole(t.projectId, a.id)))) fail('No permitido');
+      assertOpen(t.projectId);
+      t.status = status;
+      t.updatedAt = now().toISOString();
+    },
+    projectTimeSummary: async (projectId, from, to) => {
+      if (!canManageProject(projectId, me().id)) fail('No permitido');
+      const team = projects.find((p) => p.id === projectId)?.teamId ?? '';
+      const ids = new Set(tasks.filter((t) => t.projectId === projectId).map((t) => t.id));
+      const totals = new Map<string | null, number>();
+      for (const e of uploaded.entries) {
+        if (!e.taskId || !ids.has(e.taskId) || e.deletedAt) continue;
+        const start = Math.max(Date.parse(e.startedAt), Date.parse(from));
+        const end = Math.min(e.endedAt ? Date.parse(e.endedAt) : now().getTime(), Date.parse(to));
+        if (end <= start) continue;
+        const owner = entryOwner.get(e.id) ?? null;
+        const key = owner && roleIn(team, owner) ? owner : null;
+        totals.set(key, (totals.get(key) ?? 0) + Math.round((end - start) / 1000));
+      }
+      return [...totals].map(([userId, seconds]) => ({ userId, seconds }));
+    },
     upsertBlocks: async (userId, rows) => {
       checkConsent(userId, rows.map((r) => r.teamId));
       upload(uploaded.blocks, rows, (r) => r.id);
@@ -425,7 +565,14 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
     },
     upsertEntries: async (userId, rows) => {
       checkConsent(userId, rows.map((r) => r.teamId));
+      for (const r of rows) {
+        const task = r.taskId ? tasks.find((t) => t.id === r.taskId) : null;
+        if (r.taskId && (!task || projects.find((p) => p.id === task.projectId)?.teamId !== r.teamId)) {
+          fail('La tarea no es de este equipo', 'invalid');
+        }
+      }
       upload(uploaded.entries, rows, (r) => r.id);
+      for (const r of rows) entryOwner.set(r.id, userId);
     },
     upsertClosures: async (userId, rows) => {
       checkConsent(userId, rows.map((r) => r.teamId));

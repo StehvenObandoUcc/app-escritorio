@@ -15,12 +15,17 @@ import {
   MyInvitationSchema,
   MyTeamSchema,
   ProfileSchema,
+  ProjectMemberSchema,
+  ProjectSchema,
+  ProjectTimeSchema,
+  TaskSchema,
   TeamInvitationSchema,
   TeamRoleSchema,
   WorkdaySchema,
   WRONG_INVITATION_CODE,
   type Cloud,
   type CloudUser,
+  type TaskInput,
 } from './contract';
 
 /**
@@ -405,6 +410,98 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
         .parse(await rpc('team_domain_summary', { p_team: teamId, p_from: from, p_to: to }));
       return rows.map((r) => DomainUsageSchema.parse({ userId: r.user_id, domain: r.domain, category: r.category, seconds: r.seconds }));
     },
+    myProjects: async (teamId) => {
+      const rows = z
+        .array(
+          z.object({
+            id: z.uuid(),
+            name: z.string(),
+            archived_at: z.string().nullable(),
+            my_role: z.string(),
+            tasks_total: z.coerce.number(),
+            tasks_done: z.coerce.number(),
+            logged_seconds: z.coerce.number(),
+            estimate_minutes: z.coerce.number(),
+          }),
+        )
+        .parse(await rpc('my_projects', { p_team: teamId }));
+      return rows.map((r) =>
+        ProjectSchema.parse({
+          id: r.id,
+          name: r.name,
+          archivedAt: r.archived_at,
+          myRole: r.my_role,
+          tasksTotal: r.tasks_total,
+          tasksDone: r.tasks_done,
+          loggedSeconds: r.logged_seconds,
+          estimateMinutes: r.estimate_minutes,
+        }),
+      );
+    },
+    createProject: async (teamId, name) => z.uuid().parse(await rpc('create_project', { p_team: teamId, p_name: name })),
+    setProjectArchived: async (projectId, archived) => {
+      await rpc('set_project_archived', { p_project: projectId, p_archived: archived });
+    },
+    projectMembers: async (projectId) => {
+      const rows = z
+        .array(z.object({ user_id: z.uuid(), role: z.string(), display_name: z.string().nullable() }))
+        .parse(await rpc('project_member_list', { p_project: projectId }));
+      return rows.map((r) => ProjectMemberSchema.parse({ userId: r.user_id, role: r.role, displayName: r.display_name }));
+    },
+    setProjectMember: async (projectId, userId, role) => {
+      await rpc('set_project_member', { p_project: projectId, p_user: userId, p_role: role });
+    },
+    removeProjectMember: async (projectId, userId) => {
+      await rpc('remove_project_member', { p_project: projectId, p_user: userId });
+    },
+    projectTasks: async (projectId) => {
+      const rows = z
+        .array(
+          z.object({
+            id: z.uuid(),
+            title: z.string(),
+            description: z.string(),
+            assignee_id: z.uuid().nullable(),
+            status: z.string(),
+            due_date: z.string().nullable(),
+            labels: z.array(z.string()),
+            estimate_minutes: z.number().nullable(),
+            logged_seconds: z.coerce.number(),
+            created_by: z.uuid(),
+            updated_at: z.string(),
+          }),
+        )
+        .parse(await rpc('project_tasks', { p_project: projectId }));
+      return rows.map((r) =>
+        TaskSchema.parse({
+          id: r.id,
+          title: r.title,
+          description: r.description,
+          assigneeId: r.assignee_id,
+          status: r.status,
+          dueDate: r.due_date,
+          labels: r.labels,
+          estimateMinutes: r.estimate_minutes,
+          loggedSeconds: r.logged_seconds,
+          createdBy: r.created_by,
+          updatedAt: r.updated_at,
+        }),
+      );
+    },
+    createTask: async (projectId, input) =>
+      z.uuid().parse(await rpc('create_task', { p_project: projectId, ...taskArgs(input) })),
+    updateTask: async (taskId, input) => {
+      await rpc('update_task', { p_task: taskId, ...taskArgs(input) });
+    },
+    setTaskStatus: async (taskId, status) => {
+      await rpc('set_task_status', { p_task: taskId, p_status: status });
+    },
+    projectTimeSummary: async (projectId, from, to) => {
+      const rows = z
+        .array(z.object({ user_id: z.uuid().nullable(), seconds: z.coerce.number() }))
+        .parse(await rpc('project_time_summary', { p_project: projectId, p_from: from, p_to: to }));
+      return rows.map((r) => ProjectTimeSchema.parse({ userId: r.user_id, seconds: r.seconds }));
+    },
     upsertBlocks: async (userId, rows) => {
       await run(client.from('activity_blocks').upsert(rows.map((b) => blockRow(userId, b)), { onConflict: 'id' }));
     },
@@ -416,6 +513,17 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
     },
   };
 }
+
+/** Campos vacíos se omiten: la función SQL los toma como vacíos (valores por defecto). */
+const taskArgs = (t: TaskInput) => ({
+  p_title: t.title,
+  p_status: t.status,
+  p_description: t.description,
+  p_assignee: t.assigneeId ?? undefined,
+  p_due_date: t.dueDate ?? undefined,
+  p_labels: t.labels,
+  p_estimate_minutes: t.estimateMinutes ?? undefined,
+});
 
 // Filas tal como las espera Postgres. Ninguna tiene título: el tipo de origen no lo trae (D-05).
 export const blockRow = (userId: string, b: SyncBlock) => ({

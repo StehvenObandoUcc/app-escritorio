@@ -98,6 +98,60 @@ export const DomainUsageSchema = z.object({
 });
 export type DomainUsage = z.infer<typeof DomainUsageSchema>;
 
+// ---- Proyectos y tareas (F3, docs/specs/F3-proyectos-y-tareas.md) ----
+
+export const PROJECT_ROLES = ['lead', 'contributor'] as const;
+export const ProjectRoleSchema = z.enum(PROJECT_ROLES);
+export type ProjectRole = z.infer<typeof ProjectRoleSchema>;
+
+export const TASK_STATUSES = ['todo', 'doing', 'done'] as const;
+export const TaskStatusSchema = z.enum(TASK_STATUSES);
+export type TaskStatus = z.infer<typeof TaskStatusSchema>;
+
+/** Proyecto visible con mi rol y su avance (`my_projects`). `manager` = owner o admin del equipo. */
+export const ProjectSchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  archivedAt: z.string().nullable(),
+  myRole: z.enum(['manager', 'lead', 'contributor']),
+  tasksTotal: z.number().int().nonnegative(),
+  tasksDone: z.number().int().nonnegative(),
+  loggedSeconds: z.number().nonnegative(),
+  estimateMinutes: z.number().nonnegative(),
+});
+export type Project = z.infer<typeof ProjectSchema>;
+
+export const ProjectMemberSchema = z.object({
+  userId: z.uuid(),
+  role: ProjectRoleSchema,
+  displayName: z.string().nullable(),
+});
+export type ProjectMember = z.infer<typeof ProjectMemberSchema>;
+
+/** Tarea con el tiempo registrado por todas las personas (`project_tasks`). */
+export const TaskSchema = z.object({
+  id: z.uuid(),
+  title: z.string(),
+  description: z.string(),
+  assigneeId: z.uuid().nullable(),
+  status: TaskStatusSchema,
+  /** AAAA-MM-DD */
+  dueDate: z.iso.date().nullable(),
+  labels: z.array(z.string()),
+  estimateMinutes: z.number().int().positive().nullable(),
+  loggedSeconds: z.number().nonnegative(),
+  createdBy: z.uuid(),
+  updatedAt: z.string(),
+});
+export type Task = z.infer<typeof TaskSchema>;
+
+/** Campos que se escriben al crear o editar una tarea. */
+export type TaskInput = Pick<Task, 'title' | 'description' | 'assigneeId' | 'status' | 'dueDate' | 'labels' | 'estimateMinutes'>;
+
+/** Tiempo por persona en un proyecto (fila 13 «P»). `userId` null = exmiembro. */
+export const ProjectTimeSchema = z.object({ userId: z.uuid().nullable(), seconds: z.number() });
+export type ProjectTime = z.infer<typeof ProjectTimeSchema>;
+
 /** Error con un mensaje para la persona (qué pasó y qué hacer) y una clase para decidir qué hacer. */
 export class CloudError extends Error {
   constructor(
@@ -167,6 +221,20 @@ export interface Cloud {
   addNotAllowedDomain(teamId: string, domain: string): Promise<void>;
   removeDomainRule(ruleId: string): Promise<void>;
   teamDomainSummary(teamId: string, from: string, to: string): Promise<DomainUsage[]>;
+
+  // ---- Proyectos y tareas (F3: filas 13 «P» y 16 a 19 de docs/ROLES.md) ----
+  myProjects(teamId: string): Promise<Project[]>;
+  createProject(teamId: string, name: string): Promise<string>;
+  setProjectArchived(projectId: string, archived: boolean): Promise<void>;
+  projectMembers(projectId: string): Promise<ProjectMember[]>;
+  /** Añade a alguien del equipo (no viewer) o le cambia el rol. */
+  setProjectMember(projectId: string, userId: string, role: ProjectRole): Promise<void>;
+  removeProjectMember(projectId: string, userId: string): Promise<void>;
+  projectTasks(projectId: string): Promise<Task[]>;
+  createTask(projectId: string, input: TaskInput): Promise<string>;
+  updateTask(taskId: string, input: TaskInput): Promise<void>;
+  setTaskStatus(taskId: string, status: TaskStatus): Promise<void>;
+  projectTimeSummary(projectId: string, from: string, to: string): Promise<ProjectTime[]>;
 
   // ---- Reglas y sincronización (SY-02, SY-03) ----
   teamRules(teamId: string): Promise<TeamRule[]>;

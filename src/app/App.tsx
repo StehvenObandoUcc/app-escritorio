@@ -12,6 +12,7 @@ import { EquipoPage } from '@/pages/equipo/EquipoPage';
 import { PrivacidadPage } from '@/pages/equipo/PrivacidadPage';
 import { MiDiaPage } from '@/pages/mi-dia/MiDiaPage';
 import { PendingPage } from '@/pages/PendingPage';
+import { TareasPage } from '@/pages/tareas/TareasPage';
 import { SyncStatus, ThemeToggle } from '@/ui/molecules';
 import { AlertBanner, AppNav, type NavItem } from '@/ui/organisms';
 import { AppShell } from '@/ui/templates';
@@ -62,16 +63,7 @@ function Gate() {
       <Routes>
         <Route path="/" element={<Navigate to="/mi-dia" replace />} />
         <Route path="/mi-dia" element={<MiDiaPage bridge={bridge} />} />
-        <Route
-          path="/tareas"
-          element={
-            <PendingPage
-              title="Tareas"
-              phase="F3"
-              what="Proyectos, tareas en lista y tablero, y tiempo ligado a cada tarea."
-            />
-          }
-        />
+        <Route path="/tareas" element={<TareasPage />} />
         <Route path="/equipo" element={<EquipoPage />} />
         <Route path="/equipo/privacidad" element={<PrivacidadPage />} />
         <Route
