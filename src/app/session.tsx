@@ -132,6 +132,10 @@ export function SessionProvider({
   // Un consentimiento de una versión anterior no vale: la subida se pausa hasta aceptar la nueva (ADR-0009).
   const consented = activeTeam?.consentAt && activeTeam.consentVersion === CONSENT_VERSION ? activeTeam : null;
   const needsNewConsent = Boolean(activeTeam?.consentAt) && !consented;
+  // El observador no registra actividad (docs/ROLES.md fila 10): no se le asigna equipo en Rust ni se sube nada.
+  // Lo que registró antes como miembro queda en su equipo de cómputo sin subirse.
+  const isViewer = activeTeam?.role === 'viewer';
+  const uploading = consented && !isViewer ? consented : null;
 
   const domainRulesQuery = useQuery({
     queryKey: ['domain-rules', activeTeam?.id],
@@ -152,7 +156,7 @@ export function SessionProvider({
       return;
     }
     if (!teamsQuery.isSuccess) return; // sin red: se conserva el último equipo conocido
-    void bridge.activeTeamSet(consented?.id ?? null).catch(() => {});
+    void bridge.activeTeamSet(uploading?.id ?? null).catch(() => {});
     // La política se aplica aunque no haya consentimiento: ocultar o avisar es local.
     void bridge
       .teamPolicySet({
@@ -161,14 +165,14 @@ export function SessionProvider({
         alertRepeatMinutes: activeTeam?.alertRepeatMinutes ?? 10,
       })
       .catch(() => {});
-  }, [bridge, user, teamsQuery.isSuccess, consented?.id, activeTeam?.allowHiddenApps, activeTeam?.alertNotAllowed, activeTeam?.alertRepeatMinutes]);
+  }, [bridge, user, teamsQuery.isSuccess, uploading?.id, activeTeam?.allowHiddenApps, activeTeam?.alertNotAllowed, activeTeam?.alertRepeatMinutes]);
 
   // Reglas del equipo para el clasificador: se vuelven a leer cada 5 min y al enfocar la ventana, y se
   // envían a Rust cada vez que cambian. Antes solo se enviaban al arrancar y una regla nueva no llegaba.
   const rulesQuery = useQuery({
-    queryKey: ['team-rules', consented?.id],
-    queryFn: () => cloud.teamRules(consented!.id),
-    enabled: Boolean(consented),
+    queryKey: ['team-rules', uploading?.id],
+    queryFn: () => cloud.teamRules(uploading!.id),
+    enabled: Boolean(uploading),
     refetchInterval: RULES_REFRESH_MS,
     refetchOnWindowFocus: true,
   });
@@ -178,22 +182,29 @@ export function SessionProvider({
 
   // Contexto del motor de sincronización.
   useEffect(() => {
-    if (user && consented) {
+    if (user && uploading) {
       engine.setContext({
         userId: user.id,
-        teamId: consented.id,
-        workday: consented.workday,
+        teamId: uploading.id,
+        workday: uploading.workday,
         timezone: profile?.timezone ?? systemTimezone(),
       });
       void engine.syncNow();
-    } else if (user === null || (user && teamsQuery.isSuccess && !consented)) {
+    } else if (user === null || (user && teamsQuery.isSuccess && !uploading)) {
       engine.setContext(null);
     }
-  }, [engine, user, consented, profile?.timezone, teamsQuery.isSuccess]);
+  }, [engine, user, uploading, profile?.timezone, teamsQuery.isSuccess]);
 
   useEffect(() => engine.start(), [engine]);
 
-  const sync = useSyncExternalStore(engine.subscribe, engine.getState);
+  const engineState = useSyncExternalStore(engine.subscribe, engine.getState);
+  const sync = useMemo<SyncState>(
+    () =>
+      isViewer
+        ? { ...engineState, phase: 'off', message: 'Como observador, tu actividad no se comparte con el equipo.' }
+        : engineState,
+    [engineState, isViewer],
+  );
 
   const selectTeam = useCallback((teamId: string) => {
     storeTeam(teamId);
