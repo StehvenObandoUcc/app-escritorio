@@ -271,7 +271,9 @@ previsto, sin margen: F2 empieza el martes 6.
 | Registro sin verificar el correo y código de invitación (ADR-0008) | Hecho y aplicado en `pulso-dev` |
 | Sitios por dominio, sitios no permitidos y política de apps ocultas (ADR-0009, S-5) | Hecho, aplicado y probado en la app real |
 | Avisos con sonido, reglas siempre al día, subida a los 15 s y selector de apps instaladas (ADR-0010) | Hecho y aplicado; probado en la app real salvo el sonido |
-| Sonido propio del aviso aunque Windows tenga las notificaciones apagadas (ADR-0011) | Hecho con pruebas |
+| Sonido propio del aviso aunque Windows tenga las notificaciones apagadas (ADR-0011) | Hecho y probado: suena |
+| Aviso general dentro de la app y Pulso no se registra a sí mismo (ADR-0012) | Hecho con pruebas; falta probarlo en la app real |
+| Correo de recuperación (CU-03) con SMTP de Gmail | Funciona (7 oct) |
 | Puerta G2 | Pendiente (jueves 8): dos cuentas reales, 30 min sin red, viewer y persona de otro equipo |
 
 Decisiones abiertas:
@@ -279,5 +281,4 @@ Decisiones abiertas:
 - **Pasan a F5** (con TA-11, pedido el 6 oct):
   - Reglas de productividad del equipo.
   - Apps de lectura y reunión que no cuentan como inactividad: hoy, leer en Readest sin tocar el teclado cuenta como inactividad pasado el umbral.
-  - No contar la propia ventana de Pulso.
 - **A-5** · Enviar por correo el código de invitación, además de mostrarlo para compartirlo (pedido el 6 oct). Depende de A-4 y necesita una Edge Function o el SMTP del proyecto; se retoma después de G2.
