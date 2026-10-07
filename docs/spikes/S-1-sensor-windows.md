@@ -3,7 +3,7 @@
 **Pregunta.** ¿Cómo se leen la ventana activa, su título y la inactividad en Windows?
 
 **Qué se probó.** `src-tauri/examples/s1_sensor.rs` llama a `pulso_lib::sensor` cada 2 s durante 30 s
-(`cargo run --manifest-path src-tauri/Cargo.toml --example s1_sensor`).
+(`cargo run --manifest-path src-tauri/Cargo.toml --example s1_sensor`). El ejemplo se retiró tras la prueba; está en el historial de git.
 
 **Resultado (Windows 11, compilación de desarrollo).**
 - Lee proceso, título e inactividad correctamente (proceso: `WindowsTerminal`, título de la ventana, inactividad 0 s con uso activo).

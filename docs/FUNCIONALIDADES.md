@@ -7,13 +7,13 @@ en que se construyen y cómo se comprueba cada una. Nada se construye si no tien
 - **F7–F9**: después de la entrega. Están diseñadas, no olvidadas.
 - **✂** = recortable: es lo primero que sale si una fase se atrasa (orden en `docs/PLAN.md` §4).
 
-Resumen: 104 funcionalidades en total: 86 antes de la entrega y 18 después.
+Resumen: 107 funcionalidades en total: 89 antes de la entrega y 18 después (TA-14 y PS-11 se añadieron el 6 oct, ADR-0009; TA-15 el 7 oct, ADR-0013).
 
 ## A. Cuenta y acceso (RF-01, RF-03)
 
 | ID | Funcionalidad | RF | Fase | Cómo se comprueba |
 |---|---|---|---|---|
-| CU-01 | Registro con correo y contraseña; verificación con código de 6 dígitos | 01 | F2 | Crear una cuenta nueva y entrar |
+| CU-01 | Registro con correo y contraseña; se entra al instante, sin verificar el correo (ADR-0008) | 01 | F2 | Crear una cuenta nueva y entrar |
 | CU-02 | Iniciar y cerrar sesión; la sesión se guarda en el almacén seguro del sistema | 01 | F2 | Cerrar y abrir la app: sigue la sesión. Tras cerrar sesión, no |
 | CU-03 | Recuperar la contraseña con un código por correo | 01 | F2 | Cambiar la contraseña sin conocer la anterior |
 | CU-04 | Perfil: nombre visible, zona horaria, avatar con iniciales | 03 | F2 | Editar el nombre y verlo en la lista del equipo |
@@ -27,8 +27,8 @@ Resumen: 104 funcionalidades en total: 86 antes de la entrega y 18 después.
 | ID | Funcionalidad | RF | Fase | Cómo se comprueba |
 |---|---|---|---|---|
 | EQ-01 | Crear un equipo; quien lo crea es `owner` | 02 | F0 ✔ / F2 | Prueba de base de datos + pantalla |
-| EQ-02 | Invitar por correo con un rol; la invitación vence a los 7 días | 02 | F2 | La persona invitada ve la invitación al iniciar sesión |
-| EQ-03 | Aceptar o rechazar una invitación (con consentimiento) | 02 | F2 | Al aceptar, aparece en el equipo |
+| EQ-02 | Invitar por correo con un rol y un código para compartir (ADR-0008); la invitación vence a los 7 días | 02 | F2 | La persona invitada ve la invitación al iniciar sesión |
+| EQ-03 | Aceptar (con el código y el consentimiento) o rechazar una invitación | 02 | F2 | Al aceptar, aparece en el equipo |
 | EQ-04 | Roles de equipo: `owner`, `admin`, `member`, `viewer` | 02 | F0 ✔ | `npm run test:db` |
 | EQ-05 | Cambiar roles y expulsar según la matriz; el equipo siempre conserva un owner | 02 | F0 ✔ / F2 | Prueba de base de datos + pantalla |
 | EQ-06 | Ceder la propiedad del equipo | 02 | F2 | Nombrar otro owner y degradarse |
@@ -54,6 +54,8 @@ Resumen: 104 funcionalidades en total: 86 antes de la entrega y 18 después.
 | TA-11 | Editor de reglas de clasificación del equipo | 05 | F5 | Marcar una app como distracción y verla reclasificada |
 | TA-12 | Abrir con el sistema e icono en la bandeja | — | F6 ✂ | Reiniciar: Pulso arranca solo |
 | TA-13 | macOS y Linux (X11) | — | F7 | — |
+| TA-14 | Tiempo por sitio web: solo el dominio, nunca la página ni la búsqueda (ADR-0009) | 05 | F2 | Abrir perplexity.ai: *Mi día → Por sitio* lo muestra |
+| TA-15 | Apps de lectura y reunión sin teclado no cuentan como inactividad hasta 30 min (ADR-0013). Lista fija en F2; editable con TA-11 en F5 | 05 | F2 | Leer 10 min en Readest sin tocar nada: *Mi día* muestra 10 min de Readest |
 
 ## D. Proyectos y tareas (RF-07, RF-08, RF-09)
 
@@ -132,11 +134,12 @@ Resumen: 104 funcionalidades en total: 86 antes de la entrega y 18 después.
 | PS-03 | Pausa de privacidad | 21 | F1 | Durante la pausa no se guardan app ni título |
 | PS-04 | Títulos de ventana solo en el equipo y cifrados | 22, 23 | F1 | Prueba: ningún envío contiene títulos |
 | PS-05 | Opción personal: no compartir nombres de apps, solo categorías | 22 | F5 | El admin deja de ver las apps de esa persona |
-| PS-06 | Política mínima del equipo y tope diario de pausa | 22 | F5 | El tope impide pausar de más |
+| PS-06 | Política mínima del equipo y tope diario de pausa (la política de apps ocultas llega en F2, ADR-0009) | 22 | F2 / F5 | El tope impide pausar de más |
 | PS-07 | Permisos por rol aplicados en la base de datos (RLS) | 23 | F0 ✔ → F5 | `npm run test:db` |
 | PS-08 | Sesión y clave de IA en el almacén seguro del sistema | 23 | F2, F4 | No aparecen en archivos ni en el almacenamiento del navegador |
 | PS-09 | Comunicación cifrada (HTTPS) | 23 | F2 | Revisión de F6 |
 | PS-10 | Permisos mínimos de la app y política de contenido (CSP) | 23 | F6 | Revisión de F6 con la app real |
+| PS-11 | Sitios no permitidos por el equipo: se marcan como distracción y avisan con sonido (frecuencia elegida por owner/admin); no se bloquean (ADR-0009, ADR-0010) | 22 | F2 | El admin marca un sitio; el miembro oye el aviso y lo ve «No permitido» |
 
 ## J. Sin conexión y sincronización (RF-26, RF-27)
 

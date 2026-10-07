@@ -40,6 +40,14 @@
   --color-cat-break: var(--sem-cat-break);
   --color-cat-idle: var(--sem-cat-idle);
   --color-cat-paused: var(--sem-cat-paused);
+  --color-app-1: var(--sem-app-1);
+  --color-app-2: var(--sem-app-2);
+  --color-app-3: var(--sem-app-3);
+  --color-app-4: var(--sem-app-4);
+  --color-app-5: var(--sem-app-5);
+  --color-app-6: var(--sem-app-6);
+  --color-app-7: var(--sem-app-7);
+  --color-app-8: var(--sem-app-8);
 
   --font-sans: var(--prim-font-body);
   --font-display: var(--prim-font-display);
@@ -67,6 +75,7 @@
   --spacing-touch: var(--cmp-touch-target);
   --spacing-strip: var(--cmp-strip-height);
   --spacing-content: var(--cmp-content-max);
+  --spacing-auth: var(--cmp-auth-width);
 
   --radius-xs: var(--prim-radius-4);
   --radius-sm: var(--prim-radius-6);

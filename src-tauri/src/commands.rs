@@ -1,8 +1,9 @@
-//! Comandos de Tauri de la fase F1 (nombres de docs/ARQUITECTURA.md §6).
+//! Comandos de Tauri de las fases F1 y F2 (nombres de docs/ARQUITECTURA.md §6).
 //! Son una capa fina: la lógica y las pruebas viven en `tracker`.
 //! Los argumentos llegan en camelCase desde la interfaz (`taskId` → `task_id`).
 
-use crate::tracker::{Result, SensorStatus, Settings, SettingsPatch, Tracker};
+use crate::sync::SyncBatch;
+use crate::tracker::{Result, SensorStatus, Settings, SettingsPatch, TeamPolicy, Tracker};
 use crate::views::{DayView, RangeView, TimeEntryView};
 use chrono::{Local, Utc};
 use std::sync::Arc;
@@ -83,4 +84,60 @@ pub fn settings_get(t: Tr) -> Result<Settings> {
 #[tauri::command]
 pub fn settings_set(t: Tr, patch: SettingsPatch) -> Result<Settings> {
   t.settings_set(patch)
+}
+
+// ---- F2 ----
+
+#[tauri::command]
+pub fn session_get(t: Tr) -> Result<Option<String>> {
+  t.session_get()
+}
+
+#[tauri::command]
+pub fn session_set(t: Tr, json: String) -> Result<()> {
+  t.session_set(&json)
+}
+
+#[tauri::command]
+pub fn session_clear(t: Tr) -> Result<()> {
+  t.session_clear()
+}
+
+#[tauri::command]
+pub fn active_team_set(t: Tr, team_id: Option<String>, user_id: Option<String>) -> Result<()> {
+  t.active_team_set(Utc::now(), team_id.as_deref(), user_id.as_deref())
+}
+
+#[tauri::command]
+pub fn sync_pending(t: Tr, limit: u32) -> Result<SyncBatch> {
+  t.sync_pending(Utc::now(), limit)
+}
+
+#[tauri::command]
+pub fn sync_mark_synced(t: Tr, kind: String, ids: Vec<String>) -> Result<()> {
+  t.sync_mark_synced(Utc::now(), &kind, &ids)
+}
+
+#[tauri::command]
+pub fn rules_set(t: Tr, json: String) -> Result<()> {
+  t.rules_set(&json)
+}
+
+/// ADR-0010: apps instaladas y abiertas para el selector de apps ocultas. Todo local.
+/// Asíncrono para no bloquear la ventana mientras se lee el registro.
+#[tauri::command]
+pub async fn installed_apps() -> Vec<crate::apps::AppEntry> {
+  crate::apps::installed_apps()
+}
+
+/// ADR-0011: si Windows tiene encendidas las notificaciones de apps (para explicarlo en Ajustes).
+#[tauri::command]
+pub fn notifications_status() -> crate::system::NotificationsStatus {
+  crate::system::notifications_status()
+}
+
+/// ADR-0009/0010: política del equipo activo (apps ocultas y avisos de sitio no permitido).
+#[tauri::command]
+pub fn team_policy_set(t: Tr, policy: TeamPolicy) -> Result<()> {
+  t.team_policy_set(policy)
 }

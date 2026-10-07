@@ -1,8 +1,8 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Bridge } from '@/bridge/contract';
-import { createMockBridge } from '@/bridge/mock';
+import { createMockBridge, sampleDay } from '@/bridge/mock';
 import { MiDiaPage } from './MiDiaPage';
 import { REFRESH_MS } from './useDay';
 
@@ -16,8 +16,49 @@ describe('Mi día', () => {
     expect(screen.getByRole('img', { name: /Jornada de 08:12/ })).toBeInTheDocument();
     expect(screen.getByText('Datos de ejemplo')).toBeInTheDocument();
 
+    // Por defecto, el tiempo por app; el detalle conserva todos los bloques.
+    const byApp = screen.getByRole('list', { name: 'Tiempo por app' });
+    expect(within(byApp).getAllByRole('listitem')[0]).toHaveTextContent('Visual Studio Code');
+    await userEvent.click(screen.getByRole('tab', { name: 'Detalle' }));
     const list = screen.getByRole('list', { name: 'Bloques de actividad' });
     expect(within(list).getAllByRole('listitem')).toHaveLength(11);
+    await userEvent.click(screen.getByRole('tab', { name: 'Línea de tiempo' }));
+    expect(screen.getByRole('list', { name: 'Línea de tiempo' })).toBeInTheDocument();
+    // Por sitio: dominios de los bloques de navegador del ejemplo, nunca rutas.
+    await userEvent.click(screen.getByRole('tab', { name: 'Por sitio' }));
+    const sites = screen.getByRole('list', { name: 'Tiempo por sitio' });
+    const domains = ['claude.ai', 'youtube.com', 'chatgpt.com'];
+    const rows = within(sites).getAllByRole('listitem').map((li) => domains.find((d) => li.textContent?.includes(d)));
+    expect(rows).toEqual(domains);
+  });
+
+  it('dice qué IA se usó y cuánto, y permite quitar las apps ocultas de la vista', async () => {
+    const base = createMockBridge();
+    const day = sampleDay(DATE);
+    const hiddenBlock = { ...day.blocks[0]!, id: '00000000-0000-4000-8000-000000000999', appName: 'App oculta', title: null, category: 'neutral' as const, aiTool: null, startedAt: day.blocks[10]!.endedAt, endedAt: new Date(Date.parse(day.blocks[10]!.endedAt) + 20 * 60_000).toISOString() };
+    const bridge: Bridge = { ...base, dayView: async () => ({ ...day, blocks: [...day.blocks, hiddenBlock] }) };
+    render(<MiDiaPage bridge={bridge} date={DATE} />);
+
+    const ai = await screen.findByLabelText('IA usadas hoy');
+    expect(ai).toHaveTextContent('Claude · 44 min');
+    expect(ai).toHaveTextContent('ChatGPT · 12 min');
+
+    const byApp = screen.getByRole('list', { name: 'Tiempo por app' });
+    expect(byApp).toHaveTextContent('App oculta');
+    await userEvent.click(screen.getByRole('checkbox', { name: /Mostrar apps ocultas/ }));
+    expect(screen.getByRole('list', { name: 'Tiempo por app' })).not.toHaveTextContent('App oculta');
+  });
+
+  it('se actualiza al volver a la ventana, sin esperar 30 s', async () => {
+    const bridge = createMockBridge();
+    const day = vi.spyOn(bridge, 'dayView');
+    render(<MiDiaPage bridge={bridge} date={DATE} />);
+    await screen.findByText(/Jornada de 08:12/);
+    const before = day.mock.calls.length;
+    act(() => {
+      window.dispatchEvent(new Event('focus'));
+    });
+    await waitFor(() => expect(day.mock.calls.length).toBeGreaterThan(before));
   });
 
   it('inicia y detiene el temporizador', async () => {

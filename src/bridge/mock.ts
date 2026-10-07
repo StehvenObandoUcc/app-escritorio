@@ -11,6 +11,8 @@ import {
   RangeViewSchema,
   SensorStatusSchema,
   SettingsSchema,
+  SyncBatchSchema,
+  TeamRuleSchema,
   TimeEntrySchema,
   type ActivityBlock,
   type Bridge,
@@ -18,6 +20,7 @@ import {
   type DayView,
   type SensorStatus,
   type Settings,
+  type SyncEntry,
   type TimeEntry,
 } from './contract';
 
@@ -37,6 +40,13 @@ const SAMPLE_DAY: Sample[] = [
   ['15:53', '16:31', 'Slack', 'equipo-pulso', 'neutral'],
 ];
 
+/** Dominio de ejemplo de los bloques de navegador (ADR-0009). */
+const SAMPLE_DOMAINS: Record<string, string> = {
+  ChatGPT: 'chatgpt.com',
+  YouTube: 'youtube.com',
+  Claude: 'claude.ai',
+};
+
 function at(date: string, hhmm: string): string {
   return new Date(`${date}T${hhmm}:00`).toISOString();
 }
@@ -54,6 +64,7 @@ export function sampleDay(date: string): DayView {
     title: title === '' ? null : title,
     category,
     aiTool: ai ?? null,
+    domain: SAMPLE_DOMAINS[title] ?? null,
   }));
 
   const totals = Object.fromEntries(CATEGORIES.map((c) => [c, 0])) as Record<Category, number>;
@@ -91,6 +102,15 @@ export function createMockBridge(now: () => Date = () => new Date()): Bridge {
   };
   let entries: TimeEntry[] = [];
   let settings: Settings = { idleMinutes: 5, hiddenApps: [] };
+  // F2: la sesión vive en memoria (en la app real, Rust la guarda cifrada).
+  let session: string | null = null;
+  let activeTeam: string | null = null;
+  const entryTeam = new Map<string, string | null>();
+  const synced = new Set<string>();
+  const track = (id: string) => {
+    entryTeam.set(id, activeTeam);
+    synced.delete(id);
+  };
   const set = (next: SensorStatus) => {
     status = SensorStatusSchema.parse(next);
     return status;
@@ -105,13 +125,9 @@ export function createMockBridge(now: () => Date = () => new Date()): Bridge {
         throw new Error('Ya hay un temporizador en marcha. Deténlo antes de iniciar otro.');
       }
       const startedAt = now().toISOString();
-      entries.push({
-        id: crypto.randomUUID(),
-        startedAt,
-        endedAt: null,
-        taskId: taskId ?? null,
-        source: 'timer',
-      });
+      const id = crypto.randomUUID();
+      entries.push({ id, startedAt, endedAt: null, taskId: taskId ?? null, source: 'timer' });
+      track(id);
       return set({ ...status, timer: { running: true, startedAt, taskId: taskId ?? null } });
     },
     timerStop: async () => {
@@ -142,6 +158,7 @@ export function createMockBridge(now: () => Date = () => new Date()): Bridge {
         source: 'manual',
       });
       entries.push(entry);
+      track(entry.id);
       return entry;
     },
     timeEntryUpdate: async (id, start, end, taskId) => {
@@ -179,5 +196,44 @@ export function createMockBridge(now: () => Date = () => new Date()): Bridge {
         pausedUntil: new Date(now().getTime() + minutes * 60_000).toISOString(),
       }),
     privacyResume: async () => set({ ...status, state: 'tracking', pausedUntil: null }),
+    sessionGet: async () => session,
+    sessionSet: async (json) => {
+      session = json;
+    },
+    sessionClear: async () => {
+      session = null;
+    },
+    activeTeamSet: async (teamId) => {
+      activeTeam = teamId;
+    },
+    // Solo las entradas creadas con un equipo activo quedan pendientes; los bloques de ejemplo no se suben.
+    syncPending: async (limit) => {
+      const team = activeTeam;
+      const pending: SyncEntry[] = team
+        ? entries
+            .filter((e) => entryTeam.get(e.id) === team && !synced.has(e.id))
+            .slice(0, limit)
+            .map((e) => ({ ...e, teamId: team, updatedAt: e.endedAt ?? e.startedAt, deletedAt: null }))
+        : [];
+      return SyncBatchSchema.parse({ blocks: [], entries: pending, closures: [] });
+    },
+    syncMarkSynced: async (_kind, ids) => {
+      for (const id of ids) synced.add(id);
+    },
+    rulesSet: async (rules) => {
+      rules.forEach((r) => TeamRuleSchema.parse(r));
+    },
+    teamPolicySet: async () => {},
+    notificationsStatus: async () => ({ windowsToastsEnabled: true }),
+    // Datos de ejemplo: nunca hay avisos reales.
+    onNotAllowedAlert: () => () => {},
+    // Datos de ejemplo: unas pocas apps instaladas y abiertas.
+    installedApps: async () => [
+      { process: 'slack', label: 'Slack', source: 'open' },
+      { process: 'whatsapp.root', label: 'WhatsApp.Root', source: 'open' },
+      { process: 'figma', label: 'Figma', source: 'installed' },
+      { process: 'keepass', label: 'KeePass Password Safe', source: 'installed' },
+      { process: 'spotify', label: 'Spotify', source: 'installed' },
+    ],
   };
 }

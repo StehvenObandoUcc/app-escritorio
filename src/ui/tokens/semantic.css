@@ -35,6 +35,16 @@
   --sem-cat-idle: var(--prim-ink-300);
   --sem-cat-paused: var(--prim-ink-400);
 
+  /* Color de cada app en «Tiempo por app» (lib/apps.ts elige uno por nombre, siempre el mismo) */
+  --sem-app-1: var(--prim-app-indigo-500);
+  --sem-app-2: var(--prim-app-green-600);
+  --sem-app-3: var(--prim-app-orange-600);
+  --sem-app-4: var(--prim-app-cyan-600);
+  --sem-app-5: var(--prim-app-purple-600);
+  --sem-app-6: var(--prim-app-gold-600);
+  --sem-app-7: var(--prim-app-blue-600);
+  --sem-app-8: var(--prim-app-brown-600);
+
   --sem-shadow-overlay: 0 12px 32px -12px color-mix(in srgb, var(--prim-ink-900) 35%, transparent);
 }
 
@@ -67,6 +77,15 @@
     --sem-cat-idle: var(--prim-ink-700);
     --sem-cat-paused: var(--prim-ink-600);
 
+    --sem-app-1: var(--prim-app-indigo-300);
+    --sem-app-2: var(--prim-app-green-400);
+    --sem-app-3: var(--prim-app-orange-400);
+    --sem-app-4: var(--prim-app-cyan-400);
+    --sem-app-5: var(--prim-app-purple-400);
+    --sem-app-6: var(--prim-app-gold-400);
+    --sem-app-7: var(--prim-app-blue-400);
+    --sem-app-8: var(--prim-app-brown-400);
+
     --sem-shadow-overlay: 0 12px 32px -12px var(--prim-ink-950);
   }
 }
@@ -96,6 +115,15 @@
   --sem-cat-break: var(--prim-sky-400);
   --sem-cat-idle: var(--prim-ink-700);
   --sem-cat-paused: var(--prim-ink-600);
+
+  --sem-app-1: var(--prim-app-indigo-300);
+  --sem-app-2: var(--prim-app-green-400);
+  --sem-app-3: var(--prim-app-orange-400);
+  --sem-app-4: var(--prim-app-cyan-400);
+  --sem-app-5: var(--prim-app-purple-400);
+  --sem-app-6: var(--prim-app-gold-400);
+  --sem-app-7: var(--prim-app-blue-400);
+  --sem-app-8: var(--prim-app-brown-400);
 
   --sem-shadow-overlay: 0 12px 32px -12px var(--prim-ink-950);
 }

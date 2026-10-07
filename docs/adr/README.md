@@ -12,5 +12,12 @@ decisión de `docs/ARQUITECTURA.md` §3 o cambiar una celda de `docs/ROLES.md`.
 | [0004](./0004-invitaciones-sin-envio-de-correos.md) | Invitaciones sin envío de correos | Aceptado |
 | [0005](./0005-comando-time-entries.md) | Comando `time_entries(date)` para leer entradas de tiempo | Aceptado |
 | [0006](./0006-metrica-de-memoria.md) | Métrica de memoria: privada, suma de Pulso y WebView2, tras 5 min en reposo | Aceptado |
+| [0007](./0007-equipo-activo-en-rust.md) | Equipo activo en Rust: comando `active_team_set` | Aceptado |
+| [0008](./0008-registro-sin-verificacion-y-codigo-de-invitacion.md) | Registro sin verificar el correo; las invitaciones llevan un código | Aceptado |
+| [0009](./0009-dominio-del-sitio-y-politicas-del-equipo.md) | Dominio del sitio web, sitios no permitidos y política de apps ocultas | Aceptado |
+| [0010](./0010-avisos-de-sitio-y-apps-instaladas.md) | Avisos de sitio no permitido y lista de apps instaladas | Aceptado |
+| [0011](./0011-aviso-con-sonido-propio.md) | El aviso suena aunque Windows tenga las notificaciones apagadas | Aceptado |
+| [0012](./0012-aviso-dentro-de-la-app-y-pulso-sin-registrar.md) | Aviso dentro de la app y Pulso no se registra a sí mismo | Aceptado |
+| [0013](./0013-apps-sin-teclado-y-cuenta-por-fila.md) | Apps sin teclado (mínimo) y una cuenta por fila local | Aceptado |
 
 Plantilla: copia cualquiera de los anteriores. Numeración consecutiva de cuatro dígitos.

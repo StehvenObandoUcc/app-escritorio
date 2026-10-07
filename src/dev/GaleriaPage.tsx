@@ -3,10 +3,11 @@ import type { ReactNode } from 'react';
 import { CATEGORIES, type TimeEntry } from '@/bridge/contract';
 import { sampleDay } from '@/bridge/mock';
 import { CATEGORY_STYLE } from '@/lib/categories';
-import { Avatar, Badge, Button, CategoryMark, Heading, Input, ProgressBar, Surface } from '@/ui/atoms';
-import { CategoryBreakdown, EmptyState, FormField, TimeEntryForm, TimerControl } from '@/ui/molecules';
-import { ActivityList, PulseStrip, TimeEntryList } from '@/ui/organisms';
-import { PageLayout } from '@/ui/templates';
+import { Avatar, Badge, Button, CategoryMark, Heading, Input, ProgressBar, Select, Surface } from '@/ui/atoms';
+import { CategoryBreakdown, EmptyState, FormField, PasswordField, SegmentedControl, SyncStatus, TimeEntryForm, TimerControl } from '@/ui/molecules';
+import { appTotals, buildTimeline } from '@/lib/activity';
+import { ActivityList, ActivityTimeline, AlertBanner, AppSummary, ConsentPanel, HiddenAppsPicker, MemberList, PulseStrip, TimeEntryList } from '@/ui/organisms';
+import { AuthLayout, PageLayout } from '@/ui/templates';
 
 const SWATCHES = [
   ['canvas', 'bg-canvas'],
@@ -127,6 +128,19 @@ export function GaleriaPage() {
             onSubmit={() => Promise.reject(new Error('El fin debe ser posterior al inicio.'))}
           />
         </div>
+        <SegmentedControl label="Vista de ejemplo" options={VIEW_OPTIONS} value="resumen" onChange={() => {}} />
+        <PasswordField label="Contraseña de ejemplo" hint="Al menos 8 caracteres." defaultValue="secreto-123" />
+        <div className="flex flex-wrap items-center gap-2">
+          <Select aria-label="Rol de ejemplo" options={ROLE_OPTIONS} defaultValue="member" />
+          <Select aria-label="Rol de ejemplo pequeño" size="sm" options={ROLE_OPTIONS} defaultValue="viewer" />
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <SyncStatus phase="synced" lastSyncedAt={new Date().toISOString()} />
+          <SyncStatus phase="pending" message="Sin conexión. Se subirá al volver la red." />
+          <SyncStatus phase="syncing" />
+          <SyncStatus phase="error" message="El servidor no aceptó tus datos. Revisa en Equipo que sigas en el equipo." />
+          <SyncStatus phase="off" />
+        </div>
         <EmptyState
           title="No tienes tareas asignadas"
           description="Cuando alguien te asigne una tarea, aparecerá aquí."
@@ -137,15 +151,65 @@ export function GaleriaPage() {
       <Section title="Organismos">
         <PulseStrip blocks={day.blocks} summary="Franja de pulso de ejemplo" />
         <Surface padding="flush">
+          <AppSummary totals={appTotals(day.blocks)} />
+        </Surface>
+        <Surface padding="flush">
+          <ActivityTimeline rows={buildTimeline(day.blocks)} />
+        </Surface>
+        <Surface padding="flush">
           <ActivityList blocks={day.blocks.slice(0, 4)} />
         </Surface>
         <Surface padding="flush">
           <TimeEntryList entries={SAMPLE_ENTRIES} onUpdate={() => Promise.resolve()} onDelete={() => Promise.resolve()} />
         </Surface>
+        <Surface>
+          <HiddenAppsPicker
+            candidates={[
+              { process: 'brave', label: 'Brave', group: 'recent' },
+              { process: 'whatsapp.root', label: 'WhatsApp', group: 'open' },
+              { process: 'windowsterminal', label: 'Terminal', group: 'installed' },
+            ]}
+            selected={['windowsterminal']}
+            onChange={() => {}}
+          />
+        </Surface>
+        <Surface>
+          <MemberList members={SAMPLE_MEMBERS} myUserId={SAMPLE_MEMBERS[0]!.userId} myRole="owner" onChangeRole={() => {}} onRemove={() => {}} />
+        </Surface>
+        <div className="overflow-hidden rounded-lg border border-line">
+          <AuthLayout title="Hola de nuevo" subtitle="Plantilla de la pantalla de acceso.">
+            <Button variant="primary" className="w-full">
+              Iniciar sesión
+            </Button>
+          </AuthLayout>
+        </div>
+        <div className="relative min-h-32">
+          <AlertBanner alerts={[{ domain: 'youtube.com', at: new Date().toISOString() }]} onDismiss={() => {}} />
+        </div>
+        <ConsentPanel teamName="Equipo de ejemplo" acceptLabel="Aceptar y unirme" onAccept={() => {}} secondary={<Button>Rechazar invitación</Button>} />
       </Section>
     </PageLayout>
   );
 }
+
+const VIEW_OPTIONS = [
+  { value: 'resumen', label: 'Por app' },
+  { value: 'linea', label: 'Línea de tiempo' },
+  { value: 'detalle', label: 'Detalle' },
+];
+
+const ROLE_OPTIONS = [
+  { value: 'admin', label: 'Administrador' },
+  { value: 'member', label: 'Miembro' },
+  { value: 'viewer', label: 'Observador' },
+];
+
+const SAMPLE_MEMBERS = [
+  { userId: '00000000-0000-4000-8000-000000000101', role: 'owner' as const, displayName: 'Ana Gómez' },
+  { userId: '00000000-0000-4000-8000-000000000102', role: 'admin' as const, displayName: 'Beto Ruiz' },
+  { userId: '00000000-0000-4000-8000-000000000103', role: 'member' as const, displayName: 'Caro Díaz' },
+  { userId: '00000000-0000-4000-8000-000000000104', role: 'viewer' as const, displayName: null },
+];
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
