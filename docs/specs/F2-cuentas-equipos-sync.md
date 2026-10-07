@@ -1,7 +1,7 @@
 # Spec F2 · Cuentas, equipos, roles y sincronización
 
-Funcionalidades: CU-01 a CU-04, EQ-01 a EQ-08, EQ-10 (datos), PS-01, PS-02, PS-08 (sesión), PS-09, SY-02, SY-03, SY-05
-Estado: borrador (pendiente de aprobación de StehvenObando)
+Funcionalidades: CU-01 a CU-04, EQ-01 a EQ-08, EQ-10 (datos), PS-01, PS-02, PS-06 (parte: apps ocultas), PS-08 (sesión), PS-09, PS-11, SY-02, SY-03, SY-05, TA-14
+Estado: lista para aprobación (7 oct). Estado de cada criterio al final de esta spec.
 
 ## Objetivo
 Al terminar, dos personas con cuenta propia forman un equipo: una lo crea e invita, la otra acepta con
@@ -20,8 +20,26 @@ hayan trabajado sin conexión. Cada persona ve solo lo que su rol permite.
 Otras decisiones tomadas aquí (confirmar al aprobar):
 - **Consentimiento sin cambiar `create_team`.** Una función nueva `give_consent(team, version)` fija `consent_version` y `consent_at`. Quien crea un equipo la llama justo después. Sin consentimiento, ninguna política deja subir actividad ni tiempo (PS-02).
 - **Qué equipo recibe cada fila.** Rust guarda `team_id` en cada bloque y entrada local al crearla, tomándolo del equipo activo. Si no hay equipo activo (o aún no hay consentimiento), `team_id` queda nulo y esa fila **nunca se sube**: lo registrado antes de unirse a un equipo no se comparte.
-- **Sesión.** Se guarda con `session_set` desde un adaptador de almacenamiento de `supabase-js`. El almacén de credenciales de Windows limita el tamaño de cada secreto y una sesión con sus tokens puede superarlo: **antes de implementar se comprueba (R2)**. Si no cabe, Rust guarda la sesión cifrada con la clave AES-GCM existente en `kv_settings`, y la clave sigue en el almacén seguro.
+- **Sesión.** Se guarda con `session_set` desde un adaptador de almacenamiento de `supabase-js`. El almacén de credenciales de Windows limita cada secreto a 2560 bytes y una sesión los supera: Rust la guarda **cifrada con la clave AES-GCM** en `kv_settings`, y la clave sigue en el almacén seguro.
 - **Registro sin verificar el correo (ADR-0008, aprobado el 6 oct).** Supabase Auth con *Confirm email* desactivado. Una invitación se acepta con el correo invitado **y** un código de 8 caracteres que comparte quien invita.
+
+## Ampliaciones aprobadas durante F2
+Pedidas por el responsable tras las pruebas reales; cada una tiene su ADR.
+
+| ADR | Qué cambia |
+|---|---|
+| 0008 | Registro sin verificar el correo; las invitaciones se aceptan con un **código** de 8 caracteres (5 intentos) |
+| 0009 | **Dominio** del sitio del navegador (nunca la URL), sitios **no permitidos** (se marcan, no se bloquean), **política de apps ocultas** del equipo y consentimiento `2026-10-v2`. Medición previa en S-5 |
+| 0010 | **Avisos con sonido** al entrar a un sitio no permitido, con repetición configurable por owner/admin; reglas del equipo siempre al día; subida a los 15 s; selector de **apps instaladas** |
+| 0011 | El aviso **suena aunque Windows tenga apagadas las notificaciones** (sonido propio y parpadeo del icono) y Ajustes explica si están apagadas |
+
+Criterios añadidos:
+- AC-26 El sensor guarda solo el dominio del sitio; la base de datos rechaza cualquier valor con `/`, `?`, `#` o espacios (TA-14).
+- AC-27 Owner y admin marcan un sitio como no permitido; cuenta como distracción y la persona lo ve «No permitido» (PS-11).
+- AC-28 Al entrar a un sitio no permitido, Pulso suena y avisa; repite según la política del equipo (0, 2, 5, 10, 15 o 30 min). Nunca en pausa, descanso, app oculta o inactividad.
+- AC-29 Con la política de apps ocultas desactivada, las apps se registran con su nombre desde ese momento.
+- AC-30 Con un consentimiento de versión anterior no se sube nada hasta aceptar la versión vigente.
+- AC-31 El observador no sube actividad ni ve error de sincronización.
 
 ## Contratos
 
@@ -109,6 +127,20 @@ y un cliente de Supabase falso en pruebas.
 - Foto de perfil, eliminar cuenta (F7). Inicio con proveedores externos.
 - Tiempo real y Edge Functions (F4 en adelante).
 - Descartar localmente las filas pendientes de un equipo al que ya no se pertenece: quedan en SQLite sin subirse.
+
+## Estado de cada criterio (7 oct)
+
+| Criterio | Evidencia |
+|---|---|
+| AC-1, AC-2, AC-4 a AC-14, AC-24, AC-25 | Pruebas automáticas (`supabase/tests`, `src/**/*.test.tsx`) y prueba real con dos cuentas el 6 oct |
+| AC-3 Recuperar contraseña | **Pendiente**: falta configurar el SMTP del proyecto (A-4) |
+| AC-15 a AC-17 Subida, repetición y reintentos | Pruebas automáticas; **pendiente** la prueba real de 30 min sin red |
+| AC-18, AC-20, AC-26 | Pruebas de Rust y de interfaz; en Supabase, 11 columnas sin título y 0 dominios con ruta (6 oct) |
+| AC-19, AC-21 | Pruebas automáticas |
+| AC-22 Cierres | Pruebas de Rust y de la base; **pendiente** la prueba real en horario de jornada |
+| AC-23 | Pruebas de la base |
+| AC-27, AC-29 a AC-31 | Pruebas automáticas y prueba real el 6 oct |
+| AC-28 Aviso | Pruebas de Rust; **pendiente** confirmar el sonido en la app real (la notificación de Windows estaba apagada) |
 
 ## Cómo se comprueba
 Puerta G2 de `docs/PLAN.md` más los pasos manuales con dos cuentas reales de `pulso-dev`:
