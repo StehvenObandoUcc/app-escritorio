@@ -152,11 +152,11 @@ export function SessionProvider({
   useEffect(() => {
     if (user === undefined) return;
     if (user === null) {
-      void bridge.activeTeamSet(null).catch(() => {});
+      void bridge.activeTeamSet(null, null).catch(() => {});
       return;
     }
     if (!teamsQuery.isSuccess) return; // sin red: se conserva el último equipo conocido
-    void bridge.activeTeamSet(uploading?.id ?? null).catch(() => {});
+    void bridge.activeTeamSet(uploading?.id ?? null, user.id).catch(() => {});
     // La política se aplica aunque no haya consentimiento: ocultar o avisar es local.
     void bridge
       .teamPolicySet({

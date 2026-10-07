@@ -149,7 +149,7 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
               max={IDLE_MINUTES_MAX}
               value={minutes}
               onChange={(e) => setMinutes(e.target.value)}
-              hint={`Entre ${IDLE_MINUTES_MIN} y ${IDLE_MINUTES_MAX}. Sin teclado ni ratón durante ese tiempo, el bloque se cierra en tu última acción y empieza uno sin actividad.`}
+              hint={`Entre ${IDLE_MINUTES_MIN} y ${IDLE_MINUTES_MAX}. Sin teclado ni ratón durante ese tiempo, el bloque se cierra en tu última acción y empieza uno sin actividad. Leyendo o en reunión (Readest, lectores de PDF, Zoom, Teams, Meet) espera hasta 30 min.`}
             />
             {teamForbidsHidden && (
               <p role="note" className="rounded-md bg-sunken p-3 text-sm text-fg">
