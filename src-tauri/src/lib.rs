@@ -43,11 +43,22 @@ fn notify_not_allowed(handle: &AppHandle, alert: &tracker::Alert) {
   if let Err(e) = handle.emit(ALERT_EVENT, payload) {
     log::error!("aviso: no se pudo avisar a la interfaz: {e}");
   }
+  // ADR-0015: la notificación sale en el idioma elegido en Ajustes.
+  let (title, body) = match alert.language.as_str() {
+    "en" => (
+      format!("Site not allowed: {}", alert.domain),
+      "Your team marked this site as not allowed. Pulso does not block it: the time counts as distraction.",
+    ),
+    _ => (
+      format!("Sitio no permitido: {}", alert.domain),
+      "Tu equipo marcó este sitio como no permitido. Pulso no lo bloquea: el tiempo cuenta como distracción.",
+    ),
+  };
   let shown = handle
     .notification()
     .builder()
-    .title(format!("Sitio no permitido: {}", alert.domain))
-    .body("Tu equipo marcó este sitio como no permitido. Pulso no lo bloquea: el tiempo cuenta como distracción.")
+    .title(title)
+    .body(body)
     .sound("Default")
     .show();
   if let Err(e) = shown {

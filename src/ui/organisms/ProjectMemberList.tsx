@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { PROJECT_ROLES, type ProjectMember, type ProjectRole } from '@/cloud/contract';
+import { t } from '@/i18n';
 import { formatMinutes, PROJECT_ROLE_LABEL } from '@/lib/tasks';
 import { Avatar, Badge, Button, Select, type SelectOption } from '@/ui/atoms';
 
-const roleOptions = PROJECT_ROLES.map((r) => ({ value: r, label: PROJECT_ROLE_LABEL[r] }));
+const roleOptions = () => PROJECT_ROLES.map((r) => ({ value: r, label: PROJECT_ROLE_LABEL[r] }));
 
 /**
  * Miembros de un proyecto (PT-02). Quien gestiona el proyecto (owner, admin o lead) añade, cambia el rol
@@ -34,30 +35,30 @@ export function ProjectMemberList({
   const exMembers = seconds?.get(null);
   return (
     <div className="flex flex-col gap-3">
-      <ul aria-label="Miembros del proyecto" className="flex flex-col divide-y divide-line">
+      <ul aria-label={t('projects.members.label')} className="flex flex-col divide-y divide-line">
         {members.map((m) => {
-          const name = m.displayName ?? 'Persona sin nombre';
+          const name = m.displayName ?? t('common.noName');
           const time = seconds?.get(m.userId);
           return (
             <li key={m.userId} className="flex flex-wrap items-center gap-3 py-3">
               <Avatar name={name} />
               <p className="min-w-0 flex-1 truncate font-medium text-fg">
                 {name}
-                {m.userId === myUserId && <span className="text-fg-muted"> (tú)</span>}
+                {m.userId === myUserId && <span className="text-fg-muted"> {t('common.you')}</span>}
               </p>
               {seconds && <span className="text-sm text-fg-muted tabular-nums">{formatMinutes((time ?? 0) / 60)}</span>}
               {canManage ? (
                 <>
                   <Select
                     size="sm"
-                    aria-label={`Rol de ${name} en el proyecto`}
+                    aria-label={t('projects.members.roleOf', { name })}
                     value={m.role}
                     disabled={busy}
                     onChange={(e) => onSetRole(m.userId, e.target.value as ProjectRole)}
-                    options={roleOptions}
+                    options={roleOptions()}
                   />
                   <Button size="sm" variant="ghost" disabled={busy} onClick={() => onRemove(m.userId)}>
-                    Quitar
+                    {t('common.remove')}
                   </Button>
                 </>
               ) : (
@@ -67,7 +68,7 @@ export function ProjectMemberList({
           );
         })}
       </ul>
-      {seconds && exMembers ? <p className="text-sm text-fg-muted">Exmiembros: {formatMinutes(exMembers / 60)}</p> : null}
+      {seconds && exMembers ? <p className="text-sm text-fg-muted">{t('projects.members.exMembers', { time: formatMinutes(exMembers / 60) })}</p> : null}
       {canManage && candidates.length > 0 && (
         <form
           className="flex flex-wrap items-center gap-2"
@@ -81,14 +82,14 @@ export function ProjectMemberList({
         >
           <Select
             size="sm"
-            aria-label="Persona del equipo"
+            aria-label={t('projects.members.person')}
             value={pick}
             onChange={(e) => setPick(e.target.value)}
-            options={[{ value: '', label: 'Elige a alguien del equipo' }, ...candidates]}
+            options={[{ value: '', label: t('projects.members.pick') }, ...candidates]}
           />
-          <Select size="sm" aria-label="Rol en el proyecto" value={role} onChange={(e) => setRole(e.target.value as ProjectRole)} options={roleOptions} />
+          <Select size="sm" aria-label={t('projects.members.role')} value={role} onChange={(e) => setRole(e.target.value as ProjectRole)} options={roleOptions()} />
           <Button type="submit" size="sm" disabled={busy || !pick}>
-            Añadir al proyecto
+            {t('projects.members.add')}
           </Button>
         </form>
       )}

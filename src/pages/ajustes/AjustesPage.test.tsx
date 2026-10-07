@@ -29,7 +29,7 @@ describe('Ajustes', () => {
     expect(screen.getByRole('checkbox', { name: /KeePass/ })).toBeChecked();
     await userEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }));
     expect(await screen.findByText('Cambios guardados.')).toBeInTheDocument();
-    expect(await bridge.settingsGet()).toEqual({ idleMinutes: 10, hiddenApps: ['slack', 'keepass'] });
+    expect(await bridge.settingsGet()).toEqual({ idleMinutes: 10, hiddenApps: ['slack', 'keepass'], language: 'es' });
     // Desmarcar deja de ocultarla.
     await userEvent.click(screen.getByRole('checkbox', { name: /Slack/ }));
     await userEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }));

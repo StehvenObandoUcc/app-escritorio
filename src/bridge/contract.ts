@@ -91,6 +91,8 @@ export const SettingsSchema = z.object({
   idleMinutes: z.number().int().min(IDLE_MINUTES_MIN).max(IDLE_MINUTES_MAX),
   /** Procesos cuyo nombre y título no se registran */
   hiddenApps: z.array(z.string()),
+  /** Idioma de la interfaz y de las notificaciones de Windows (ADR-0015). */
+  language: z.enum(['es', 'en']).default('es'),
 });
 export type Settings = z.infer<typeof SettingsSchema>;
 export type SettingsPatch = Partial<Settings>;

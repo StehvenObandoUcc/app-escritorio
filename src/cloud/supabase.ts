@@ -5,6 +5,7 @@
 import { createClient, type SupabaseClient, type SupportedStorage, type User } from '@supabase/supabase-js';
 import { z } from 'zod';
 import type { Bridge, SyncBlock, SyncClosure, SyncEntry, TeamRule } from '@/bridge/contract';
+import { t, type TKey } from '@/i18n';
 import type { Database } from '@/lib/database.types';
 import {
   CloudError,
@@ -15,14 +16,13 @@ import {
   MyInvitationSchema,
   MyTeamSchema,
   ProfileSchema,
-  ProjectMemberSchema,
-  ProjectSchema,
+  HistorySchema,
   ProjectTimeSchema,
-  TaskSchema,
+  TeamWorkSchema,
   TeamInvitationSchema,
   TeamRoleSchema,
   WorkdaySchema,
-  WRONG_INVITATION_CODE,
+  wrongInvitationCode,
   type Cloud,
   type CloudUser,
   type TaskInput,
@@ -67,18 +67,18 @@ export function bridgeStorage(bridge: Bridge): SupportedStorage {
   };
 }
 
-const AUTH_MESSAGES: Record<string, string> = {
-  invalid_credentials: 'El correo o la contraseña no coinciden. Revísalos e inténtalo de nuevo.',
-  email_not_confirmed: 'Tu correo aún no está verificado. Escribe el código que te enviamos.',
-  otp_expired: 'El código no es válido o ya venció. Pide uno nuevo.',
-  weak_password: 'La contraseña es muy débil. Usa al menos 8 caracteres, con letras y números.',
-  same_password: 'La contraseña nueva debe ser distinta de la anterior.',
-  user_already_exists: 'Ya existe una cuenta con ese correo. Inicia sesión o recupera tu contraseña.',
-  email_exists: 'Ya existe una cuenta con ese correo. Inicia sesión o recupera tu contraseña.',
-  email_address_invalid: 'El correo no es válido. Revísalo.',
-  over_email_send_rate_limit: 'Se enviaron demasiados correos. Espera unos minutos antes de pedir otro código.',
-  over_request_rate_limit: 'Demasiados intentos seguidos. Espera unos minutos.',
-  signup_disabled: 'El registro de cuentas está desactivado en este proyecto.',
+const AUTH_MESSAGES: Record<string, TKey> = {
+  invalid_credentials: 'cloud.auth.invalidCredentials',
+  email_not_confirmed: 'cloud.auth.emailNotConfirmed',
+  otp_expired: 'cloud.auth.otpExpired',
+  weak_password: 'cloud.auth.weakPassword',
+  same_password: 'cloud.auth.samePassword',
+  user_already_exists: 'cloud.auth.userExists',
+  email_exists: 'cloud.auth.userExists',
+  email_address_invalid: 'cloud.auth.emailInvalid',
+  over_email_send_rate_limit: 'cloud.auth.emailRateLimit',
+  over_request_rate_limit: 'cloud.auth.requestRateLimit',
+  signup_disabled: 'cloud.auth.signupDisabled',
 };
 
 const isNetwork = (message: string) => /fetch|network|failed to fetch|networkerror|load failed/i.test(message);
@@ -87,24 +87,24 @@ const isNetwork = (message: string) => /fetch|network|failed to fetch|networkerr
 export function toCloudError(error: { message: string; code?: string | null; status?: number }): CloudError {
   const code = error.code ?? '';
   const authMessage = AUTH_MESSAGES[code];
-  if (authMessage) return new CloudError(authMessage, 'auth');
+  if (authMessage) return new CloudError(t(authMessage), 'auth');
   // 5xx: el servidor (o un servicio suyo, como el de correo) no respondió a tiempo.
   // supabase-js los entrega como «HTTP 504» sin más; aquí se explican.
   if ((error.status ?? 0) >= 500 || /^HTTP 5\d\d$/.test(error.message)) {
     const status = error.status || Number(error.message.slice(5));
-    return new CloudError(`El servidor no respondió a tiempo (error ${status}). Espera un minuto e inténtalo de nuevo.`, 'network');
+    return new CloudError(t('cloud.timeout', { status }), 'network');
   }
   if (isNetwork(error.message)) {
-    return new CloudError('Sin conexión con el servidor. Tus datos siguen guardados en este equipo.', 'network');
+    return new CloudError(t('cloud.offline'), 'network');
   }
   // Las funciones SQL ya responden en español (raise exception '…').
   if (code === '42501') {
-    const msg = /row-level security/i.test(error.message) ? 'No tienes permiso para esta acción.' : error.message;
+    const msg = /row-level security/i.test(error.message) ? t('cloud.forbidden') : error.message;
     return new CloudError(msg, 'forbidden');
   }
   if (code === 'P0001' || code === '22023' || code.startsWith('23')) return new CloudError(error.message, 'invalid');
-  if (code.startsWith('PGRST')) return new CloudError('El servidor rechazó la petición. Inténtalo de nuevo.', 'unknown');
-  return new CloudError(error.message || 'Ocurrió un error inesperado.', 'unknown');
+  if (code.startsWith('PGRST')) return new CloudError(t('cloud.rejected'), 'unknown');
+  return new CloudError(error.message || t('cloud.unexpected'), 'unknown');
 }
 
 const toUser = (u: User | null | undefined): CloudUser | null =>
@@ -149,7 +149,7 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
   const requireUser = async () => {
     const { data } = await auth.getSession();
     const user = toUser(data.session?.user);
-    if (!user) throw new CloudError('Tu sesión terminó. Vuelve a iniciar sesión.', 'auth');
+    if (!user) throw new CloudError(t('cloud.sessionEnded'), 'auth');
     return user;
   };
 
@@ -202,7 +202,7 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
     ensureProfile: async (fallbackTimezone) => {
       const { data } = await auth.getSession();
       const user = data.session?.user;
-      if (!user) throw new CloudError('Tu sesión terminó. Vuelve a iniciar sesión.', 'auth');
+      if (!user) throw new CloudError(t('cloud.sessionEnded'), 'auth');
       const existing = await readProfile(user.id);
       if (existing) return existing;
       const meta = z.object({ display_name: z.string().min(1).max(80) }).safeParse(user.user_metadata);
@@ -214,7 +214,7 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
       const user = await requireUser();
       await run(client.from('profiles').update({ display_name: displayName, timezone }).eq('id', user.id));
       const saved = await readProfile(user.id);
-      if (!saved) throw new CloudError('No se encontró tu perfil.', 'unknown');
+      if (!saved) throw new CloudError(t('cloud.noProfile'), 'unknown');
       return saved;
     },
 
@@ -300,7 +300,7 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
       const [row] = z
         .array(z.object({ id: z.uuid(), code: z.string() }))
         .parse(await rpc('invite_member', { p_team: teamId, p_email: email, p_role: role }));
-      if (!row) throw new CloudError('No se pudo crear la invitación.', 'unknown');
+      if (!row) throw new CloudError(t('cloud.inviteFailed'), 'unknown');
       return { code: row.code };
     },
     revokeInvitation: async (id) => {
@@ -335,7 +335,7 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
         .uuid()
         .nullable()
         .parse(await rpc('accept_invitation', { p_id: id, p_code: code, p_consent_version: consentVersion }));
-      if (!team) throw new CloudError(WRONG_INVITATION_CODE, 'invalid');
+      if (!team) throw new CloudError(wrongInvitationCode(), 'invalid');
       return team;
     },
     declineInvitation: async (id) => {
@@ -410,43 +410,10 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
         .parse(await rpc('team_domain_summary', { p_team: teamId, p_from: from, p_to: to }));
       return rows.map((r) => DomainUsageSchema.parse({ userId: r.user_id, domain: r.domain, category: r.category, seconds: r.seconds }));
     },
-    myProjects: async (teamId) => {
-      const rows = z
-        .array(
-          z.object({
-            id: z.uuid(),
-            name: z.string(),
-            archived_at: z.string().nullable(),
-            my_role: z.string(),
-            tasks_total: z.coerce.number(),
-            tasks_done: z.coerce.number(),
-            logged_seconds: z.coerce.number(),
-            estimate_minutes: z.coerce.number(),
-          }),
-        )
-        .parse(await rpc('my_projects', { p_team: teamId }));
-      return rows.map((r) =>
-        ProjectSchema.parse({
-          id: r.id,
-          name: r.name,
-          archivedAt: r.archived_at,
-          myRole: r.my_role,
-          tasksTotal: r.tasks_total,
-          tasksDone: r.tasks_done,
-          loggedSeconds: r.logged_seconds,
-          estimateMinutes: r.estimate_minutes,
-        }),
-      );
-    },
+    teamWork: async (teamId) => TeamWorkSchema.parse(await rpc('team_work', { p_team: teamId })),
     createProject: async (teamId, name) => z.uuid().parse(await rpc('create_project', { p_team: teamId, p_name: name })),
     setProjectArchived: async (projectId, archived) => {
       await rpc('set_project_archived', { p_project: projectId, p_archived: archived });
-    },
-    projectMembers: async (projectId) => {
-      const rows = z
-        .array(z.object({ user_id: z.uuid(), role: z.string(), display_name: z.string().nullable() }))
-        .parse(await rpc('project_member_list', { p_project: projectId }));
-      return rows.map((r) => ProjectMemberSchema.parse({ userId: r.user_id, role: r.role, displayName: r.display_name }));
     },
     setProjectMember: async (projectId, userId, role) => {
       await rpc('set_project_member', { p_project: projectId, p_user: userId, p_role: role });
@@ -454,47 +421,56 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
     removeProjectMember: async (projectId, userId) => {
       await rpc('remove_project_member', { p_project: projectId, p_user: userId });
     },
-    projectTasks: async (projectId) => {
-      const rows = z
-        .array(
-          z.object({
-            id: z.uuid(),
-            title: z.string(),
-            description: z.string(),
-            assignee_id: z.uuid().nullable(),
-            status: z.string(),
-            due_date: z.string().nullable(),
-            labels: z.array(z.string()),
-            estimate_minutes: z.number().nullable(),
-            logged_seconds: z.coerce.number(),
-            created_by: z.uuid(),
-            updated_at: z.string(),
-          }),
-        )
-        .parse(await rpc('project_tasks', { p_project: projectId }));
-      return rows.map((r) =>
-        TaskSchema.parse({
-          id: r.id,
-          title: r.title,
-          description: r.description,
-          assigneeId: r.assignee_id,
-          status: r.status,
-          dueDate: r.due_date,
-          labels: r.labels,
-          estimateMinutes: r.estimate_minutes,
-          loggedSeconds: r.logged_seconds,
-          createdBy: r.created_by,
-          updatedAt: r.updated_at,
-        }),
-      );
+    setReviewTemplate: async (projectId, fields) => {
+      await rpc('set_review_template', { p_project: projectId, p_template: fields });
     },
-    createTask: async (projectId, input) =>
-      z.uuid().parse(await rpc('create_task', { p_project: projectId, ...taskArgs(input) })),
+    createTask: async (projectId, input, extras = {}) =>
+      z.uuid().parse(
+        await rpc('create_task', {
+          p_project: projectId,
+          ...taskArgs(input),
+          p_parent: extras.parentId ?? undefined,
+          p_criteria: extras.criteria ?? [],
+          p_collaborators: extras.collaborators ?? [],
+        }),
+      ),
     updateTask: async (taskId, input) => {
       await rpc('update_task', { p_task: taskId, ...taskArgs(input) });
     },
     setTaskStatus: async (taskId, status) => {
       await rpc('set_task_status', { p_task: taskId, p_status: status });
+    },
+    setTaskCollaborators: async (taskId, userIds) => {
+      await rpc('set_task_collaborators', { p_task: taskId, p_users: userIds });
+    },
+    setTaskCriteria: async (taskId, texts) => {
+      await rpc('set_task_criteria', { p_task: taskId, p_texts: texts });
+    },
+    submitForReview: async (task, teamId, sub) => {
+      const reviewId = z.uuid().parse(
+        await rpc('submit_for_review', {
+          p_task: task.id,
+          p_answers: sub.answers,
+          p_links: sub.links,
+          p_reviewer: sub.reviewerId ?? undefined,
+          p_criteria_met: sub.criteriaMet,
+        }),
+      );
+      // La revisión ya existe: los archivos se suben después y quedan ligados a ella.
+      for (const file of sub.files) {
+        const path = `${teamId}/${task.projectId}/${task.id}/${crypto.randomUUID()}-${safeName(file.name)}`;
+        await run(client.storage.from(EVIDENCE_BUCKET).upload(path, file));
+        await rpc('add_task_attachment', { p_task: task.id, p_path: path, p_name: file.name, p_size: file.size, p_review: reviewId });
+      }
+      return reviewId;
+    },
+    reviewTask: async (reviewId, approve, comment) => {
+      await rpc('review_task', { p_review: reviewId, p_approve: approve, p_comment: comment ?? undefined });
+    },
+    taskHistory: async (taskId) => HistorySchema.parse(await rpc('task_history', { p_task: taskId })),
+    evidenceUrl: async (path) => {
+      const data = await run(client.storage.from(EVIDENCE_BUCKET).createSignedUrl(path, 60));
+      return z.object({ signedUrl: z.string() }).parse(data).signedUrl;
     },
     projectTimeSummary: async (projectId, from, to) => {
       const rows = z
@@ -515,11 +491,18 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
 }
 
 /** Campos vacíos se omiten: la función SQL los toma como vacíos (valores por defecto). */
+const EVIDENCE_BUCKET = 'task-evidence';
+/** Nombre de archivo apto para la ruta de Storage: sin barras ni caracteres raros. */
+export const safeName = (name: string) => name.normalize('NFKD').replace(/[^\w.-]+/g, '_').slice(-120) || 'archivo';
+
+/** Campos vacíos se omiten: la función SQL los toma como vacíos (valores por defecto). */
 const taskArgs = (t: TaskInput) => ({
   p_title: t.title,
   p_status: t.status,
   p_description: t.description,
+  p_type: t.type,
   p_assignee: t.assigneeId ?? undefined,
+  p_assignee_can_manage: t.assigneeCanManage,
   p_due_date: t.dueDate ?? undefined,
   p_labels: t.labels,
   p_estimate_minutes: t.estimateMinutes ?? undefined,

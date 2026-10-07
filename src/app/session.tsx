@@ -8,6 +8,7 @@
  *   sigue asignándose al último equipo conocido y se sube al volver la red.
  * - El equipo elegido se recuerda en este equipo (localStorage): es una preferencia, no un dato sensible.
  */
+import { t } from '@/i18n';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { Bridge } from '@/bridge/contract';
@@ -201,7 +202,7 @@ export function SessionProvider({
   const sync = useMemo<SyncState>(
     () =>
       isViewer
-        ? { ...engineState, phase: 'off', message: 'Como observador, tu actividad no se comparte con el equipo.' }
+        ? { ...engineState, phase: 'off', message: t('sync.viewer') }
         : engineState,
     [engineState, isViewer],
   );

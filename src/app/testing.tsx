@@ -13,12 +13,17 @@ import { SyncEngine } from '@/sync/engine';
 import { SessionProvider } from './session';
 
 function Where() {
-  return <p data-testid="ruta">{useLocation().pathname}</p>;
+  return <p data-testid="ruta">{useLocation().pathname + useLocation().search}</p>;
 }
 
 export function renderWithSession(
   page: ReactElement,
-  { path = '/', cloud = createMockCloud(), bridge = createMockBridge() }: { path?: string; cloud?: MockCloud; bridge?: Bridge } = {},
+  {
+    path = '/',
+    route = '*',
+    cloud = createMockCloud(),
+    bridge = createMockBridge(),
+  }: { path?: string; route?: string; cloud?: MockCloud; bridge?: Bridge } = {},
 ) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   const engine = new SyncEngine({ bridge, cloud, setTimer: () => () => {} });
@@ -27,7 +32,7 @@ export function renderWithSession(
       <SessionProvider cloud={cloud} bridge={bridge} engine={engine}>
         <MemoryRouter initialEntries={[path]}>
           <Routes>
-            <Route path="*" element={page} />
+            <Route path={route} element={page} />
           </Routes>
           <Where />
         </MemoryRouter>
