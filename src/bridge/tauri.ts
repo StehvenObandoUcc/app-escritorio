@@ -8,6 +8,7 @@ import { z } from 'zod';
 import {
   DayViewSchema,
   InstalledAppSchema,
+  NotificationsStatusSchema,
   RangeViewSchema,
   SensorStatusSchema,
   SettingsSchema,
@@ -63,5 +64,6 @@ export function createTauriBridge(): Bridge {
       await invoke('team_policy_set', { policy });
     },
     installedApps: async () => z.array(InstalledAppSchema).parse(await invoke('installed_apps')),
+    notificationsStatus: async () => NotificationsStatusSchema.parse(await invoke('notifications_status')),
   };
 }
