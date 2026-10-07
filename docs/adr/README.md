@@ -16,5 +16,6 @@ decisión de `docs/ARQUITECTURA.md` §3 o cambiar una celda de `docs/ROLES.md`.
 | [0008](./0008-registro-sin-verificacion-y-codigo-de-invitacion.md) | Registro sin verificar el correo; las invitaciones llevan un código | Aceptado |
 | [0009](./0009-dominio-del-sitio-y-politicas-del-equipo.md) | Dominio del sitio web, sitios no permitidos y política de apps ocultas | Aceptado |
 | [0010](./0010-avisos-de-sitio-y-apps-instaladas.md) | Avisos de sitio no permitido y lista de apps instaladas | Aceptado |
+| [0011](./0011-aviso-con-sonido-propio.md) | El aviso suena aunque Windows tenga las notificaciones apagadas | Aceptado |
 
 Plantilla: copia cualquiera de los anteriores. Numeración consecutiva de cuatro dígitos.
