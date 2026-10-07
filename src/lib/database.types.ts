@@ -259,6 +259,70 @@ export type Database = {
           },
         ]
       }
+      project_members: {
+        Row: {
+          created_at: string
+          project_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          project_id: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          project_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_members_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+          team_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+          team_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -279,6 +343,69 @@ export type Database = {
           timezone?: string
         }
         Relationships: []
+      }
+      tasks: {
+        Row: {
+          assignee_id: string | null
+          created_at: string
+          created_by: string
+          description: string
+          due_date: string | null
+          estimate_minutes: number | null
+          id: string
+          labels: string[]
+          project_id: string
+          status: string
+          team_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assignee_id?: string | null
+          created_at?: string
+          created_by: string
+          description?: string
+          due_date?: string | null
+          estimate_minutes?: number | null
+          id?: string
+          labels?: string[]
+          project_id: string
+          status?: string
+          team_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assignee_id?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string
+          due_date?: string | null
+          estimate_minutes?: number | null
+          id?: string
+          labels?: string[]
+          project_id?: string
+          status?: string
+          team_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       team_members: {
         Row: {
@@ -378,6 +505,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "time_entries_task_fk"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "time_entries_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
@@ -396,6 +530,23 @@ export type Database = {
         Returns: string
       }
       caller_email: { Args: never; Returns: string }
+      create_project: {
+        Args: { p_name: string; p_team: string }
+        Returns: string
+      }
+      create_task: {
+        Args: {
+          p_assignee?: string
+          p_description?: string
+          p_due_date?: string
+          p_estimate_minutes?: number
+          p_labels?: string[]
+          p_project: string
+          p_status: string
+          p_title: string
+        }
+        Returns: string
+      }
       create_team: { Args: { p_name: string }; Returns: string }
       decline_invitation: { Args: { p_id: string }; Returns: undefined }
       give_consent: {
@@ -426,9 +577,58 @@ export type Database = {
           team_name: string
         }[]
       }
+      my_projects: {
+        Args: { p_team: string }
+        Returns: {
+          archived_at: string
+          created_at: string
+          estimate_minutes: number
+          id: string
+          logged_seconds: number
+          my_role: string
+          name: string
+          tasks_done: number
+          tasks_total: number
+        }[]
+      }
       new_invitation_code: { Args: never; Returns: string }
+      project_member_list: {
+        Args: { p_project: string }
+        Returns: {
+          display_name: string
+          role: string
+          user_id: string
+        }[]
+      }
+      project_tasks: {
+        Args: { p_project: string }
+        Returns: {
+          assignee_id: string
+          created_by: string
+          description: string
+          due_date: string
+          estimate_minutes: number
+          id: string
+          labels: string[]
+          logged_seconds: number
+          status: string
+          title: string
+          updated_at: string
+        }[]
+      }
+      project_time_summary: {
+        Args: { p_from: string; p_project: string; p_to: string }
+        Returns: {
+          seconds: number
+          user_id: string
+        }[]
+      }
       remove_member: {
         Args: { p_team: string; p_user: string }
+        Returns: undefined
+      }
+      remove_project_member: {
+        Args: { p_project: string; p_user: string }
         Returns: undefined
       }
       revoke_invitation: { Args: { p_id: string }; Returns: undefined }
@@ -438,6 +638,18 @@ export type Database = {
       }
       set_member_role: {
         Args: { p_role: string; p_team: string; p_user: string }
+        Returns: undefined
+      }
+      set_project_archived: {
+        Args: { p_archived: boolean; p_project: string }
+        Returns: undefined
+      }
+      set_project_member: {
+        Args: { p_project: string; p_role: string; p_user: string }
+        Returns: undefined
+      }
+      set_task_status: {
+        Args: { p_status: string; p_task: string }
         Returns: undefined
       }
       set_team_policy: {
@@ -473,6 +685,19 @@ export type Database = {
           seconds: number
           user_id: string
         }[]
+      }
+      update_task: {
+        Args: {
+          p_assignee?: string
+          p_description?: string
+          p_due_date?: string
+          p_estimate_minutes?: number
+          p_labels?: string[]
+          p_status: string
+          p_task: string
+          p_title: string
+        }
+        Returns: undefined
       }
       write_audit: {
         Args: {
