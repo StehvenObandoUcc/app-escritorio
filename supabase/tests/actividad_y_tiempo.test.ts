@@ -63,6 +63,11 @@ beforeAll(async () => {
     `insert into team_members (team_id, user_id, role) values ($1, $2, 'admin'), ($1, $3, 'member'), ($1, $4, 'viewer')`,
     [teamA, beto, caro, dani],
   );
+  // Sin consentimiento no se sube nada (PS-02, migración 20261006000001).
+  for (const user of [ana, beto, caro]) {
+    await db.as(user, (q) => q("select give_consent($1, 'v1')", [teamA]));
+  }
+  await db.as(eva, (q) => q("select give_consent($1, 'v1')", [teamB]));
 });
 
 afterAll(() => db.close());
@@ -257,7 +262,7 @@ describe('totales por miembro (filas 13 y 14)', () => {
   beforeAll(async () => {
     // Datos conocidos y aislados en un equipo propio, para sumar sin ruido.
     await db.admin(
-      `insert into team_members (team_id, user_id, role) values ($1, $2, 'member')`,
+      `insert into team_members (team_id, user_id, role, consent_version, consent_at) values ($1, $2, 'member', 'v1', now())`,
       [teamB, caro],
     );
     await db.as(caro, async (q) => {
@@ -380,13 +385,16 @@ describe('reglas de clasificación (fila 23)', () => {
 });
 
 describe('salir del equipo y borrar el equipo', () => {
-  it('quien sale por su cuenta pierde su actividad y su tiempo en ese equipo, no los de otros', async () => {
+  // Regla A-3 (migración 20261006000001): se borra la actividad y se conserva el tiempo.
+  it('quien sale por su cuenta pierde su actividad en ese equipo, conserva su tiempo y no toca lo de otros', async () => {
     const mine = await count('activity_blocks where team_id = $1 and user_id = $2', [teamA, caro]);
     const anas = await count('activity_blocks where team_id = $1 and user_id = $2', [teamA, ana]);
+    const myTime = await count('time_entries where team_id = $1 and user_id = $2', [teamA, caro]);
     expect(mine).toBeGreaterThan(0);
+    expect(myTime).toBeGreaterThan(0);
     await db.as(caro, (q) => q('select leave_team($1)', [teamA]));
     expect(await count('activity_blocks where team_id = $1 and user_id = $2', [teamA, caro])).toBe(0);
-    expect(await count('time_entries where team_id = $1 and user_id = $2', [teamA, caro])).toBe(0);
+    expect(await count('time_entries where team_id = $1 and user_id = $2', [teamA, caro])).toBe(myTime);
     expect(await count('activity_blocks where team_id = $1 and user_id = $2', [teamA, ana])).toBe(anas);
     // lo que caro tiene en el equipo B no se toca
     expect(await count('activity_blocks where team_id = $1 and user_id = $2', [teamB, caro])).toBe(3);

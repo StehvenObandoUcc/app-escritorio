@@ -6,3 +6,4 @@ export * from './Heading';
 export * from './Input';
 export * from './ProgressBar';
 export * from './Surface';
+export * from './Select';

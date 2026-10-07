@@ -105,11 +105,11 @@ Funcionalidades: CU-01 a CU-04, EQ-01 a EQ-08, EQ-10 (datos), PS-01, PS-02, PS-0
 | C · Interfaz | Registro, inicio de sesión, recuperar contraseña, crear equipo, invitar, aceptar con consentimiento, cambiar de equipo, sincronización |
 
 **Puerta G2**
-- [ ] `npm run test:db` cubre todas las filas F0 y F2 de la matriz.
-- [ ] Dos cuentas reales: una crea el equipo e invita; la otra acepta.
-- [ ] La actividad de la segunda cuenta aparece en Supabase **sin títulos**.
-- [ ] 30 minutos sin red y luego con red: llega todo, sin duplicados.
-- [ ] Un `viewer` no ve la lista de miembros; alguien de otro equipo no ve nada.
+- [x] `npm run test:db` cubre todas las filas F0 y F2 de la matriz.
+- [x] Dos cuentas reales: una crea el equipo e invita; la otra acepta.
+- [x] La actividad de la segunda cuenta aparece en Supabase **sin títulos**.
+- [x] 30 minutos sin red y luego con red: llega todo, sin duplicados.
+- [x] Un `viewer` no ve la lista de miembros; alguien de otro equipo no ve nada.
 
 ### F3 · Proyectos y tareas (vie 9 – sáb 10)
 
@@ -238,7 +238,7 @@ Lo de arriba es el plan original y sigue vigente. Esta sección añade lo acorda
 |---|---|---|
 | F0 · Fundaciones | Hecha | G0 incompleta: faltan los informes S-2 (detección de IA por título) y S-4 (DeepSeek) |
 | **F1 · Sensor y *Mi día*** | **Hecha. Spec aprobada el 5 oct** | **G1 pasa** (evidencia en `docs/spikes/F1-medicion-app-real.md`) |
-| F2 · Cuentas, equipos y sincronización | Por empezar (6–8 oct). Migración de actividad y tiempo adelantada en F1 | — |
+| **F2 · Cuentas, equipos y sincronización** | **Hecha. Spec aprobada el 7 oct** (ADR-0007 a ADR-0013) | **G2 pasa** (pruebas reales del 6 y 7 oct, estado en la spec) |
 | F3 a F6 | Por empezar | — |
 
 Funcionalidades antes de la entrega (`docs/FUNCIONALIDADES.md`): **86**.
@@ -259,3 +259,24 @@ previsto, sin margen: F2 empieza el martes 6.
 | A-1 | **Cierres de Pulso dentro de la jornada.** Cerrar Pulso detiene el registro (hecho en F1), pero si ocurre dentro de la jornada laboral debe quedar reportado. | Definir qué es la jornada (¿horas de `teams.settings`, EQ-09?), qué se guarda (¿un evento «Pulso cerrado» con hora?), quién lo ve (¿la persona, owner y admin?) y si exige una fila nueva en `docs/ROLES.md`. **Acordado: se define en la spec de F2, junto con los roles.** |
 | A-2 | Conexiones de WebView2 a servidores de Microsoft vistas en la prueba real (`52.96.185.210:443`) | Revisar en F6 con la CSP: qué las origina y si se pueden desactivar sin dependencias nuevas. |
 | A-3 | La regla de salida de equipo (D2: se borran `activity_blocks`, se conservan `time_entries` como «Exmiembro», queda en `audit_log`) contradice la migración `20261005000001`, que hoy borra también `time_entries` y solo al salir por cuenta propia | Corregir con una migración nueva en F2, con sus pruebas. |
+
+### 8.5 Avance de F2 (6 de octubre)
+
+| Parte | Estado |
+|---|---|
+| Spec `docs/specs/F2-cuentas-equipos-sync.md` | Borrador con A-1 y A-3 resueltos; pendiente de aprobación formal |
+| Migración `20261006000001` (invitaciones, auditoría, consentimiento, cierres, regla A-3) | Hecha; 95 pruebas de permisos en verde. **Falta `db:push` en `pulso-dev`** |
+| Rust: sesión cifrada, `active_team_set` (ADR-0007), `sync_pending`, `sync_mark_synced`, `rules_set`, cierres | Hecho; 80 pruebas en verde |
+| Interfaz: acceso con código, equipos, invitaciones, consentimiento, perfil, privacidad, sincronización | Hecha contra la nube simulada; falta probarla con Supabase real |
+| Registro sin verificar el correo y código de invitación (ADR-0008) | Hecho y aplicado en `pulso-dev` |
+| Sitios por dominio, sitios no permitidos y política de apps ocultas (ADR-0009, S-5) | Hecho, aplicado y probado en la app real |
+| Avisos con sonido, reglas siempre al día, subida a los 15 s y selector de apps instaladas (ADR-0010) | Hecho y aplicado; probado en la app real salvo el sonido |
+| Sonido propio del aviso aunque Windows tenga las notificaciones apagadas (ADR-0011) | Hecho y probado: suena |
+| Aviso general dentro de la app y Pulso no se registra a sí mismo (ADR-0012) | Hecho con pruebas; falta probarlo en la app real |
+| Correo de recuperación (CU-03) con SMTP de Gmail | Funciona (7 oct) |
+| Puerta G2 | Pendiente (jueves 8): dos cuentas reales, 30 min sin red, viewer y persona de otro equipo |
+
+Decisiones abiertas:
+- **A-4** · *Olvidé mi contraseña* necesita que Supabase envíe correos: hoy responde 504. Hay que revisar o configurar el SMTP del proyecto. El registro ya no depende del correo (ADR-0008).
+- **Pasa a F5** (con TA-11, pedido el 6 oct): reglas de productividad del equipo y editar la lista de apps sin teclado. La lista fija ya está en F2 (TA-15, ADR-0013).
+- **A-5** · Enviar por correo el código de invitación, además de mostrarlo para compartirlo (pedido el 6 oct). Depende de A-4 y necesita una Edge Function o el SMTP del proyecto; se retoma después de G2.

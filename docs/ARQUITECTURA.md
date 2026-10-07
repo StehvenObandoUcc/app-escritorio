@@ -33,14 +33,14 @@ tareas y genera reportes con IA. Promesa: *entiende cómo trabaja tu equipo con 
 | D-02 | **Rust es delgado**: sensor, SQLite local, cifrado, secretos y la llamada a la IA con clave propia. Nada más. | Rust compila lento y el equipo lo está aprendiendo. |
 | D-03 | La interfaz no ejecuta SQL ni ve secretos. Habla con Rust solo por los comandos de §6. | Seguridad y pruebas simples. |
 | D-04 | Backend: Supabase (Auth, Postgres con RLS, Edge Functions). Sin NestJS ni AWS en v1. | Cero servidores que operar. |
-| D-05 | Los **títulos de ventana nunca salen del equipo** y se guardan cifrados (AES-GCM; la clave vive en el almacén seguro del sistema). | Privacidad. Un título revela asuntos de correo o nombres de clientes. |
+| D-05 | Los **títulos de ventana y las URL completas nunca salen del equipo**; los títulos se guardan cifrados (AES-GCM; la clave vive en el almacén seguro del sistema). Del navegador solo sale el **dominio** del sitio, tras consentir (ADR-0009). | Privacidad. Un título o una URL revelan asuntos de correo, búsquedas o nombres de clientes. |
 | D-06 | **La sincronización vive en TypeScript**: pide a Rust los registros pendientes (sin títulos), los sube con `supabase-js` y le confirma a Rust. | Quita de Rust el cliente HTTP, los reintentos y el refresco de sesión (ADR-0001). |
 | D-07 | Actividad y tiempo funcionan sin conexión (UUID generado en el cliente, subida idempotente). Las tareas necesitan conexión para editarse; sin conexión se leen de una copia local. | Offline donde importa, sin resolver conflictos complejos. |
 | D-08 | Conflictos en tareas: gana la última modificación (`updated_at` del servidor). | Regla simple y predecible. |
 | D-09 | **Las cifras salen de SQL. La IA no calcula ni inventa números.** | Anti-alucinación (ver `docs/IA.md`). |
 | D-10 | IA con **un solo formato**: API compatible con OpenAI. Tres modos: Gratis, Clave propia y Manual. | Un adaptador cubre casi todos los proveedores (ADR-0002). |
 | D-11 | **Sin Docker.** Las pruebas de permisos corren con Postgres en memoria (PGlite). Supabase se usa en la nube. | Desarrollo y verificación simples (ADR-0003). |
-| D-12 | Invitaciones por correo **sin enviar correos**: la invitación queda ligada al correo y aparece cuando esa persona inicia sesión. | Sin enlaces mágicos, sin límites de envío (ADR-0004). |
+| D-12 | Invitaciones por correo **sin enviar correos**: la invitación queda ligada al correo, aparece cuando esa persona inicia sesión y se acepta con el código que comparte quien invita. El registro no exige verificar el correo. | Sin enlaces mágicos ni dependencia del servicio de correo (ADR-0004, ADR-0008). |
 | D-13 | Interfaz con design tokens, atomic design y 3 tamaños de ventana (`docs/DISENO.md`). | Coherencia y velocidad. |
 | D-14 | Nunca: registro de teclas, capturas de pantalla, contenido de documentos o de chats de IA. | Límite ético del producto. |
 | D-15 | Los reportes son indicativos, no prueba disciplinaria. Se dice en la interfaz y en el consentimiento. | Las mediciones automáticas tienen errores. |
@@ -74,13 +74,15 @@ La interfaz muestra la etiqueta "Datos de ejemplo" siempre que usa el puente sim
 - Capas y reglas: `docs/DISENO.md`. ESLint impide que una capa importe de otra superior.
 - Solo `src/pages`, `src/app` y `src/dev` usan el puente; los componentes de `src/ui` reciben datos por props.
 - Todo dato que llega del puente o de Supabase se valida con zod antes de usarse.
-- Rutas (HashRouter): `/mi-dia`, `/tareas`, `/equipo`, `/reportes`, `/ajustes`, `/dev/galeria` (solo desarrollo).
+- Igual que el puente, Supabase se usa solo a través de `src/cloud` (contrato `Cloud`: implementación real y simulada). Las páginas no llaman a `supabase-js` directamente.
+- Sin sesión no se entra a la app (F2): se muestra solo la pantalla de acceso (registro, inicio de sesión y recuperar contraseña), sin navegación. Cerrar sesión está en *Ajustes*. El sensor sigue registrando en el equipo; nada se sube sin sesión ni consentimiento.
+- Rutas (HashRouter), con sesión: `/mi-dia`, `/tareas`, `/equipo`, `/equipo/privacidad` (qué se mide y quién lo ve; F2), `/reportes`, `/ajustes`, `/dev/galeria` (solo desarrollo).
 
 ## 6. Núcleo Rust: módulos y comandos (lista cerrada)
 
 | Módulo | Hace | No hace |
 |---|---|---|
-| `sensor` | Cada 2 s lee app activa, título e inactividad. Cierra el bloque si cambia la app o la categoría, o si la inactividad supera el umbral. Fusiona bloques de menos de 10 s. | Teclas, pantalla, red. |
+| `sensor` | Cada 2 s lee app activa, título, dominio del navegador (UI Automation, ADR-0009) e inactividad. Cierra el bloque si cambia la app o la categoría, o si la inactividad supera el umbral. Fusiona bloques de menos de 10 s. | Teclas, pantalla, red. |
 | `classifier` | Asigna categoría con reglas: primero las del equipo, luego `rules/default.json`. Gana la primera coincidencia. | Llamar a la red. |
 | `store` | Único dueño de SQLite (modo WAL). Migraciones locales versionadas. Escribe en lote cada 10 s. | Exponer SQL a la interfaz. |
 | `crypto` | Cifra y descifra títulos. | |
@@ -101,9 +103,13 @@ Comandos (nombres exactos; `src/bridge/contract.ts` es su espejo en TypeScript):
 | F1 | `time_entries(date)` (ADR-0005) | entradas de tiempo del día local |
 | F1 | `settings_get()` · `settings_set(patch)` | ajustes locales (umbral de inactividad, ocultar apps) |
 | F2 | `session_get()` · `session_set(json)` · `session_clear()` | sesión de Supabase |
-| F2 | `sync_pending(limit)` | bloques y entradas sin subir, **sin títulos** |
-| F2 | `sync_mark_synced(kind, ids)` | — |
-| F2 | `rules_set(json)` | — (reglas del equipo para el clasificador) |
+| F2 | `active_team_set(team_id?, user_id?)` (ADR-0007, ADR-0013) | — (equipo y cuenta de las filas nuevas) |
+| F2 | `sync_pending(limit)` | bloques, entradas y cierres del equipo activo sin subir, **sin títulos** |
+| F2 | `sync_mark_synced(kind, ids)` | — (`kind`: `blocks` · `entries` · `closures`) |
+| F2 | `rules_set(json)` | — (reglas del equipo para el clasificador, también por dominio) |
+| F2 | `team_policy_set(policy)` (ADR-0009, ADR-0010) | — (política del equipo: apps ocultas y avisos de sitio no permitido) |
+| F2 | `installed_apps()` (ADR-0010) | apps instaladas y abiertas para elegir cuáles ocultar; solo local |
+| F2 | `notifications_status()` (ADR-0011) | `{ windowsToastsEnabled }`: si Windows muestra notificaciones de apps |
 | F3 | `tasks_cache_put(json)` · `tasks_cache_get()` | copia local de tareas |
 | F4 | `ai_config_set(base_url, model, key)` · `ai_config_get()` · `ai_config_clear()` | `ai_config_get` devuelve `{base_url, model, has_key}`, **nunca la clave** |
 | F4 | `ai_chat(messages)` | texto de la respuesta |
@@ -127,11 +133,12 @@ Presupuesto de rendimiento (se mide en F1 y F6): RAM en reposo < 120 MB, CPU med
 | `profiles` | nombre visible, zona horaria | F0 ✔ |
 | `teams` | nombre, `settings` (umbral de inactividad, horas de jornada, políticas) | F0 ✔ |
 | `team_members` | rol de equipo, versión y fecha de consentimiento | F0 ✔ |
-| `invitations` | correo, rol, quién invita, vence a los 7 días | F2 |
-| `audit_log` | quién hizo qué (roles, expulsiones, IA, reportes) | F2 |
-| `activity_blocks` | inicio, fin, app, categoría, herramienta de IA, tipo de uso de IA. **Sin títulos.** | F2 |
-| `time_entries` | inicio, fin, tarea opcional, origen (`timer`/`manual`) | F2 |
-| `classification_rules` | prioridad, tipo (`process`/`title`), patrón, categoría | F2 |
+| `invitations` | correo, rol, quién invita, vence a los 7 días | F2 ✔ |
+| `audit_log` | quién hizo qué (roles, expulsiones, IA, reportes) | F2 ✔ |
+| `app_closures` | huecos porque Pulso estuvo cerrado dentro de la jornada (`teams.settings.workday`) | F2 ✔ |
+| `activity_blocks` | inicio, fin, app, categoría, herramienta de IA, tipo de uso de IA, dominio del sitio (ADR-0009). **Sin títulos ni URL.** | F2 ✔ |
+| `time_entries` | inicio, fin, tarea opcional, origen (`timer`/`manual`) | F2 ✔ |
+| `classification_rules` | prioridad, tipo (`process`/`title`/`domain`), patrón, categoría, `not_allowed` (sitio no permitido: se marca, no se bloquea) | F2 ✔ |
 | `projects`, `project_members` | proyecto y rol de proyecto (`lead`/`contributor`) | F3 |
 | `tasks` | título, descripción, responsable, estado (`todo`/`doing`/`done`), fecha límite, etiquetas, estimación | F3 |
 | `report_runs` | alcance, periodo, hechos, narrativa, modo de IA, resultado de la validación | F4 |
@@ -146,7 +153,7 @@ Reglas de toda migración (ya aplicadas en la primera, que sirve de modelo):
 
 ### 7.2 En el equipo (SQLite, solo Rust)
 
-`activity_blocks_local` (con `title_enc` y `synced_at`), `time_entries_local`, `tasks_cache`, `kv_settings`.
+`activity_blocks_local` (con `title_enc`, `team_id`, `user_id` y `synced_at`), `time_entries_local` (con `team_id` y `user_id`), `app_closures_local` (con `user_id`), `tasks_cache`, `kv_settings` (ajustes, equipo activo, reglas del equipo y la sesión cifrada).
 
 ### 7.3 Sincronización (TypeScript)
 
@@ -167,7 +174,7 @@ la subida puede tardar un minuto más, pero no se pierde nada porque Rust ya lo 
 
 - Consentimiento explícito y versionado al unirse a un equipo: qué se mide, quién lo ve, qué proveedor de IA se usa y que los datos pueden procesarse fuera de Colombia.
 - Pausa de privacidad: durante la pausa solo se registra un bloque `paused`, sin detalle.
-- Cada persona puede exportar sus datos. Cuando una persona sale de un equipo (por su cuenta o expulsada, misma regla) se borran sus `activity_blocks` de ese equipo; sus `time_entries` se conservan y se muestran como «Exmiembro»; el hecho queda en `audit_log`. Se implementa en F2.
+- Cada persona puede exportar sus datos. Cuando una persona sale de un equipo (por su cuenta o expulsada, misma regla) se borran sus `activity_blocks` de ese equipo; sus `time_entries` se conservan y se muestran como «Exmiembro»; también se borran sus `app_closures`; el hecho queda en `audit_log` (migración `20261006000001`).
 - Referencia: Ley 1581 de 2012 (protección de datos personales, Colombia). Si se va a usar con empleados reales, hay que validarlo con asesoría.
 
 ## 10. Checklist de seguridad (cada punto es una prueba o una revisión de F6)

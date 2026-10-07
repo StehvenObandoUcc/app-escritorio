@@ -11,7 +11,7 @@ type State =
 
 const describe = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause));
 
-/** Carga el día, el estado del sensor y las entradas de tiempo; se actualiza solo cada 30 s. */
+/** Carga el día, el estado del sensor y las entradas de tiempo; se actualiza cada 30 s y al enfocar la ventana. */
 export function useDay(bridge: Bridge, date: string) {
   const [state, setState] = useState<State>({ phase: 'loading' });
   const [version, setVersion] = useState(0);
@@ -34,10 +34,13 @@ export function useDay(bridge: Bridge, date: string) {
     void refresh();
     const id = setInterval(refreshIfVisible, REFRESH_MS);
     document.addEventListener('visibilitychange', refreshIfVisible);
+    // Al volver a Pulso desde otra app (p. ej. el navegador) se ve al instante el tiempo actual.
+    window.addEventListener('focus', refreshIfVisible);
     return () => {
       cancelled = true;
       clearInterval(id);
       document.removeEventListener('visibilitychange', refreshIfVisible);
+      window.removeEventListener('focus', refreshIfVisible);
     };
   }, [bridge, date, version]);
 
