@@ -2,10 +2,11 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Trash2 } from 'lucide-react';
 import { useMemo, useState, type FormEvent } from 'react';
 import { useSession } from '@/app/session';
+import { ALERT_REPEATS } from '@/bridge/contract';
 import type { MyTeam } from '@/cloud/contract';
 import { appColor } from '@/lib/apps';
 import { formatShortDuration } from '@/lib/time';
-import { Button, Heading, ProgressBar, Surface } from '@/ui/atoms';
+import { Button, Heading, ProgressBar, Select, Surface } from '@/ui/atoms';
 import { FormField, SegmentedControl } from '@/ui/molecules';
 
 const describe = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause));
@@ -18,6 +19,8 @@ export function toDomain(input: string): string | null {
   const host = (rest.split(/[/?#]/)[0] ?? '').split('@').pop()!.split(':')[0]!.replace(/^www\./, '');
   return /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(host) ? host : null;
 }
+
+const REPEAT_LABEL = (m: number) => (m === 0 ? 'Solo al entrar' : `Cada ${m} min`);
 
 type Range = 'hoy' | 'semana';
 const RANGES: { value: Range; label: string }[] = [
@@ -75,7 +78,9 @@ export function SitiosYPoliticas({ team }: { team: MyTeam }) {
     void run(async () => {
       await cloud.addNotAllowedDomain(team.id, d);
       setDomain('');
+      // Las reglas se reenvían a Rust al instante (session.tsx), sin esperar al siguiente ciclo.
       await queryClient.invalidateQueries({ queryKey: ['domain-rules'] });
+      await queryClient.invalidateQueries({ queryKey: ['team-rules'] });
     });
   };
 
@@ -125,6 +130,42 @@ export function SitiosYPoliticas({ team }: { team: MyTeam }) {
       <div className="flex flex-col gap-3">
         <Heading level={3}>Sitios no permitidos</Heading>
         <p className="text-sm text-fg-muted">Cuentan como distracción y se marcan «No permitido». Pulso no los bloquea.</p>
+        <div className="flex flex-col gap-2 rounded-md bg-sunken p-3">
+          <label className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              className="mt-1 size-4 accent-accent"
+              checked={team.alertNotAllowed}
+              disabled={busy}
+              onChange={(e) =>
+                void run(async () => {
+                  await cloud.setAlertPolicy(team.id, e.target.checked, team.alertRepeatMinutes);
+                  await refresh();
+                })
+              }
+            />
+            <span>
+              <span className="block font-medium text-fg">Avisar con sonido al entrar a un sitio no permitido</span>
+              <span className="block text-sm text-fg-muted">Notificación de Windows en el equipo de la persona. No se registra nada más.</span>
+            </span>
+          </label>
+          <div className="flex flex-wrap items-center gap-2 pl-7">
+            <span className="text-sm text-fg">Repetir el aviso si sigue en el sitio:</span>
+            <Select
+              size="sm"
+              aria-label="Repetir el aviso"
+              value={String(team.alertRepeatMinutes)}
+              disabled={busy || !team.alertNotAllowed}
+              onChange={(e) =>
+                void run(async () => {
+                  await cloud.setAlertPolicy(team.id, team.alertNotAllowed, Number(e.target.value));
+                  await refresh();
+                })
+              }
+              options={ALERT_REPEATS.map((m) => ({ value: String(m), label: REPEAT_LABEL(m) }))}
+            />
+          </div>
+        </div>
         <form onSubmit={add} className="flex flex-wrap items-end gap-2" noValidate>
           <div className="min-w-0 flex-1">
             <FormField label="Sitio" placeholder="youtube.com" value={domain} onChange={(e) => setDomain(e.target.value)} />
@@ -149,6 +190,7 @@ export function SitiosYPoliticas({ team }: { team: MyTeam }) {
                       void run(async () => {
                         await cloud.removeDomainRule(r.id);
                         await queryClient.invalidateQueries({ queryKey: ['domain-rules'] });
+                        await queryClient.invalidateQueries({ queryKey: ['team-rules'] });
                       })
                     }
                   >

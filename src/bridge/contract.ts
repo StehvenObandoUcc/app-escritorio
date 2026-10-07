@@ -150,13 +150,30 @@ export const TeamRuleSchema = z.object({
   pattern: z.string().min(1).max(120),
   category: z.enum(['productive', 'neutral', 'distraction', 'ai']),
   ai_tool: z.string().nullable(),
+  /** Sitio marcado «no permitido» por el equipo: Rust avisa al entrar (ADR-0010). */
+  not_allowed: z.boolean().default(false),
 });
 
-/** Política del equipo activo que aplica Rust (ADR-0009). */
+/** Repeticiones posibles del aviso de sitio no permitido, en minutos (0 = solo al entrar). */
+export const ALERT_REPEATS = [0, 2, 5, 10, 15, 30] as const;
+
+/** Política del equipo activo que aplica Rust (ADR-0009, ADR-0010). */
 export interface TeamPolicy {
   /** `false`: la lista personal de apps ocultas no se aplica en este equipo. */
   allowHiddenApps: boolean;
+  /** Avisar con una notificación con sonido al entrar a un sitio no permitido. */
+  alertNotAllowed: boolean;
+  /** Cada cuántos minutos se repite el aviso si sigue en el sitio (0 = solo al entrar). */
+  alertRepeatMinutes: number;
 }
+
+/** App instalada o abierta, para el selector de apps ocultas (ADR-0010). Solo local. */
+export const InstalledAppSchema = z.object({
+  process: z.string().min(1),
+  label: z.string(),
+  source: z.enum(['open', 'installed']),
+});
+export type InstalledApp = z.infer<typeof InstalledAppSchema>;
 export type TeamRule = z.infer<typeof TeamRuleSchema>;
 
 export interface Bridge {
@@ -201,6 +218,8 @@ export interface Bridge {
   syncMarkSynced(kind: SyncKind, ids: string[]): Promise<void>;
   /** Reglas de clasificación del equipo activo. */
   rulesSet(rules: TeamRule[]): Promise<void>;
-  /** Política del equipo activo (ADR-0009). */
+  /** Política del equipo activo (ADR-0009, ADR-0010). */
   teamPolicySet(policy: TeamPolicy): Promise<void>;
+  /** Apps instaladas y con ventana abierta (ADR-0010). La lista nunca sale del equipo. */
+  installedApps(): Promise<InstalledApp[]>;
 }

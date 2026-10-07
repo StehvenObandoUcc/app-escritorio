@@ -54,8 +54,35 @@ describe('Sitios y políticas (ADR-0009)', () => {
     const toggle = await screen.findByRole('checkbox', { name: /Permitir que cada persona oculte apps/ });
     expect(toggle).toBeChecked();
     await userEvent.click(toggle);
-    await waitFor(() => expect(policy).toHaveBeenLastCalledWith({ allowHiddenApps: false }));
+    await waitFor(() => expect(policy).toHaveBeenLastCalledWith(expect.objectContaining({ allowHiddenApps: false })));
     expect((await cloud.myTeams())[0]!.allowHiddenApps).toBe(false);
+  });
+
+  it('una regla nueva llega a Rust al instante, marcada como no permitida (ADR-0010)', async () => {
+    const { cloud } = await teamWith('owner');
+    const bridge = createMockBridge();
+    const rules = vi.spyOn(bridge, 'rulesSet');
+    renderWithSession(<EquipoPage />, { path: '/equipo', cloud, bridge });
+    const section = await screen.findByRole('region', { name: 'Sitios y políticas' });
+    await userEvent.type(within(section).getByLabelText('Sitio'), 'youtube.com');
+    await userEvent.click(within(section).getByRole('button', { name: 'Marcar como no permitido' }));
+    await waitFor(() =>
+      expect(rules).toHaveBeenLastCalledWith([expect.objectContaining({ match: 'domain', pattern: 'youtube.com', not_allowed: true })]),
+    );
+  });
+
+  it('el owner elige si avisar y cada cuánto, y Rust recibe la política', async () => {
+    const { cloud } = await teamWith('owner');
+    const bridge = createMockBridge();
+    const policy = vi.spyOn(bridge, 'teamPolicySet');
+    renderWithSession(<EquipoPage />, { path: '/equipo', cloud, bridge });
+    const repeat = await screen.findByLabelText('Repetir el aviso');
+    expect(repeat).toHaveValue('10');
+    await userEvent.selectOptions(repeat, '2');
+    await waitFor(() => expect(policy).toHaveBeenLastCalledWith(expect.objectContaining({ alertNotAllowed: true, alertRepeatMinutes: 2 })));
+    await userEvent.click(screen.getByRole('checkbox', { name: /Avisar con sonido/ }));
+    await waitFor(() => expect(policy).toHaveBeenLastCalledWith(expect.objectContaining({ alertNotAllowed: false })));
+    expect(screen.getByLabelText('Repetir el aviso')).toBeDisabled();
   });
 
   it('un member no ve la sección', async () => {

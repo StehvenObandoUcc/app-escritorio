@@ -222,7 +222,11 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
         .parse(rows)
         .map((r) => {
           const workday = WorkdaySchema.safeParse(r.teams.settings?.workday);
-          const policies = z.object({ allow_hidden_apps: z.boolean() }).partial().safeParse(r.teams.settings?.policies);
+          const policies = z
+            .object({ allow_hidden_apps: z.boolean(), alert_not_allowed: z.boolean(), alert_repeat_minutes: z.number().int() })
+            .partial()
+            .safeParse(r.teams.settings?.policies);
+          const policy = policies.success ? policies.data : {};
           return MyTeamSchema.parse({
             id: r.team_id,
             name: r.teams.name,
@@ -230,7 +234,9 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
             consentAt: r.consent_at,
             consentVersion: r.consent_version,
             workday: workday.success ? workday.data : DEFAULT_WORKDAY,
-            allowHiddenApps: policies.success ? (policies.data.allow_hidden_apps ?? true) : true,
+            allowHiddenApps: policy.allow_hidden_apps ?? true,
+            alertNotAllowed: policy.alert_not_allowed ?? true,
+            alertRepeatMinutes: policy.alert_repeat_minutes ?? 10,
           });
         })
         .sort((a, b) => a.name.localeCompare(b.name, 'es'));
@@ -335,21 +341,27 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
             pattern: z.string(),
             category: z.enum(['productive', 'neutral', 'distraction', 'ai']),
             ai_tool: z.string().nullable(),
+            not_allowed: z.boolean(),
           }),
         )
         .parse(
           await run(
             client
               .from('classification_rules')
-              .select('match_type, pattern, category, ai_tool')
+              .select('match_type, pattern, category, ai_tool, not_allowed')
               .eq('team_id', teamId)
               .order('priority'),
           ),
         );
-      return rows.map((r): TeamRule => ({ match: r.match_type, pattern: r.pattern, category: r.category, ai_tool: r.ai_tool }));
+      return rows.map(
+        (r): TeamRule => ({ match: r.match_type, pattern: r.pattern, category: r.category, ai_tool: r.ai_tool, not_allowed: r.not_allowed }),
+      );
     },
     setTeamPolicy: async (teamId, allowHiddenApps) => {
       await rpc('set_team_policy', { p_team: teamId, p_allow_hidden_apps: allowHiddenApps });
+    },
+    setAlertPolicy: async (teamId, enabled, repeatMinutes) => {
+      await rpc('set_alert_policy', { p_team: teamId, p_enabled: enabled, p_repeat_minutes: repeatMinutes });
     },
     domainRules: async (teamId) => {
       const rows = z

@@ -42,6 +42,13 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
   const totalsBySite = useMemo(() => (blocks ? domainTotals(blocks) : []), [blocks]);
   const session = useOptionalSession();
   const notAllowed = useMemo(() => new Set(session?.notAllowedDomains ?? []), [session?.notAllowedDomains]);
+  // ADR-0010: si el bloque más reciente (último minuto) es un sitio no permitido, se avisa también aquí.
+  const currentNotAllowed = useMemo(() => {
+    const last = allBlocks?.[allBlocks.length - 1];
+    if (!last?.domain || !notAllowed.has(last.domain)) return null;
+    const loadedAt = state.phase === 'ready' ? state.loadedAt : 0;
+    return loadedAt - Date.parse(last.endedAt) < 60_000 ? last.domain : null;
+  }, [allBlocks, notAllowed, state]);
 
   const sampleTag = bridge.source === 'mock' && <Badge tone="accent">Datos de ejemplo</Badge>;
 
@@ -75,6 +82,11 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
 
   return (
     <PageLayout title="Mi día" subtitle={formatLongDate(date)} actions={sampleTag}>
+      {currentNotAllowed && (
+        <p role="alert" className="rounded-md bg-danger-soft p-3 text-sm text-danger">
+          Estás en {currentNotAllowed}, un sitio que tu equipo marcó como no permitido. Pulso no lo bloquea: el tiempo cuenta como distracción.
+        </p>
+      )}
       <Surface as="section" aria-label="Ritmo del día">
         <p className="mb-4 text-fg">{summary}</p>
         <PulseStrip blocks={day.blocks} summary={summary} />
