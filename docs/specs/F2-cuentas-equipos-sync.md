@@ -1,7 +1,7 @@
 # Spec F2 · Cuentas, equipos, roles y sincronización
 
 Funcionalidades: CU-01 a CU-04, EQ-01 a EQ-08, EQ-10 (datos), PS-01, PS-02, PS-06 (parte: apps ocultas), PS-08 (sesión), PS-09, PS-11, SY-02, SY-03, SY-05, TA-14
-Estado: lista para aprobación (7 oct). Estado de cada criterio al final de esta spec.
+Estado: aprobada (por StehvenObando, 2026-10-07). Estado de cada criterio al final de esta spec.
 
 ## Objetivo
 Al terminar, dos personas con cuenta propia forman un equipo: una lo crea e invita, la otra acepta con
@@ -143,12 +143,12 @@ y un cliente de Supabase falso en pruebas.
 | AC-15 a AC-17 Subida, repetición y reintentos | Pruebas automáticas; prueba real del 7 oct: lo registrado sin red se subió al volver |
 | AC-18, AC-20, AC-26 | Pruebas de Rust y de interfaz; en Supabase, 11 columnas sin título y 0 dominios con ruta (6 oct) |
 | AC-19, AC-21 | Pruebas automáticas |
-| AC-22 Cierres | Pruebas de Rust y de la base; **pendiente** la prueba real en horario de jornada |
+| AC-22 Cierres | Pruebas de Rust y de la base; prueba real del 7 oct: cierre de 19:18 a 19:21 UTC subido con el equipo activo |
 | AC-23 | Pruebas de la base |
 | AC-27, AC-29 a AC-31 | Pruebas automáticas y prueba real el 6 oct |
 | AC-28 Aviso | Pruebas de Rust; prueba real del 7 oct: suena. La notificación de Windows depende de que estén activadas |
 | AC-32, AC-33 | Pruebas automáticas; prueba real del 7 oct |
-| AC-34, AC-35 | Pruebas de Rust; **pendiente** la prueba real |
+| AC-34, AC-35 | Pruebas de Rust; prueba real del 7 oct: Readest se cuenta sin teclado y dos cuentas en el mismo PC no se mezclan |
 
 ## Cómo se comprueba
 Puerta G2 de `docs/PLAN.md` más los pasos manuales con dos cuentas reales de `pulso-dev`:
