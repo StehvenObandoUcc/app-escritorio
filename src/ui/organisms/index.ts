@@ -9,3 +9,6 @@ export * from './ActivityTimeline';
 export * from './AlertBanner';
 export * from './AppSummary';
 export * from './HiddenAppsPicker';
+export * from './TaskList';
+export * from './TaskBoard';
+export * from './ProjectMemberList';

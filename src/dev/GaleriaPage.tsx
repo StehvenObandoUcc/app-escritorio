@@ -4,9 +4,36 @@ import { CATEGORIES, type TimeEntry } from '@/bridge/contract';
 import { sampleDay } from '@/bridge/mock';
 import { CATEGORY_STYLE } from '@/lib/categories';
 import { Avatar, Badge, Button, CategoryMark, Heading, Input, ProgressBar, Select, Surface } from '@/ui/atoms';
-import { CategoryBreakdown, EmptyState, FormField, PasswordField, SegmentedControl, SyncStatus, TimeEntryForm, TimerControl } from '@/ui/molecules';
+import {
+  CategoryBreakdown,
+  EmptyState,
+  FormField,
+  PasswordField,
+  ProjectProgress,
+  SegmentedControl,
+  SyncStatus,
+  TaskFilters,
+  TaskForm,
+  TimeEntryForm,
+  TimerControl,
+} from '@/ui/molecules';
+import type { Task } from '@/cloud/contract';
+import { NO_FILTER } from '@/lib/tasks';
 import { appTotals, buildTimeline } from '@/lib/activity';
-import { ActivityList, ActivityTimeline, AlertBanner, AppSummary, ConsentPanel, HiddenAppsPicker, MemberList, PulseStrip, TimeEntryList } from '@/ui/organisms';
+import {
+  ActivityList,
+  ActivityTimeline,
+  AlertBanner,
+  AppSummary,
+  ConsentPanel,
+  HiddenAppsPicker,
+  MemberList,
+  ProjectMemberList,
+  PulseStrip,
+  TaskBoard,
+  TaskList,
+  TimeEntryList,
+} from '@/ui/organisms';
 import { AuthLayout, PageLayout } from '@/ui/templates';
 
 const SWATCHES = [
@@ -188,9 +215,65 @@ export function GaleriaPage() {
         </div>
         <ConsentPanel teamName="Equipo de ejemplo" acceptLabel="Aceptar y unirme" onAccept={() => {}} secondary={<Button>Rechazar invitación</Button>} />
       </Section>
+
+      <Section title="Proyectos y tareas (F3)">
+        <ProjectProgress tasksDone={3} tasksTotal={5} loggedSeconds={4 * 3600} estimateMinutes={300} />
+        <ProjectProgress tasksDone={1} tasksTotal={2} loggedSeconds={3 * 3600} estimateMinutes={120} />
+        <TaskFilters filter={NO_FILTER} onChange={() => {}} people={PEOPLE} labels={['diseño', 'cliente']} count={SAMPLE_TASKS.length} />
+        <TaskList {...TASK_VIEW} />
+        <TaskBoard {...TASK_VIEW} />
+        <TaskForm people={PEOPLE} submitLabel="Crear tarea" onSubmit={async () => {}} onCancel={() => {}} />
+        <ProjectMemberList
+          members={[
+            { userId: PEOPLE[0]!.value, role: 'lead', displayName: 'Ana Gómez' },
+            { userId: PEOPLE[1]!.value, role: 'contributor', displayName: 'Beto Ruiz' },
+          ]}
+          myUserId={PEOPLE[0]!.value}
+          canManage
+          candidates={[{ value: '00000000-0000-4000-8000-000000000103', label: 'Caro Díaz' }]}
+          seconds={new Map([[PEOPLE[0]!.value, 5400], [PEOPLE[1]!.value, 1800]])}
+          onSetRole={() => {}}
+          onRemove={() => {}}
+        />
+      </Section>
     </PageLayout>
   );
 }
+
+const PEOPLE = [
+  { value: '00000000-0000-4000-8000-000000000101', label: 'Ana Gómez' },
+  { value: '00000000-0000-4000-8000-000000000102', label: 'Beto Ruiz' },
+];
+
+const sampleTask = (over: Partial<Task>): Task => ({
+  id: crypto.randomUUID(),
+  title: 'Tarea',
+  description: '',
+  assigneeId: null,
+  status: 'todo',
+  dueDate: null,
+  labels: [],
+  estimateMinutes: null,
+  loggedSeconds: 0,
+  createdBy: PEOPLE[0]!.value,
+  updatedAt: new Date().toISOString(),
+  ...over,
+});
+
+const SAMPLE_TASKS: Task[] = [
+  sampleTask({ title: 'Diseñar la portada', assigneeId: PEOPLE[1]!.value, labels: ['diseño'], estimateMinutes: 120, loggedSeconds: 2700, dueDate: '2026-10-20' }),
+  sampleTask({ title: 'Revisar el contrato con el cliente', assigneeId: PEOPLE[0]!.value, status: 'doing', labels: ['cliente'], dueDate: '2026-10-01' }),
+  sampleTask({ title: 'Publicar la versión 1', status: 'done', estimateMinutes: 30, loggedSeconds: 2400 }),
+];
+
+const TASK_VIEW = {
+  tasks: SAMPLE_TASKS,
+  nameOf: (id: string | null) => PEOPLE.find((p) => p.value === id)?.label ?? null,
+  today: '2026-10-08',
+  canChangeStatus: (t: Task) => t.assigneeId === PEOPLE[0]!.value,
+  onStatusChange: () => {},
+  onOpen: () => {},
+};
 
 const VIEW_OPTIONS = [
   { value: 'resumen', label: 'Por app' },

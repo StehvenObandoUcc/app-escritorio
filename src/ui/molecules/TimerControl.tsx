@@ -7,6 +7,8 @@ export interface TimerControlProps {
   /** Segundos transcurridos del temporizador en curso */
   elapsedSeconds: number;
   state: 'tracking' | 'paused' | 'break' | 'stopped';
+  /** Tarea del temporizador en marcha (TA-05), si se conoce. */
+  taskTitle?: string | null;
   onStart: () => void;
   onStop: () => void;
   onBreakToggle: () => void;
@@ -24,6 +26,7 @@ export function TimerControl({
   running,
   elapsedSeconds,
   state,
+  taskTitle,
   onStart,
   onStop,
   onBreakToggle,
@@ -42,6 +45,7 @@ export function TimerControl({
         <p className="mt-1 text-sm text-fg-muted" aria-live="polite">
           {STATE_TEXT[state]}
         </p>
+        {running && taskTitle && <p className="text-sm text-fg">En la tarea: {taskTitle}</p>}
       </div>
       <div className="flex flex-wrap gap-2">
         {running ? (

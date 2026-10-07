@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Bridge, Category } from '@/bridge/contract';
 import { useOptionalSession } from '@/app/session';
 import { aiToolTotals, appTotals, buildTimeline, domainTotals } from '@/lib/activity';
 import { HIDDEN_APP } from '@/lib/apps';
+import { parseTasksCache } from '@/lib/tasks';
 import { WORK_CATEGORIES } from '@/lib/categories';
 import { formatDuration, formatHour, formatLongDate, formatShortDuration, localDate, localDateTimeToIso } from '@/lib/time';
 import { Badge, Heading, Surface } from '@/ui/atoms';
@@ -23,10 +24,31 @@ const VIEWS: { value: ActivityView; label: string }[] = [
   { value: 'detalle', label: 'Detalle' },
 ];
 
+/** Título de la tarea del temporizador, desde la copia local de tareas (sin red también). */
+function useTaskTitle(bridge: Bridge, taskId: string | null) {
+  const [title, setTitle] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    if (!taskId) return;
+    void bridge
+      .tasksCacheGet()
+      .then((json) => {
+        const tasks = Object.values(parseTasksCache(json)?.tasks ?? {}).flat();
+        if (alive) setTitle(tasks.find((t) => t.id === taskId)?.title ?? null);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [bridge, taskId]);
+  return taskId ? title : null;
+}
+
 export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date?: string }) {
   const { state, run, reload } = useDay(bridge, date);
   const status = state.phase === 'ready' ? state.status : null;
   const elapsed = useElapsed(status?.timer.startedAt ?? null);
+  const taskTitle = useTaskTitle(bridge, status?.timer.taskId ?? null);
   const [view, setView] = useState<ActivityView>('resumen');
   const [showHidden, setShowHidden] = useState(true);
   const allBlocks = state.phase === 'ready' ? state.day.blocks : null;
@@ -85,6 +107,7 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
             running={state.status.timer.running}
             elapsedSeconds={elapsed}
             state={state.status.state}
+            taskTitle={taskTitle}
             onStart={() => run(() => bridge.timerStart())}
             onStop={() => run(() => bridge.timerStop())}
             onBreakToggle={() =>

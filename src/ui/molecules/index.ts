@@ -7,3 +7,7 @@ export * from './TimeEntryForm';
 export * from './SyncStatus';
 export * from './PasswordField';
 export * from './SegmentedControl';
+export * from './ProjectProgress';
+export * from './TaskMeta';
+export * from './TaskFilters';
+export * from './TaskForm';
