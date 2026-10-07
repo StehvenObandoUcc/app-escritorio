@@ -1,6 +1,6 @@
 # Diseño de interfaz: tokens, atomic design y ventana adaptable
 
-Tres reglas sostienen la interfaz de Pulso. Las tres se verifican solas con `npm run verify`.
+Cuatro reglas sostienen la interfaz de Pulso. Las cuatro se verifican solas con `npm run verify`.
 
 1. **Ningún valor de diseño fuera de `src/ui/tokens/`.** → `npm run check:tokens`
 2. **Cada capa solo importa de las capas inferiores.** → `npm run lint`
