@@ -432,6 +432,10 @@ export type Database = {
         Returns: undefined
       }
       revoke_invitation: { Args: { p_id: string }; Returns: undefined }
+      set_alert_policy: {
+        Args: { p_enabled: boolean; p_repeat_minutes: number; p_team: string }
+        Returns: undefined
+      }
       set_member_role: {
         Args: { p_role: string; p_team: string; p_user: string }
         Returns: undefined
