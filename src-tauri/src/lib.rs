@@ -15,8 +15,10 @@ use chrono::Utc;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
-use tauri::{AppHandle, Manager, RunEvent, WindowEvent};
+use tauri::{AppHandle, Emitter, Manager, RunEvent, WindowEvent};
 
+/// Evento local hacia la interfaz cuando se entra a un sitio no permitido (ADR-0012).
+const ALERT_EVENT: &str = "not-allowed-alert";
 /// Cada cuánto lee el sensor la ventana activa (spec F1).
 const SAMPLE_EVERY: Duration = Duration::from_secs(2);
 /// Si el proceso sigue vivo este tiempo después de cerrar la ventana, se termina a la fuerza.
@@ -36,6 +38,11 @@ fn notify_not_allowed(handle: &AppHandle, alert: &tracker::Alert) {
   }
   // Sin el dominio: los registros no llevan datos personales (ARQUITECTURA §10).
   log::info!("aviso de sitio no permitido enviado");
+  // Aviso dentro de la app (ADR-0012): la interfaz lo muestra en cualquier pantalla. Solo viaja a la ventana local.
+  let payload = serde_json::json!({ "domain": alert.domain, "at": Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true) });
+  if let Err(e) = handle.emit(ALERT_EVENT, payload) {
+    log::error!("aviso: no se pudo avisar a la interfaz: {e}");
+  }
   let shown = handle
     .notification()
     .builder()
