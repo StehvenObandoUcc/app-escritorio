@@ -16,6 +16,8 @@ import { CONSENT_VERSION } from '@/lib/consent';
 import { SyncEngine, type SyncState } from '@/sync/engine';
 
 const TEAM_KEY = 'pulso.equipo-activo';
+/** Cada cuánto se vuelven a leer las reglas del equipo (sitios no permitidos, etc.). */
+export const RULES_REFRESH_MS = 5 * 60_000;
 
 const systemTimezone = () => {
   try {
@@ -142,7 +144,7 @@ export function SessionProvider({
   );
   const profile = profileQuery.data ?? null;
 
-  // Equipo activo en Rust + reglas del equipo para el clasificador.
+  // Equipo activo en Rust y política del equipo (apps ocultas y avisos, ADR-0009/0010).
   useEffect(() => {
     if (user === undefined) return;
     if (user === null) {
@@ -150,18 +152,29 @@ export function SessionProvider({
       return;
     }
     if (!teamsQuery.isSuccess) return; // sin red: se conserva el último equipo conocido
-    const teamId = consented?.id ?? null;
-    void bridge.activeTeamSet(teamId).catch(() => {});
-    // La política se aplica aunque no haya consentimiento: ocultar o no es un ajuste local.
-    void bridge.teamPolicySet({ allowHiddenApps: activeTeam?.allowHiddenApps ?? true }).catch(() => {});
-    if (!teamId) return;
-    cloud
-      .teamRules(teamId)
-      .then((rules) => bridge.rulesSet(rules))
-      .catch(() => {
-        // Sin red se siguen usando las reglas guardadas la última vez.
-      });
-  }, [bridge, cloud, user, teamsQuery.isSuccess, consented?.id, activeTeam?.allowHiddenApps]);
+    void bridge.activeTeamSet(consented?.id ?? null).catch(() => {});
+    // La política se aplica aunque no haya consentimiento: ocultar o avisar es local.
+    void bridge
+      .teamPolicySet({
+        allowHiddenApps: activeTeam?.allowHiddenApps ?? true,
+        alertNotAllowed: activeTeam?.alertNotAllowed ?? true,
+        alertRepeatMinutes: activeTeam?.alertRepeatMinutes ?? 10,
+      })
+      .catch(() => {});
+  }, [bridge, user, teamsQuery.isSuccess, consented?.id, activeTeam?.allowHiddenApps, activeTeam?.alertNotAllowed, activeTeam?.alertRepeatMinutes]);
+
+  // Reglas del equipo para el clasificador: se vuelven a leer cada 5 min y al enfocar la ventana, y se
+  // envían a Rust cada vez que cambian. Antes solo se enviaban al arrancar y una regla nueva no llegaba.
+  const rulesQuery = useQuery({
+    queryKey: ['team-rules', consented?.id],
+    queryFn: () => cloud.teamRules(consented!.id),
+    enabled: Boolean(consented),
+    refetchInterval: RULES_REFRESH_MS,
+    refetchOnWindowFocus: true,
+  });
+  useEffect(() => {
+    if (rulesQuery.data) void bridge.rulesSet(rulesQuery.data).catch(() => {});
+  }, [bridge, rulesQuery.data]);
 
   // Contexto del motor de sincronización.
   useEffect(() => {

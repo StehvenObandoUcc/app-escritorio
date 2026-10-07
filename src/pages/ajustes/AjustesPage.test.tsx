@@ -25,7 +25,8 @@ describe('Ajustes', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Añadir' }));
     // Añadir dos veces la misma no la duplica.
     await userEvent.type(screen.getByLabelText('Añadir otra app'), 'keepass{Enter}');
-    expect(screen.getByRole('checkbox', { name: /Keepass/ })).toBeChecked();
+    // KeePass está instalado: sale con su nombre real del registro y queda marcada.
+    expect(screen.getByRole('checkbox', { name: /KeePass/ })).toBeChecked();
     await userEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }));
     expect(await screen.findByText('Cambios guardados.')).toBeInTheDocument();
     expect(await bridge.settingsGet()).toEqual({ idleMinutes: 10, hiddenApps: ['slack', 'keepass'] });
@@ -53,6 +54,19 @@ describe('Ajustes', () => {
     await screen.findByLabelText('Minutos de inactividad');
     await userEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('disco lleno');
+  });
+
+  it('muestra apps abiertas e instaladas y el buscador filtra (ADR-0010)', async () => {
+    render(<AjustesPage bridge={createMockBridge()} />);
+    expect(await screen.findByRole('list', { name: 'Abiertas ahora' })).toHaveTextContent('WhatsApp');
+    expect(screen.getByRole('list', { name: 'Instaladas' })).toHaveTextContent('Spotify');
+    await userEvent.type(screen.getByLabelText('Buscar app'), 'spot');
+    expect(screen.getByRole('checkbox', { name: /Spotify/ })).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: /WhatsApp/ })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('checkbox', { name: /Spotify/ }));
+    await userEvent.clear(screen.getByLabelText('Buscar app'));
+    // Lo marcado pasa a «Ocultas ahora», arriba.
+    expect(screen.getByRole('list', { name: 'Ocultas ahora' })).toHaveTextContent('Spotify');
   });
 
   it('si no puede leer los ajustes, lo explica', async () => {

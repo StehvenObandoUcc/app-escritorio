@@ -224,5 +224,13 @@ export function createMockBridge(now: () => Date = () => new Date()): Bridge {
       rules.forEach((r) => TeamRuleSchema.parse(r));
     },
     teamPolicySet: async () => {},
+    // Datos de ejemplo: unas pocas apps instaladas y abiertas.
+    installedApps: async () => [
+      { process: 'slack', label: 'Slack', source: 'open' },
+      { process: 'whatsapp.root', label: 'WhatsApp.Root', source: 'open' },
+      { process: 'figma', label: 'Figma', source: 'installed' },
+      { process: 'keepass', label: 'KeePass Password Safe', source: 'installed' },
+      { process: 'spotify', label: 'Spotify', source: 'installed' },
+    ],
   };
 }

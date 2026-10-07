@@ -7,6 +7,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { z } from 'zod';
 import {
   DayViewSchema,
+  InstalledAppSchema,
   RangeViewSchema,
   SensorStatusSchema,
   SettingsSchema,
@@ -61,5 +62,6 @@ export function createTauriBridge(): Bridge {
     teamPolicySet: async (policy) => {
       await invoke('team_policy_set', { policy });
     },
+    installedApps: async () => z.array(InstalledAppSchema).parse(await invoke('installed_apps')),
   };
 }

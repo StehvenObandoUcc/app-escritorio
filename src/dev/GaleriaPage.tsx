@@ -165,9 +165,9 @@ export function GaleriaPage() {
         <Surface>
           <HiddenAppsPicker
             candidates={[
-              { process: 'brave', label: 'Brave' },
-              { process: 'whatsapp.root', label: 'WhatsApp' },
-              { process: 'windowsterminal', label: 'Terminal' },
+              { process: 'brave', label: 'Brave', group: 'recent' },
+              { process: 'whatsapp.root', label: 'WhatsApp', group: 'open' },
+              { process: 'windowsterminal', label: 'Terminal', group: 'installed' },
             ]}
             selected={['windowsterminal']}
             onChange={() => {}}

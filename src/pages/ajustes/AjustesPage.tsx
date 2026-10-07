@@ -32,7 +32,7 @@ async function recentApps(bridge: Bridge): Promise<AppCandidate[]> {
   }
   return [...time.entries()]
     .sort((a, b) => b[1] - a[1])
-    .map(([process]) => ({ process, label: label.get(process) ?? displayAppName(process) }));
+    .map(([process]) => ({ process, label: label.get(process) ?? displayAppName(process), group: 'recent' as const }));
 }
 
 const describe = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause));
@@ -45,6 +45,7 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
   const teamForbidsHidden = session?.activeTeam ? !session.activeTeam.allowHiddenApps : false;
   const [hidden, setHidden] = useState<string[]>([]);
   const [recent, setRecent] = useState<AppCandidate[]>([]);
+  const [installed, setInstalled] = useState<AppCandidate[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -65,6 +66,15 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
     recentApps(bridge)
       .then((apps) => !cancelled && setRecent(apps))
       .catch(() => {});
+    // ADR-0010: apps instaladas y abiertas ahora (registro de Windows y ventanas visibles). Todo local.
+    bridge
+      .installedApps()
+      .then(
+        (apps) =>
+          !cancelled &&
+          setInstalled(apps.map((a) => ({ process: a.process, label: displayAppName(a.label), group: a.source === 'open' ? ('open' as const) : ('installed' as const) }))),
+      )
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -72,10 +82,14 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
 
   // Candidatas: las usadas hace poco y, además, las que ya están ocultas (no aparecen con su nombre en los datos).
   const candidates = useMemo<AppCandidate[]>(() => {
-    const seen = new Set(recent.map((c) => c.process));
-    const extra = [...new Set([...(saved?.hiddenApps ?? []), ...hidden])].filter((p) => !seen.has(p));
-    return [...recent, ...extra.map((process) => ({ process, label: displayAppName(process) }))];
-  }, [recent, saved, hidden]);
+    // Una app aparece una sola vez, en el grupo más útil: usada hace poco > abierta > instalada.
+    const byProcess = new Map<string, AppCandidate>();
+    for (const c of [...recent, ...installed]) if (!byProcess.has(c.process)) byProcess.set(c.process, c);
+    for (const process of [...(saved?.hiddenApps ?? []), ...hidden]) {
+      if (!byProcess.has(process)) byProcess.set(process, { process, label: displayAppName(process), group: 'installed' });
+    }
+    return [...byProcess.values()];
+  }, [recent, installed, saved, hidden]);
 
   const sampleTag = bridge.source === 'mock' && <Badge tone="accent">Datos de ejemplo</Badge>;
 

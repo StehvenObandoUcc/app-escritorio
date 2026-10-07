@@ -46,6 +46,9 @@ export const MyTeamSchema = z.object({
   workday: WorkdaySchema,
   /** Política del equipo (ADR-0009): si cada persona puede ocultar apps. Por defecto, sí. */
   allowHiddenApps: z.boolean(),
+  /** Aviso con sonido al entrar a un sitio no permitido (ADR-0010). Por defecto, sí, cada 10 min. */
+  alertNotAllowed: z.boolean(),
+  alertRepeatMinutes: z.number().int(),
 });
 export type MyTeam = z.infer<typeof MyTeamSchema>;
 
@@ -157,6 +160,8 @@ export interface Cloud {
 
   // ---- Sitios y políticas (ADR-0009, solo owner y admin escriben) ----
   setTeamPolicy(teamId: string, allowHiddenApps: boolean): Promise<void>;
+  /** Avisos de sitio no permitido (ADR-0010): activados y cada cuántos minutos se repiten (0 = solo al entrar). */
+  setAlertPolicy(teamId: string, enabled: boolean, repeatMinutes: number): Promise<void>;
   domainRules(teamId: string): Promise<DomainRule[]>;
   /** Marca un dominio como no permitido (cuenta como distracción). */
   addNotAllowedDomain(teamId: string, domain: string): Promise<void>;

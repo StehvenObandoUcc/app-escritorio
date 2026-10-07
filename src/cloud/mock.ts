@@ -90,6 +90,7 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
   const uploaded = { blocks: [] as SyncBlock[], entries: [] as SyncEntry[], closures: [] as SyncClosure[] };
   const rules = new Map<string, TeamRule[]>();
   const policies = new Map<string, boolean>();
+  const alerts = new Map<string, { enabled: boolean; repeat: number }>();
   const domainRules: { id: string; teamId: string; domain: string; notAllowed: boolean }[] = [];
   const canManage = (teamId: string, userId: string) => ['owner', 'admin'].includes(roleIn(teamId, userId) ?? '');
   let offline = false;
@@ -243,6 +244,8 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
             consentVersion: m.consentVersion,
             workday: DEFAULT_WORKDAY,
             allowHiddenApps: policies.get(m.teamId) ?? true,
+            alertNotAllowed: alerts.get(m.teamId)?.enabled ?? true,
+            alertRepeatMinutes: alerts.get(m.teamId)?.repeat ?? 10,
           }),
         )
         .sort((x, y) => x.name.localeCompare(y.name, 'es'));
@@ -374,12 +377,17 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
     teamRules: async (teamId) => [
       ...domainRules
         .filter((r) => r.teamId === teamId)
-        .map((r): TeamRule => ({ match: 'domain', pattern: r.domain, category: 'distraction', ai_tool: null })),
+        .map((r): TeamRule => ({ match: 'domain', pattern: r.domain, category: 'distraction', ai_tool: null, not_allowed: r.notAllowed })),
       ...(rules.get(teamId) ?? []),
     ],
     setTeamPolicy: async (teamId, allowHiddenApps) => {
       if (!canManage(teamId, me().id)) fail('No permitido');
       policies.set(teamId, allowHiddenApps);
+    },
+    setAlertPolicy: async (teamId, enabled, repeatMinutes) => {
+      if (!canManage(teamId, me().id)) fail('No permitido');
+      if (![0, 2, 5, 10, 15, 30].includes(repeatMinutes)) fail('La repetición debe ser 0 (solo al entrar), 2, 5, 10, 15 o 30 minutos', 'invalid');
+      alerts.set(teamId, { enabled, repeat: repeatMinutes });
     },
     domainRules: async (teamId) =>
       roleIn(teamId, me().id)
