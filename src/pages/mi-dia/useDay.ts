@@ -7,8 +7,7 @@ export const REFRESH_MS = 30_000;
 type State =
   | { phase: 'loading' }
   | { phase: 'error'; message: string }
-  /** `loadedAt`: cuándo se leyó (ms); sirve para saber qué es «ahora» sin llamar al reloj al pintar. */
-  | { phase: 'ready'; day: DayView; status: SensorStatus; entries: TimeEntry[]; loadedAt: number };
+  | { phase: 'ready'; day: DayView; status: SensorStatus; entries: TimeEntry[] };
 
 const describe = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause));
 
@@ -22,7 +21,7 @@ export function useDay(bridge: Bridge, date: string) {
     const refresh = () =>
       Promise.all([bridge.dayView(date), bridge.sensorStatus(), bridge.timeEntries(date)])
         .then(([day, status, entries]) => {
-          if (!cancelled) setState({ phase: 'ready', day, status, entries, loadedAt: Date.now() });
+          if (!cancelled) setState({ phase: 'ready', day, status, entries });
         })
         .catch((cause: unknown) => {
           // Un fallo al actualizar no borra lo que ya se estaba mostrando.

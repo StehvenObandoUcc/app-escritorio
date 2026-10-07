@@ -13,8 +13,9 @@ import { PrivacidadPage } from '@/pages/equipo/PrivacidadPage';
 import { MiDiaPage } from '@/pages/mi-dia/MiDiaPage';
 import { PendingPage } from '@/pages/PendingPage';
 import { SyncStatus, ThemeToggle } from '@/ui/molecules';
-import { AppNav, type NavItem } from '@/ui/organisms';
+import { AlertBanner, AppNav, type NavItem } from '@/ui/organisms';
 import { AppShell } from '@/ui/templates';
+import { useNotAllowedAlerts } from './alerts';
 import { SessionProvider, useSession } from './session';
 
 const NAV: NavItem[] = [
@@ -44,6 +45,7 @@ function NavFooter() {
  */
 function Gate() {
   const { user } = useSession();
+  const { alerts, dismiss } = useNotAllowedAlerts(bridge);
   if (user === undefined) {
     return (
       <div className="flex h-dvh items-center justify-center bg-canvas">
@@ -56,6 +58,7 @@ function Gate() {
   if (user === null) return <AccesoPage />;
   return (
     <AppShell nav={<AppNav items={NAV} footer={<NavFooter />} />}>
+      <AlertBanner alerts={alerts} onDismiss={dismiss} />
       <Routes>
         <Route path="/" element={<Navigate to="/mi-dia" replace />} />
         <Route path="/mi-dia" element={<MiDiaPage bridge={bridge} />} />
