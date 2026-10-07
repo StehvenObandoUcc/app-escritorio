@@ -27,13 +27,13 @@ obliga a cambiar la migración y su prueba en el mismo cambio.
 | 10 | Registrar y editar tiempo propio | S | S | S | S | — | F2 |
 | 11 | Editar el tiempo de otra persona | — | — | — | — | — | F2 |
 | 12 | Ver la propia actividad con títulos (solo local) | S | S | S | S | — | F1 |
-| 13 | Ver actividad agregada por miembro (categorías, apps, sitios por dominio, horas) | ✔ | ✔ | P (solo tiempo de sus proyectos) | — | — | F2 |
-| 14 | Ver uso de IA por miembro | ✔ | ✔ | P | — | — | F2 |
+| 13 | Ver actividad agregada por miembro (categorías, apps, sitios por dominio, horas) | ✔ | ✔ | P (solo tiempo de sus proyectos) | — | — | F2 · «P» en F3 (`project_time_summary`) |
+| 14 | Ver uso de IA por miembro | ✔ | ✔ | P | — | — | F2 · «P» en F5 (los bloques no llevan proyecto; spec F3, D-13) |
 | 15 | Ver totales del equipo sin nombres | ✔ | ✔ | ✔ | ✔ | ✔ | F5 |
-| 16 | Crear o archivar proyectos | ✔ | ✔ | — | — | — | F3 |
-| 17 | Gestionar miembros de un proyecto | ✔ | ✔ | P | — | — | F3 |
-| 18 | Crear, editar y asignar cualquier tarea del proyecto | ✔ | ✔ | P | — | — | F3 |
-| 19 | Crear tareas y cambiar el estado de las propias | ✔ | ✔ | ✔ | ✔ (en sus proyectos) | — | F3 |
+| 16 | Crear o archivar proyectos | ✔ | ✔ | — | — | — | F3 ✔ |
+| 17 | Gestionar miembros de un proyecto | ✔ | ✔ | P | — | — | F3 ✔ |
+| 18 | Crear, editar y asignar cualquier tarea del proyecto | ✔ | ✔ | P | — | — | F3 ✔ |
+| 19 | Crear tareas y cambiar el estado de las propias | ✔ | ✔ | ✔ | ✔ (en sus proyectos) | — | F3 ✔ |
 | 20 | Generar un reporte personal | S | S | S | S | — | F4 |
 | 21 | Generar un reporte de proyecto | ✔ | ✔ | P | — | — | F4 |
 | 22 | Generar un reporte de equipo | ✔ | ✔ | — | — | ver los ya generados | F4 |
@@ -52,6 +52,9 @@ obliga a cambiar la migración y su prueba en el mismo cambio.
 - Salida de un equipo (la persona se va o es expulsada: misma regla): se borran sus `activity_blocks` de ese equipo; sus `time_entries` se conservan y se muestran como «Exmiembro»; el hecho queda en `audit_log`. También se borran sus cierres de Pulso (`app_closures`). (F2 ✔)
 
 - Sin consentimiento (`team_members.consent_at`) no se sube actividad, tiempo ni cierres. (F2 ✔)
+- Proyectos y tareas se escriben solo con `create_project`, `set_project_archived`, `set_project_member`, `remove_project_member`, `create_task`, `update_task` y `set_task_status`. Un `member` solo ve los proyectos de los que es miembro; el `viewer`, ninguno. Solo un miembro del proyecto puede ser responsable de una tarea; un proyecto archivado no admite cambios. (F3 ✔)
+- Al salir del equipo o pasar a `viewer`, la persona deja sus proyectos y sus tareas quedan sin responsable; su tiempo se conserva. (F3 ✔)
+- Una entrada de tiempo solo puede apuntar a una tarea de su mismo equipo. (F3 ✔)
 
 ## Cómo se prueba cada celda
 

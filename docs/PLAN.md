@@ -239,7 +239,8 @@ Lo de arriba es el plan original y sigue vigente. Esta sección añade lo acorda
 | F0 · Fundaciones | Hecha | G0 incompleta: faltan los informes S-2 (detección de IA por título) y S-4 (DeepSeek) |
 | **F1 · Sensor y *Mi día*** | **Hecha. Spec aprobada el 5 oct** | **G1 pasa** (evidencia en `docs/spikes/F1-medicion-app-real.md`) |
 | **F2 · Cuentas, equipos y sincronización** | **Hecha. Spec aprobada el 7 oct** (ADR-0007 a ADR-0013) | **G2 pasa** (pruebas reales del 6 y 7 oct, estado en la spec) |
-| F3 a F6 | Por empezar | — |
+| F3 · Proyectos y tareas | En curso (rama `feat/f3-proyectos-y-tareas`): spec en borrador, migración, Rust e interfaz hechos con pruebas; falta aplicar la migración en `pulso-dev` y la prueba con dos cuentas | G3 pendiente |
+| F4 a F6 | Por empezar | — |
 
 Funcionalidades antes de la entrega (`docs/FUNCIONALIDADES.md`): **86**.
 
@@ -277,6 +278,6 @@ previsto, sin margen: F2 empieza el martes 6.
 | Puerta G2 | Pendiente (jueves 8): dos cuentas reales, 30 min sin red, viewer y persona de otro equipo |
 
 Decisiones abiertas:
-- **A-4** · *Olvidé mi contraseña* necesita que Supabase envíe correos: hoy responde 504. Hay que revisar o configurar el SMTP del proyecto. El registro ya no depende del correo (ADR-0008).
+- **A-4** · Resuelta el 7 oct: el correo de recuperación llega con el SMTP de Gmail (puerto 465).
 - **Pasa a F5** (con TA-11, pedido el 6 oct): reglas de productividad del equipo y editar la lista de apps sin teclado. La lista fija ya está en F2 (TA-15, ADR-0013).
 - **A-5** · Enviar por correo el código de invitación, además de mostrarlo para compartirlo (pedido el 6 oct). Depende de A-4 y necesita una Edge Function o el SMTP del proyecto; se retoma después de G2.
