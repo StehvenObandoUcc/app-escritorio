@@ -9,11 +9,6 @@ pub struct NotificationsStatus {
   pub windows_toasts_enabled: bool,
 }
 
-/// `ToastEnabled = 0` significa apagadas; si el valor no existe, Windows las tiene encendidas.
-pub fn toasts_enabled_from(value: Option<u32>) -> bool {
-  value != Some(0)
-}
-
 #[cfg(windows)]
 pub fn notifications_status() -> NotificationsStatus {
   use windows::Win32::Foundation::ERROR_SUCCESS;
@@ -34,7 +29,8 @@ pub fn notifications_status() -> NotificationsStatus {
       Some(&mut size),
     )
   };
-  NotificationsStatus { windows_toasts_enabled: toasts_enabled_from((read == ERROR_SUCCESS).then_some(data)) }
+  // `ToastEnabled = 0` significa apagadas; si el valor no existe, Windows las tiene encendidas.
+  NotificationsStatus { windows_toasts_enabled: (read == ERROR_SUCCESS).then_some(data) != Some(0) }
 }
 
 #[cfg(not(windows))]
@@ -57,13 +53,6 @@ pub fn beep() {}
 #[cfg(test)]
 mod tests {
   use super::*;
-
-  #[test]
-  fn toasts_are_off_only_when_windows_says_zero() {
-    assert!(!toasts_enabled_from(Some(0)));
-    assert!(toasts_enabled_from(Some(1)));
-    assert!(toasts_enabled_from(None));
-  }
 
   #[test]
   #[cfg(windows)]

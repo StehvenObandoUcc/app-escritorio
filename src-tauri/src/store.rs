@@ -40,7 +40,8 @@ pub struct BlockRow {
   pub domain: Option<String>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum EntrySource {
   Timer,
   Manual,
@@ -65,7 +66,9 @@ impl EntrySource {
 }
 
 /// Bloque pendiente de subir. A propósito no tiene título: no hay forma de que salga del equipo (D-05).
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// Se serializa tal cual hacia la interfaz (camelCase, fechas RFC 3339 con `Z`).
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PendingBlock {
   pub id: String,
   pub team_id: String,
@@ -78,7 +81,8 @@ pub struct PendingBlock {
 }
 
 /// Entrada de tiempo pendiente de subir, incluidas las borradas (para propagar el borrado).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PendingEntry {
   pub id: String,
   pub team_id: String,
@@ -92,7 +96,8 @@ pub struct PendingEntry {
 
 /// Hueco en el registro porque Pulso estuvo cerrado (A-1). Se guarda siempre;
 /// la interfaz decide si cae dentro de la jornada del equipo antes de subirlo.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Closure {
   pub id: String,
   pub team_id: Option<String>,
@@ -121,6 +126,9 @@ impl SyncKind {
 
 pub struct Store {
   conn: Connection,
+  /// Cuenta con sesión en este equipo (ADR-0013). Las filas nuevas se guardan con ella; las consultas
+  /// muestran las suyas y las sin cuenta (historial anterior o registrado sin sesión).
+  user: Option<String>,
 }
 
 impl Store {
@@ -135,7 +143,7 @@ impl Store {
   }
 
   fn init(conn: Connection) -> Result<Self> {
-    let store = Self { conn };
+    let store = Self { conn, user: None };
     store.migrate()?;
     Ok(store)
   }
@@ -163,6 +171,10 @@ impl Store {
          reopened_at TEXT NOT NULL, synced_at TEXT NULL);",
       // ADR-0009: dominio del sitio en los bloques de navegador.
       "ALTER TABLE activity_blocks_local ADD COLUMN domain TEXT NULL;",
+      // ADR-0013: cuenta de cada fila; lo de una cuenta nunca se sube ni se ve con otra.
+      "ALTER TABLE activity_blocks_local ADD COLUMN user_id TEXT NULL;
+       ALTER TABLE time_entries_local ADD COLUMN user_id TEXT NULL;
+       ALTER TABLE app_closures_local ADD COLUMN user_id TEXT NULL;",
     ];
     let current: i64 = self.conn.pragma_query_value(None, "user_version", |r| r.get(0)).map_err(db)?;
     for (i, sql) in MIGRATIONS.iter().enumerate().skip(current as usize) {
@@ -172,6 +184,15 @@ impl Store {
     Ok(())
   }
 
+  /// Cuenta actual (ADR-0013). `None`: sin sesión.
+  pub fn set_user(&mut self, user: Option<String>) {
+    self.user = user;
+  }
+
+  pub fn user(&self) -> Option<&str> {
+    self.user.as_deref()
+  }
+
   // ---- Bloques de actividad ----
 
   pub fn insert_block(&self, b: &BlockRow) -> Result<()> {
@@ -179,9 +200,9 @@ impl Store {
       .conn
       .execute(
         "INSERT INTO activity_blocks_local
-           (id, started_at, ended_at, app_name, title_enc, category, ai_tool, team_id, domain)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
-        params![b.id, fmt(b.started_at), fmt(b.ended_at), b.app_name, b.title_enc, b.category.as_str(), b.ai_tool, b.team_id, b.domain],
+           (id, started_at, ended_at, app_name, title_enc, category, ai_tool, team_id, domain, user_id)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+        params![b.id, fmt(b.started_at), fmt(b.ended_at), b.app_name, b.title_enc, b.category.as_str(), b.ai_tool, b.team_id, b.domain, self.user],
       )
       .map_err(db)?;
     Ok(())
@@ -190,21 +211,21 @@ impl Store {
   /// Inserta o actualiza un bloque (el sensor lo reescribe mientras sigue abierto).
   /// Al cambiar, vuelve a quedar pendiente de sincronizar.
   pub fn upsert_block(&self, b: &BlockRow) -> Result<()> {
-    Self::upsert_block_on(&self.conn, b)
+    Self::upsert_block_on(&self.conn, b, self.user.as_deref())
   }
 
-  fn upsert_block_on(conn: &Connection, b: &BlockRow) -> Result<()> {
+  fn upsert_block_on(conn: &Connection, b: &BlockRow, user: Option<&str>) -> Result<()> {
     conn
       .execute(
         "INSERT INTO activity_blocks_local
-           (id, started_at, ended_at, app_name, title_enc, category, ai_tool, team_id, domain)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+           (id, started_at, ended_at, app_name, title_enc, category, ai_tool, team_id, domain, user_id)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
          ON CONFLICT(id) DO UPDATE SET
            started_at = excluded.started_at, ended_at = excluded.ended_at,
            app_name = excluded.app_name, title_enc = excluded.title_enc,
            category = excluded.category, ai_tool = excluded.ai_tool, domain = excluded.domain, synced_at = NULL",
-        // team_id no se actualiza: una fila no cambia de equipo (el servidor también lo impide).
-        params![b.id, fmt(b.started_at), fmt(b.ended_at), b.app_name, b.title_enc, b.category.as_str(), b.ai_tool, b.team_id, b.domain],
+        // team_id y user_id no se actualizan: una fila no cambia de equipo ni de cuenta.
+        params![b.id, fmt(b.started_at), fmt(b.ended_at), b.app_name, b.title_enc, b.category.as_str(), b.ai_tool, b.team_id, b.domain, user],
       )
       .map_err(db)?;
     Ok(())
@@ -214,7 +235,7 @@ impl Store {
   pub fn apply_block_changes(&self, upserts: &[BlockRow], removes: &[String]) -> Result<()> {
     let tx = self.conn.unchecked_transaction().map_err(db)?;
     for b in upserts {
-      Self::upsert_block_on(&tx, b)?;
+      Self::upsert_block_on(&tx, b, self.user.as_deref())?;
     }
     for id in removes {
       tx.execute("DELETE FROM activity_blocks_local WHERE id = ?1", [id]).map_err(db)?;
@@ -238,10 +259,11 @@ impl Store {
       .prepare(
         "SELECT id, started_at, ended_at, app_name, title_enc, category, ai_tool, team_id, domain
          FROM activity_blocks_local WHERE started_at < ?2 AND ended_at > ?1
+           AND (user_id IS ?3 OR user_id IS NULL)
          ORDER BY started_at",
       )
       .map_err(db)?;
-    let rows = stmt.query_map(params![fmt(from), fmt(to)], block_from_row).map_err(db)?;
+    let rows = stmt.query_map(params![fmt(from), fmt(to), self.user], block_from_row).map_err(db)?;
     rows.map(|r| r.map_err(db)?).collect()
   }
 
@@ -252,8 +274,8 @@ impl Store {
       .conn
       .query_row(
         "SELECT id, started_at, ended_at, task_id, source FROM time_entries_local
-         WHERE ended_at IS NULL AND deleted_at IS NULL",
-        [],
+         WHERE ended_at IS NULL AND deleted_at IS NULL AND (user_id IS ?1 OR user_id IS NULL)",
+        [&self.user],
         entry_from_row,
       )
       .optional()
@@ -270,9 +292,9 @@ impl Store {
     self
       .conn
       .execute(
-        "INSERT INTO time_entries_local (id, started_at, ended_at, task_id, source, updated_at, team_id)
-         VALUES (?1, ?2, NULL, ?3, 'timer', ?2, ?4)",
-        params![id, fmt(now), task_id, team_id],
+        "INSERT INTO time_entries_local (id, started_at, ended_at, task_id, source, updated_at, team_id, user_id)
+         VALUES (?1, ?2, NULL, ?3, 'timer', ?2, ?4, ?5)",
+        params![id, fmt(now), task_id, team_id, self.user],
       )
       .map_err(db)?;
     Ok(TimeEntry { id, started_at: now, ended_at: None, task_id: task_id.map(String::from), source: EntrySource::Timer })
@@ -320,9 +342,9 @@ impl Store {
     self
       .conn
       .execute(
-        "INSERT INTO time_entries_local (id, started_at, ended_at, task_id, source, updated_at, team_id)
-         VALUES (?1, ?2, ?3, ?4, 'manual', ?5, ?6)",
-        params![id, fmt(start), fmt(end), task_id, fmt(now), team_id],
+        "INSERT INTO time_entries_local (id, started_at, ended_at, task_id, source, updated_at, team_id, user_id)
+         VALUES (?1, ?2, ?3, ?4, 'manual', ?5, ?6, ?7)",
+        params![id, fmt(start), fmt(end), task_id, fmt(now), team_id, self.user],
       )
       .map_err(db)?;
     Ok(TimeEntry { id, started_at: start, ended_at: Some(end), task_id: task_id.map(String::from), source: EntrySource::Manual })
@@ -342,8 +364,8 @@ impl Store {
       .execute(
         "UPDATE time_entries_local
          SET started_at = ?1, ended_at = ?2, task_id = ?3, updated_at = ?4, synced_at = NULL
-         WHERE id = ?5 AND deleted_at IS NULL AND ended_at IS NOT NULL",
-        params![fmt(start), fmt(end), task_id, fmt(now), id],
+         WHERE id = ?5 AND deleted_at IS NULL AND ended_at IS NOT NULL AND (user_id IS ?6 OR user_id IS NULL)",
+        params![fmt(start), fmt(end), task_id, fmt(now), id, self.user],
       )
       .map_err(db)?;
     if changed == 0 {
@@ -358,8 +380,8 @@ impl Store {
       .conn
       .execute(
         "UPDATE time_entries_local SET deleted_at = ?1, updated_at = ?1, synced_at = NULL
-         WHERE id = ?2 AND deleted_at IS NULL",
-        params![fmt(now), id],
+         WHERE id = ?2 AND deleted_at IS NULL AND (user_id IS ?3 OR user_id IS NULL)",
+        params![fmt(now), id, self.user],
       )
       .map_err(db)?;
     if changed == 0 {
@@ -374,10 +396,11 @@ impl Store {
       .conn
       .prepare(
         "SELECT id, started_at, ended_at, task_id, source FROM time_entries_local
-         WHERE deleted_at IS NULL AND started_at >= ?1 AND started_at < ?2 ORDER BY started_at",
+         WHERE deleted_at IS NULL AND started_at >= ?1 AND started_at < ?2 AND (user_id IS ?3 OR user_id IS NULL)
+         ORDER BY started_at",
       )
       .map_err(db)?;
-    let rows = stmt.query_map(params![fmt(from), fmt(to)], entry_from_row).map_err(db)?;
+    let rows = stmt.query_map(params![fmt(from), fmt(to), self.user], entry_from_row).map_err(db)?;
     rows.map(|r| r.map_err(db)?).collect()
   }
 
@@ -390,11 +413,13 @@ impl Store {
       .prepare(
         "SELECT id, team_id, started_at, ended_at, app_name, category, ai_tool, domain
          FROM activity_blocks_local
-         WHERE synced_at IS NULL AND team_id = ?1 AND started_at <= ?2
+         WHERE synced_at IS NULL AND team_id = ?1 AND started_at <= ?2 AND user_id IS ?4
          ORDER BY started_at LIMIT ?3",
       )
       .map_err(db)?;
-    let rows = stmt.query_map(params![team, fmt(stable_before), limit as i64], pending_block_from_row).map_err(db)?;
+    let rows = stmt
+      .query_map(params![team, fmt(stable_before), limit as i64, self.user], pending_block_from_row)
+      .map_err(db)?;
     rows.map(|r| r.map_err(db)?).collect()
   }
 
@@ -404,11 +429,11 @@ impl Store {
       .conn
       .prepare(
         "SELECT id, team_id, started_at, ended_at, task_id, source, updated_at, deleted_at
-         FROM time_entries_local WHERE synced_at IS NULL AND team_id = ?1
+         FROM time_entries_local WHERE synced_at IS NULL AND team_id = ?1 AND user_id IS ?3
          ORDER BY started_at LIMIT ?2",
       )
       .map_err(db)?;
-    let rows = stmt.query_map(params![team, limit as i64], pending_entry_from_row).map_err(db)?;
+    let rows = stmt.query_map(params![team, limit as i64, self.user], pending_entry_from_row).map_err(db)?;
     rows.map(|r| r.map_err(db)?).collect()
   }
 
@@ -418,10 +443,10 @@ impl Store {
       .conn
       .prepare(
         "SELECT id, team_id, closed_at, reopened_at FROM app_closures_local
-         WHERE synced_at IS NULL AND team_id = ?1 ORDER BY closed_at LIMIT ?2",
+         WHERE synced_at IS NULL AND team_id = ?1 AND user_id IS ?3 ORDER BY closed_at LIMIT ?2",
       )
       .map_err(db)?;
-    let rows = stmt.query_map(params![team, limit as i64], closure_from_row).map_err(db)?;
+    let rows = stmt.query_map(params![team, limit as i64, self.user], closure_from_row).map_err(db)?;
     rows.map(|r| r.map_err(db)?).collect()
   }
 
@@ -463,8 +488,8 @@ impl Store {
     self
       .conn
       .execute(
-        "INSERT INTO app_closures_local (id, team_id, closed_at, reopened_at) VALUES (?1, ?2, ?3, ?4)",
-        params![c.id, c.team_id, fmt(c.closed_at), fmt(c.reopened_at)],
+        "INSERT INTO app_closures_local (id, team_id, closed_at, reopened_at, user_id) VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![c.id, c.team_id, fmt(c.closed_at), fmt(c.reopened_at), self.user],
       )
       .map_err(db)?;
     Ok(())
@@ -519,48 +544,35 @@ fn block_from_row(r: &Row) -> rusqlite::Result<Result<BlockRow>> {
 }
 
 fn pending_block_from_row(r: &Row) -> rusqlite::Result<Result<PendingBlock>> {
-  let (start, end, category): (String, String, String) = (r.get(2)?, r.get(3)?, r.get(5)?);
-  Ok((|| {
-    Ok(PendingBlock {
-      id: r.get(0).map_err(db)?,
-      team_id: r.get(1).map_err(db)?,
-      started_at: parse(&start)?,
-      ended_at: parse(&end)?,
-      app_name: r.get(4).map_err(db)?,
-      category: Category::parse(&category).ok_or_else(|| db(format!("categoría desconocida: {category}")))?,
-      ai_tool: r.get(6).map_err(db)?,
-      domain: r.get(7).map_err(db)?,
-    })
-  })())
+  let (id, team_id, start, end, app_name): (String, String, String, String, String) = (r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?);
+  let (category, ai_tool, domain): (String, Option<String>, Option<String>) = (r.get(5)?, r.get(6)?, r.get(7)?);
+  let category = Category::parse(&category).ok_or_else(|| db(format!("categoría desconocida: {category}")));
+  Ok(category.and_then(|category| {
+    Ok(PendingBlock { id, team_id, started_at: parse(&start)?, ended_at: parse(&end)?, app_name, category, ai_tool, domain })
+  }))
 }
 
 fn pending_entry_from_row(r: &Row) -> rusqlite::Result<Result<PendingEntry>> {
-  let (start, end, source): (String, Option<String>, String) = (r.get(2)?, r.get(3)?, r.get(5)?);
-  let (updated, deleted): (String, Option<String>) = (r.get(6)?, r.get(7)?);
-  Ok((|| {
+  let (id, team_id, start, end, task_id): (String, String, String, Option<String>, Option<String>) = (r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?);
+  let (source, updated, deleted): (String, String, Option<String>) = (r.get(5)?, r.get(6)?, r.get(7)?);
+  let source = if source == "timer" { EntrySource::Timer } else { EntrySource::Manual };
+  Ok(parse(&start).and_then(|started_at| {
     Ok(PendingEntry {
-      id: r.get(0).map_err(db)?,
-      team_id: r.get(1).map_err(db)?,
-      started_at: parse(&start)?,
+      id,
+      team_id,
+      started_at,
       ended_at: end.as_deref().map(parse).transpose()?,
-      task_id: r.get(4).map_err(db)?,
-      source: if source == "timer" { EntrySource::Timer } else { EntrySource::Manual },
+      task_id,
+      source,
       updated_at: parse(&updated)?,
       deleted_at: deleted.as_deref().map(parse).transpose()?,
     })
-  })())
+  }))
 }
 
 fn closure_from_row(r: &Row) -> rusqlite::Result<Result<Closure>> {
-  let (closed, reopened): (String, String) = (r.get(2)?, r.get(3)?);
-  Ok((|| {
-    Ok(Closure {
-      id: r.get(0).map_err(db)?,
-      team_id: r.get(1).map_err(db)?,
-      closed_at: parse(&closed)?,
-      reopened_at: parse(&reopened)?,
-    })
-  })())
+  let (id, team_id, closed, reopened): (String, Option<String>, String, String) = (r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?);
+  Ok(parse(&closed).and_then(|closed_at| Ok(Closure { id, team_id, closed_at, reopened_at: parse(&reopened)? })))
 }
 
 fn entry_from_row(r: &Row) -> rusqlite::Result<Result<TimeEntry>> {
@@ -790,6 +802,30 @@ mod tests {
     assert_eq!(s.pending_closures(TEAM, 200).unwrap(), vec![c]);
     s.mark_synced(SyncKind::Closures, &["c1".into()], &HashMap::new(), t(11, 0)).unwrap();
     assert!(s.pending_closures(TEAM, 200).unwrap().is_empty());
+  }
+
+  #[test]
+  fn each_account_sees_and_uploads_only_its_own_rows_plus_those_without_account() {
+    let mut s = Store::open_in_memory().unwrap();
+    s.insert_block(&team_block("sin-cuenta", Some(TEAM), t(8, 0), t(8, 30))).unwrap();
+    s.set_user(Some("ana".into()));
+    s.insert_block(&team_block("de-ana", Some(TEAM), t(9, 0), t(9, 30))).unwrap();
+    s.time_entry_add(t(9, 0), t(9, 30), None, Some(TEAM), t(12, 0)).unwrap();
+    s.set_user(Some("beto".into()));
+    s.insert_block(&team_block("de-beto", Some(TEAM), t(10, 0), t(10, 30))).unwrap();
+    // Beto ve lo suyo y lo sin cuenta, nunca lo de Ana.
+    let seen: Vec<String> = s.blocks_between(t(0, 0), t(23, 0)).unwrap().into_iter().map(|b| b.id).collect();
+    assert_eq!(seen, ["sin-cuenta", "de-beto"]);
+    assert!(s.entries_between(t(0, 0), t(23, 0)).unwrap().is_empty());
+    // Y solo sube lo suyo: ni lo de Ana ni lo sin cuenta.
+    let up: Vec<String> = s.pending_blocks(TEAM, t(23, 0), 200).unwrap().into_iter().map(|b| b.id).collect();
+    assert_eq!(up, ["de-beto"]);
+    assert!(s.pending_entries(TEAM, 200).unwrap().is_empty());
+    // Beto no puede borrar la entrada de Ana.
+    s.set_user(Some("ana".into()));
+    let id = s.entries_between(t(0, 0), t(23, 0)).unwrap()[0].id.clone();
+    s.set_user(Some("beto".into()));
+    assert!(s.time_entry_delete(&id, t(12, 0)).is_err());
   }
 
   #[test]
