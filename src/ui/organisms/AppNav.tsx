@@ -1,6 +1,7 @@
 import { Activity, type LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { NavLink } from 'react-router';
+import { t } from '@/i18n';
 import { cx } from '@/lib/cx';
 
 export interface NavItem {
@@ -18,7 +19,7 @@ export interface NavItem {
 export function AppNav({ items, footer }: { items: NavItem[]; footer?: ReactNode }) {
   return (
     <nav
-      aria-label="Principal"
+      aria-label={t('nav.main')}
       className={cx(
         'flex shrink-0 border-line bg-surface',
         'border-t px-2 py-1',

@@ -529,6 +529,16 @@ export type Database = {
         Args: { p_code: string; p_consent_version: string; p_id: string }
         Returns: string
       }
+      add_task_attachment: {
+        Args: {
+          p_name: string
+          p_path: string
+          p_review?: string
+          p_size: number
+          p_task: string
+        }
+        Returns: string
+      }
       assert_assignee: {
         Args: { p_assignee: string; p_project: string }
         Returns: undefined
@@ -545,13 +555,18 @@ export type Database = {
       create_task: {
         Args: {
           p_assignee?: string
+          p_assignee_can_manage?: boolean
           p_description?: string
           p_due_date?: string
           p_estimate_minutes?: number
+          p_collaborators?: string[]
+          p_criteria?: string[]
           p_labels?: string[]
+          p_parent?: string
           p_project: string
           p_status: string
           p_title: string
+          p_type?: string
         }
         Returns: string
       }
@@ -585,46 +600,8 @@ export type Database = {
           team_name: string
         }[]
       }
-      my_projects: {
-        Args: { p_team: string }
-        Returns: {
-          archived_at: string
-          created_at: string
-          estimate_minutes: number
-          id: string
-          logged_seconds: number
-          my_role: string
-          name: string
-          tasks_done: number
-          tasks_total: number
-        }[]
-      }
       new_invitation_code: { Args: never; Returns: string }
-      project_member_list: {
-        Args: { p_project: string }
-        Returns: {
-          display_name: string
-          role: string
-          user_id: string
-        }[]
-      }
       project_role: { Args: { p_project: string }; Returns: string }
-      project_tasks: {
-        Args: { p_project: string }
-        Returns: {
-          assignee_id: string
-          created_by: string
-          description: string
-          due_date: string
-          estimate_minutes: number
-          id: string
-          labels: string[]
-          logged_seconds: number
-          status: string
-          title: string
-          updated_at: string
-        }[]
-      }
       project_time_summary: {
         Args: { p_from: string; p_project: string; p_to: string }
         Returns: {
@@ -638,6 +615,10 @@ export type Database = {
       }
       remove_project_member: {
         Args: { p_project: string; p_user: string }
+        Returns: undefined
+      }
+      review_task: {
+        Args: { p_approve: boolean; p_comment?: string; p_review: string }
         Returns: undefined
       }
       revoke_invitation: { Args: { p_id: string }; Returns: undefined }
@@ -657,6 +638,18 @@ export type Database = {
         Args: { p_project: string; p_role: string; p_user: string }
         Returns: undefined
       }
+      set_review_template: {
+        Args: { p_project: string; p_template: Json }
+        Returns: undefined
+      }
+      set_task_collaborators: {
+        Args: { p_task: string; p_users: string[] }
+        Returns: undefined
+      }
+      set_task_criteria: {
+        Args: { p_task: string; p_texts: string[] }
+        Returns: undefined
+      }
       set_task_status: {
         Args: { p_status: string; p_task: string }
         Returns: undefined
@@ -666,6 +659,17 @@ export type Database = {
         Returns: undefined
       }
       shares_team_with: { Args: { p_user: string }; Returns: boolean }
+      submit_for_review: {
+        Args: {
+          p_answers: Json
+          p_criteria_met?: string[]
+          p_links?: string[]
+          p_reviewer?: string
+          p_task: string
+        }
+        Returns: string
+      }
+      task_history: { Args: { p_task: string }; Returns: Json }
       task_seconds: { Args: { p_task: string }; Returns: number }
       team_activity_summary: {
         Args: { p_from: string; p_team: string; p_to: string }
@@ -696,9 +700,11 @@ export type Database = {
           user_id: string
         }[]
       }
+      team_work: { Args: { p_team: string }; Returns: Json }
       update_task: {
         Args: {
           p_assignee?: string
+          p_assignee_can_manage?: boolean
           p_description?: string
           p_due_date?: string
           p_estimate_minutes?: number
@@ -706,6 +712,7 @@ export type Database = {
           p_status: string
           p_task: string
           p_title: string
+          p_type?: string
         }
         Returns: undefined
       }

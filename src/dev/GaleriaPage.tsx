@@ -8,7 +8,9 @@ import {
   CategoryBreakdown,
   EmptyState,
   FormField,
+  EstimateInput,
   PasswordField,
+  ProjectCard,
   ProjectProgress,
   SegmentedControl,
   SyncStatus,
@@ -17,8 +19,8 @@ import {
   TimeEntryForm,
   TimerControl,
 } from '@/ui/molecules';
-import type { Task } from '@/cloud/contract';
-import { NO_FILTER } from '@/lib/tasks';
+import type { Project, Task } from '@/cloud/contract';
+import { NO_FILTER, taskTree } from '@/lib/tasks';
 import { appTotals, buildTimeline } from '@/lib/activity';
 import {
   ActivityList,
@@ -30,8 +32,11 @@ import {
   MemberList,
   ProjectMemberList,
   PulseStrip,
+  ReviewForm,
+  ReviewTemplateEditor,
   TaskBoard,
   TaskList,
+  TaskPanel,
   TimeEntryList,
 } from '@/ui/organisms';
 import { AuthLayout, PageLayout } from '@/ui/templates';
@@ -219,10 +224,43 @@ export function GaleriaPage() {
       <Section title="Proyectos y tareas (F3)">
         <ProjectProgress tasksDone={3} tasksTotal={5} loggedSeconds={4 * 3600} estimateMinutes={300} />
         <ProjectProgress tasksDone={1} tasksTotal={2} loggedSeconds={3 * 3600} estimateMinutes={120} />
+        <div className="grid gap-3 md:grid-cols-2">
+          <ProjectCard project={SAMPLE_PROJECT} overdue={1} href="#/dev/galeria" />
+          <ProjectCard project={{ ...SAMPLE_PROJECT, name: 'Proyecto archivado', archivedAt: '2026-10-01T00:00:00Z', pendingReviews: 0 }} overdue={0} href="#/dev/galeria" />
+        </div>
         <TaskFilters filter={NO_FILTER} onChange={() => {}} people={PEOPLE} labels={['diseño', 'cliente']} count={SAMPLE_TASKS.length} />
         <TaskList {...TASK_VIEW} />
         <TaskBoard {...TASK_VIEW} />
-        <TaskForm people={PEOPLE} submitLabel="Crear tarea" onSubmit={async () => {}} onCancel={() => {}} />
+        <TaskForm people={PEOPLE} manage isNew submitLabel="Crear tarea" onSubmit={async () => {}} onCancel={() => {}} />
+        <EstimateInput minutes={960} onChange={() => {}} />
+        <TaskPanel
+          task={SAMPLE_TASKS[1]!}
+          project={SAMPLE_PROJECT}
+          subtasks={[SAMPLE_TASKS[3]!]}
+          parentTitle={null}
+          me={PEOPLE[0]!.value}
+          nameOf={TASK_VIEW.nameOf}
+          people={PEOPLE}
+          projectPeople={PEOPLE}
+          readOnly={false}
+          timer={{ running: false, onThis: false }}
+          history={null}
+          today="2026-10-08"
+          onLoadHistory={() => {}}
+          onEdit={async () => {}}
+          onStatus={() => {}}
+          onCollaborators={async () => {}}
+          onCriteria={async () => {}}
+          onAddSubtask={async () => {}}
+          onSubmitReview={async () => {}}
+          onDecide={async () => {}}
+          onTimer={() => {}}
+          onOpenEvidence={() => {}}
+          onOpenTask={() => {}}
+          onClose={() => {}}
+        />
+        <ReviewForm task={SAMPLE_TASKS[0]!} template={SAMPLE_PROJECT.reviewTemplate} reviewers={PEOPLE} onSubmit={async () => {}} onCancel={() => {}} />
+        <ReviewTemplateEditor fields={SAMPLE_PROJECT.reviewTemplate} onSave={async () => {}} />
         <ProjectMemberList
           members={[
             { userId: PEOPLE[0]!.value, role: 'lead', displayName: 'Ana Gómez' },
@@ -245,29 +283,86 @@ const PEOPLE = [
   { value: '00000000-0000-4000-8000-000000000102', label: 'Beto Ruiz' },
 ];
 
+const SAMPLE_PROJECT: Project = {
+  id: '00000000-0000-4000-8000-000000000201',
+  name: 'Sitio web',
+  archivedAt: null,
+  myRole: 'lead',
+  reviewTemplate: [
+    { key: 'summary', label: 'Qué se hizo', kind: 'text', required: true },
+    { key: 'evidence', label: 'Evidencia', kind: 'url', required: false },
+    { key: 'tests', label: 'Pruebas pasan', kind: 'checklist', required: true },
+  ],
+  tasksTotal: 4,
+  tasksDone: 1,
+  pendingReviews: 1,
+  loggedSeconds: 5 * 3600,
+  estimateMinutes: 16 * 60,
+};
+
 const sampleTask = (over: Partial<Task>): Task => ({
   id: crypto.randomUUID(),
+  projectId: SAMPLE_PROJECT.id,
+  parentId: null,
+  type: 'task',
   title: 'Tarea',
   description: '',
   assigneeId: null,
+  assigneeCanManage: false,
   status: 'todo',
   dueDate: null,
   labels: [],
   estimateMinutes: null,
   loggedSeconds: 0,
+  startedAt: null,
+  completedAt: null,
   createdBy: PEOPLE[0]!.value,
   updatedAt: new Date().toISOString(),
+  collaborators: [],
+  criteria: [],
+  pendingReview: null,
   ...over,
 });
 
+const PARENT_ID = '00000000-0000-4000-8000-000000000301';
 const SAMPLE_TASKS: Task[] = [
-  sampleTask({ title: 'Diseñar la portada', assigneeId: PEOPLE[1]!.value, labels: ['diseño'], estimateMinutes: 120, loggedSeconds: 2700, dueDate: '2026-10-20' }),
-  sampleTask({ title: 'Revisar el contrato con el cliente', assigneeId: PEOPLE[0]!.value, status: 'doing', labels: ['cliente'], dueDate: '2026-10-01' }),
-  sampleTask({ title: 'Publicar la versión 1', status: 'done', estimateMinutes: 30, loggedSeconds: 2400 }),
+  sampleTask({
+    title: 'Diseñar la portada',
+    assigneeId: PEOPLE[1]!.value,
+    collaborators: [PEOPLE[0]!.value],
+    labels: ['diseño'],
+    estimateMinutes: 960,
+    loggedSeconds: 2700,
+    dueDate: '2026-10-20',
+    criteria: [
+      { id: '00000000-0000-4000-8000-000000000401', text: 'Funciona en móvil', met: false },
+      { id: '00000000-0000-4000-8000-000000000402', text: 'Aprobada por el cliente', met: false },
+    ],
+  }),
+  sampleTask({
+    id: PARENT_ID,
+    type: 'bug',
+    title: 'Revisar el contrato con el cliente',
+    assigneeId: PEOPLE[0]!.value,
+    status: 'review',
+    labels: ['cliente'],
+    dueDate: '2026-10-01',
+    pendingReview: {
+      id: '00000000-0000-4000-8000-000000000501',
+      submittedBy: PEOPLE[1]!.value,
+      reviewerId: PEOPLE[0]!.value,
+      answers: { summary: 'Revisé las cláusulas 3 a 7 con el abogado.', tests: 'true' },
+      links: ['https://docs.ejemplo.com/contrato'],
+      createdAt: '2026-10-07T15:00:00Z',
+      attachments: [{ id: '00000000-0000-4000-8000-000000000601', path: 'x/y/z/acta.pdf', name: 'acta.pdf', size: 20480 }],
+    },
+  }),
+  sampleTask({ title: 'Publicar la versión 1', type: 'improvement', status: 'done', estimateMinutes: 30, loggedSeconds: 2400 }),
+  sampleTask({ title: 'Firmar el anexo', parentId: PARENT_ID, assigneeId: PEOPLE[1]!.value, status: 'doing' }),
 ];
 
 const TASK_VIEW = {
-  tasks: SAMPLE_TASKS,
+  tree: taskTree(SAMPLE_TASKS, NO_FILTER, PEOPLE[0]!.value),
   nameOf: (id: string | null) => PEOPLE.find((p) => p.value === id)?.label ?? null,
   today: '2026-10-08',
   canChangeStatus: (t: Task) => t.assigneeId === PEOPLE[0]!.value,

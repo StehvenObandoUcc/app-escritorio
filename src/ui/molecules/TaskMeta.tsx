@@ -1,22 +1,26 @@
 import type { Task } from '@/cloud/contract';
-import { formatMinutes, isOverdue } from '@/lib/tasks';
+import { formatDate, t } from '@/i18n';
+import { formatMinutes, isOverdue, TYPE_LABEL } from '@/lib/tasks';
 import { Badge } from '@/ui/atoms';
 
-const formatDue = (date: string) =>
-  new Date(`${date}T12:00:00`).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
-
-/** Responsable, fecha límite, etiquetas y tiempo frente a lo estimado de una tarea. */
+/** Tipo, responsable, apoyos, fecha límite, etiquetas y tiempo frente a lo estimado de una tarea. */
 export function TaskMeta({ task, assigneeName, today }: { task: Task; assigneeName: string | null; today: string }) {
   const logged = formatMinutes(task.loggedSeconds / 60);
+  const overdue = isOverdue(task, today);
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-fg-muted">
-      <span>{assigneeName ?? 'Sin responsable'}</span>
+      <Badge>{TYPE_LABEL[task.type]}</Badge>
+      <span>
+        {assigneeName ?? t('tasks.noAssignee')}
+        {task.collaborators.length > 0 && ` ${t('tasks.plusHelpers', { n: task.collaborators.length })}`}
+      </span>
       {task.dueDate && (
-        <span className={isOverdue(task, today) ? 'font-medium text-danger' : undefined}>
-          {isOverdue(task, today) ? 'Venció' : 'Vence'} {formatDue(task.dueDate)}
+        <span className={overdue ? 'font-medium text-danger' : undefined}>
+          {t(overdue ? 'tasks.overdue' : 'tasks.due', { date: formatDate(task.dueDate, { day: 'numeric', month: 'short' }) })}
         </span>
       )}
-      <span className="tabular-nums">{task.estimateMinutes ? `${logged} de ${formatMinutes(task.estimateMinutes)}` : logged}</span>
+      <span className="tabular-nums">{task.estimateMinutes ? t('tasks.timeOf', { logged, estimate: formatMinutes(task.estimateMinutes) }) : logged}</span>
+      {task.criteria.length > 0 && <span>{t('tasks.criteriaCount', { met: task.criteria.filter((c) => c.met).length, n: task.criteria.length })}</span>}
       {task.labels.map((l) => (
         <Badge key={l}>{l}</Badge>
       ))}

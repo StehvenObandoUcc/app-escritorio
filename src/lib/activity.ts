@@ -2,6 +2,7 @@
  * Agrupación de los bloques del día para mostrarlos sin ruido. Solo cambia la presentación:
  * la suma de los segundos agrupados es exactamente la de los bloques originales (R5).
  */
+import { t } from '@/i18n';
 import type { ActivityBlock, Category } from '@/bridge/contract';
 
 const secondsOf = (b: { startedAt: string; endedAt: string }) =>
@@ -112,7 +113,7 @@ export function aiToolTotals(blocks: ActivityBlock[]): { tool: string; seconds: 
   const map = new Map<string, number>();
   for (const b of blocks) {
     if (b.category !== 'ai') continue;
-    const tool = b.aiTool ?? 'Otra IA';
+    const tool = b.aiTool ?? t('apps.otherAi');
     map.set(tool, (map.get(tool) ?? 0) + secondsOf(b));
   }
   return [...map.entries()].map(([tool, seconds]) => ({ tool, seconds })).sort((a, b) => b.seconds - a.seconds);

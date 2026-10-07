@@ -9,16 +9,19 @@ import { CONSENT_VERSION } from '@/lib/consent';
 import {
   CloudError,
   DEFAULT_WORKDAY,
-  WRONG_INVITATION_CODE,
+  wrongInvitationCode,
   type Cloud,
   type CloudUser,
   type Member,
   type MyTeam,
   type Profile,
+  type PendingReview,
   type Project,
   type ProjectRole,
+  type ReviewField,
   type Task,
   type TaskInput,
+  type TaskHistory,
   type TeamRole,
 } from './contract';
 
@@ -154,10 +157,25 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
       if (!m || m.role === 'viewer' || !m.consentAt) fail('No tienes permiso para esta acción.');
     }
   };
-  // ---- Proyectos y tareas: imita project_role, can_manage_project y las funciones de la migración F3 ----
-  const projects: { id: string; teamId: string; name: string; archivedAt: string | null }[] = [];
+  // ---- Proyectos y tareas (ADR-0014): imita las funciones de 20261008000001 y 20261008000002 ----
+  type MockTask = Omit<Task, 'loggedSeconds' | 'pendingReview'>;
+  type MockReview = PendingReview & {
+    taskId: string;
+    status: 'pending' | 'approved' | 'changes_requested';
+    decidedBy: string | null;
+    comment: string | null;
+    decidedAt: string | null;
+  };
+  const DEFAULT_TEMPLATE: ReviewField[] = [
+    { key: 'summary', label: 'Qué se hizo', kind: 'text', required: true },
+    { key: 'evidence', label: 'Evidencia', kind: 'url', required: false },
+  ];
+  const URL_RE = /^https?:\/\/\S+$/;
+  const projects: { id: string; teamId: string; name: string; archivedAt: string | null; template: ReviewField[] | null }[] = [];
   const projectMembers: { projectId: string; userId: string; role: ProjectRole }[] = [];
-  const tasks: (Omit<Task, 'loggedSeconds'> & { projectId: string })[] = [];
+  const tasks: MockTask[] = [];
+  const reviews: MockReview[] = [];
+  const events: (TaskHistory['events'][number] & { taskId: string })[] = [];
   const entryOwner = new Map<string, string>();
   const projectRole = (projectId: string, userId: string): Project['myRole'] | null => {
     const p = projects.find((x) => x.id === projectId);
@@ -168,23 +186,46 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
     return projectMembers.find((m) => m.projectId === projectId && m.userId === userId)?.role ?? null;
   };
   const canManageProject = (projectId: string, userId: string) => ['manager', 'lead'].includes(projectRole(projectId, userId) ?? '');
+  const isWorker = (t: MockTask, userId: string) => t.assigneeId === userId || t.collaborators.includes(userId);
+  const templateOf = (projectId: string) => projects.find((p) => p.id === projectId)?.template ?? DEFAULT_TEMPLATE;
   const assertOpen = (projectId: string) => {
     if (projects.find((p) => p.id === projectId)?.archivedAt) fail('El proyecto está archivado: desarchívalo para hacer cambios', 'invalid');
   };
-  const assertAssignee = (projectId: string, assignee: string | null) => {
-    if (assignee && !projectMembers.some((m) => m.projectId === projectId && m.userId === assignee)) {
-      fail('El responsable debe ser miembro del proyecto', 'invalid');
+  const ensureMember = (projectId: string, userId: string | null, caller: string) => {
+    if (!userId || projectMembers.some((m) => m.projectId === projectId && m.userId === userId)) return;
+    if (!canManageProject(projectId, caller)) fail('Esa persona no está en el proyecto: pide a quien lo gestiona que la añada', 'invalid');
+    const team = projects.find((p) => p.id === projectId)?.teamId ?? '';
+    if (!['owner', 'admin', 'member'].includes(roleIn(team, userId) ?? '')) {
+      fail('Solo se añaden owners, admins o members del equipo; un viewer no pertenece a proyectos', 'invalid');
     }
+    projectMembers.push({ projectId, userId, role: 'contributor' });
   };
-  const cleanTask = (t: TaskInput): TaskInput => {
+  const log = (taskId: string, kind: string, details: Record<string, unknown> = {}) => {
+    const actor = current;
+    events.push({ taskId, kind, actor, actorName: actor ? (profiles.get(actor)?.displayName ?? byId(actor)?.displayName ?? null) : null, details, createdAt: now().toISOString() });
+  };
+  const cleanTask = (t: TaskInput) => {
     if (t.title.trim().length < 1 || t.title.trim().length > 200) fail('El título debe tener entre 1 y 200 caracteres', 'invalid');
     return { ...t, title: t.title.trim(), labels: [...new Set(t.labels.map((l) => l.trim()).filter(Boolean))].sort() };
   };
-  const taskSeconds = (taskId: string) =>
+  const ownSeconds = (taskId: string) =>
     uploaded.entries
       .filter((e) => e.taskId === taskId && !e.deletedAt)
       .reduce((sum, e) => sum + Math.round(((e.endedAt ? Date.parse(e.endedAt) : now().getTime()) - Date.parse(e.startedAt)) / 1000), 0);
   const findTask = (taskId: string) => tasks.find((x) => x.id === taskId) ?? fail('No permitido');
+  /** D-8 v2: al salir del equipo o pasar a viewer, deja proyectos, tareas, apoyos y revisiones pedidas. */
+  const leaveWork = (teamId: string, userId: string) => {
+    const ids = new Set(projects.filter((p) => p.teamId === teamId).map((p) => p.id));
+    for (let i = projectMembers.length - 1; i >= 0; i--) {
+      if (ids.has(projectMembers[i]!.projectId) && projectMembers[i]!.userId === userId) projectMembers.splice(i, 1);
+    }
+    for (const t of tasks) {
+      if (!ids.has(t.projectId)) continue;
+      if (t.assigneeId === userId) t.assigneeId = null;
+      t.collaborators = t.collaborators.filter((c) => c !== userId);
+    }
+    for (const r of reviews) if (r.status === 'pending' && r.reviewerId === userId) r.reviewerId = null;
+  };
 
   const pendingFor = (email: string) =>
     invitations.filter((i) => i.email === email && i.status === 'pending' && Date.parse(i.expiresAt) > now().getTime());
@@ -322,6 +363,7 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
       if (!target || !allowed) fail('No permitido');
       if (target === 'owner' && role !== 'owner' && owners(teamId) === 1) fail('El equipo debe conservar al menos un owner', 'invalid');
       members = members.map((m) => (m.teamId === teamId && m.userId === userId ? { ...m, role } : m));
+      if (role === 'viewer') leaveWork(teamId, userId);
     },
     removeMember: async (teamId, userId) => {
       const a = me();
@@ -332,6 +374,7 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
       }
       if (target === 'owner' && owners(teamId) === 1) fail('El equipo debe conservar al menos un owner', 'invalid');
       members = members.filter((m) => !(m.teamId === teamId && m.userId === userId));
+      leaveWork(teamId, userId);
     },
     leaveTeam: async (teamId) => {
       const a = me();
@@ -339,6 +382,7 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
       if (!mine) fail('No perteneces a este equipo');
       if (mine === 'owner' && owners(teamId) === 1) fail('El equipo debe conservar al menos un owner', 'invalid');
       members = members.filter((m) => !(m.teamId === teamId && m.userId === a.id));
+      leaveWork(teamId, a.id);
     },
 
     teamInvitations: async (teamId) => {
@@ -389,7 +433,7 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
       if (inv!.code !== code.trim().toUpperCase()) {
         inv!.failedAttempts += 1;
         if (inv!.failedAttempts >= 5) inv!.status = 'revoked';
-        fail(WRONG_INVITATION_CODE, 'invalid');
+        fail(wrongInvitationCode(), 'invalid');
       }
       if (roleIn(inv!.teamId, a.id)) fail('Ya perteneces a este equipo', 'invalid');
       inv!.status = 'accepted';
@@ -454,31 +498,60 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
       }
       return [...totals.values()];
     },
-    myProjects: async (teamId) => {
+    teamWork: async (teamId) => {
       const a = me();
-      return projects
-        .filter((p) => p.teamId === teamId && projectRole(p.id, a.id))
-        .map((p): Project => {
-          const own = tasks.filter((t) => t.projectId === p.id);
+      const visible = projects.filter((p) => p.teamId === teamId && projectRole(p.id, a.id));
+      const ids = new Set(visible.map((p) => p.id));
+      const own = tasks.filter((t) => ids.has(t.projectId));
+      const pendingOf = (taskId: string) => reviews.find((r) => r.taskId === taskId && r.status === 'pending') ?? null;
+      const withTime = own.map(
+        (t): Task => {
+          const pending = pendingOf(t.id);
           return {
-            id: p.id,
-            name: p.name,
-            archivedAt: p.archivedAt,
-            myRole: projectRole(p.id, a.id) ?? 'contributor',
-            tasksTotal: own.length,
-            tasksDone: own.filter((t) => t.status === 'done').length,
-            loggedSeconds: own.reduce((s, t) => s + taskSeconds(t.id), 0),
-            estimateMinutes: own.reduce((s, t) => s + (t.estimateMinutes ?? 0), 0),
+            ...t,
+            loggedSeconds: ownSeconds(t.id) + own.filter((c) => c.parentId === t.id).reduce((s2, c) => s2 + ownSeconds(c.id), 0),
+            pendingReview: pending
+              ? { id: pending.id, submittedBy: pending.submittedBy, reviewerId: pending.reviewerId, answers: pending.answers, links: pending.links, createdAt: pending.createdAt, attachments: pending.attachments }
+              : null,
           };
-        })
-        .sort((x, y) => Number(!!x.archivedAt) - Number(!!y.archivedAt) || x.name.localeCompare(y.name));
+        },
+      );
+      const estimateOf = (t: MockTask) => t.estimateMinutes ?? own.filter((c) => c.parentId === t.id).reduce((s2, c) => s2 + (c.estimateMinutes ?? 0), 0);
+      return {
+        projects: visible
+          .map((p): Project => {
+            const pt = own.filter((t) => t.projectId === p.id);
+            return {
+              id: p.id,
+              name: p.name,
+              archivedAt: p.archivedAt,
+              myRole: projectRole(p.id, a.id) ?? 'contributor',
+              reviewTemplate: templateOf(p.id),
+              tasksTotal: pt.length,
+              tasksDone: pt.filter((t) => t.status === 'done').length,
+              pendingReviews: pt.filter((t) => t.status === 'review').length,
+              loggedSeconds: pt.reduce((s2, t) => s2 + ownSeconds(t.id), 0),
+              estimateMinutes: pt.filter((t) => !t.parentId).reduce((s2, t) => s2 + estimateOf(t), 0),
+            };
+          })
+          .sort((x, y) => Number(!!x.archivedAt) - Number(!!y.archivedAt) || x.name.localeCompare(y.name)),
+        tasks: withTime,
+        members: Object.fromEntries(
+          visible.map((p) => [
+            p.id,
+            projectMembers
+              .filter((m) => m.projectId === p.id)
+              .map((m) => ({ userId: m.userId, role: m.role, displayName: profiles.get(m.userId)?.displayName ?? byId(m.userId)?.displayName ?? null })),
+          ]),
+        ),
+      };
     },
     createProject: async (teamId, name) => {
       const a = me();
       if (!canManage(teamId, a.id)) fail('No permitido');
       if (name.trim().length < 2 || name.trim().length > 80) fail('El nombre debe tener entre 2 y 80 caracteres', 'invalid');
       const id = crypto.randomUUID();
-      projects.push({ id, teamId, name: name.trim(), archivedAt: null });
+      projects.push({ id, teamId, name: name.trim(), archivedAt: null, template: null });
       projectMembers.push({ projectId: id, userId: a.id, role: 'lead' });
       return id;
     },
@@ -486,12 +559,6 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
       if (projectRole(projectId, me().id) !== 'manager') fail('No permitido');
       const p = projects.find((x) => x.id === projectId);
       if (p) p.archivedAt = archived ? (p.archivedAt ?? now().toISOString()) : null;
-    },
-    projectMembers: async (projectId) => {
-      if (!projectRole(projectId, me().id)) fail('No permitido');
-      return projectMembers
-        .filter((m) => m.projectId === projectId)
-        .map((m) => ({ userId: m.userId, role: m.role, displayName: profiles.get(m.userId)?.displayName ?? byId(m.userId)?.displayName ?? null }));
     },
     setProjectMember: async (projectId, userId, role) => {
       if (!canManageProject(projectId, me().id)) fail('No permitido');
@@ -509,39 +576,157 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
       if (i >= 0) projectMembers.splice(i, 1);
       for (const t of tasks) if (t.projectId === projectId && t.assigneeId === userId) t.assigneeId = null;
     },
-    projectTasks: async (projectId) => {
-      if (!projectRole(projectId, me().id)) fail('No permitido');
-      return tasks
-        .filter((t) => t.projectId === projectId)
-        .map((t): Task => ({ ...t, loggedSeconds: taskSeconds(t.id) }));
+    setReviewTemplate: async (projectId, fields) => {
+      if (!canManageProject(projectId, me().id)) fail('No permitido');
+      if (fields.length < 1 || fields.length > 15) fail('El formulario de entrega debe tener entre 1 y 15 campos', 'invalid');
+      if (new Set(fields.map((f) => f.key)).size !== fields.length) fail('Dos campos del formulario no pueden tener la misma clave', 'invalid');
+      const p = projects.find((x) => x.id === projectId);
+      if (p) p.template = fields;
     },
-    createTask: async (projectId, input) => {
+    createTask: async (projectId, input, extras = {}) => {
       const a = me();
+      const manager = canManageProject(projectId, a.id);
       if (!projectRole(projectId, a.id)) fail('No permitido');
-      if (!canManageProject(projectId, a.id) && input.assigneeId && input.assigneeId !== a.id) {
+      if (!manager && ((input.assigneeId && input.assigneeId !== a.id) || (extras.collaborators ?? []).length > 0)) {
         fail('No permitido: solo puedes crear tareas para ti');
       }
+      if (!['todo', 'doing'].includes(input.status)) fail('Una tarea nueva empieza por hacer o en curso', 'invalid');
+      if (extras.parentId) {
+        const parent = tasks.find((t) => t.id === extras.parentId);
+        if (!parent || parent.projectId !== projectId || parent.parentId) {
+          fail('Una subtarea va dentro de una tarea del mismo proyecto, y una subtarea no tiene subtareas', 'invalid');
+        }
+      }
       assertOpen(projectId);
-      assertAssignee(projectId, input.assigneeId);
+      ensureMember(projectId, input.assigneeId, a.id);
+      for (const c of extras.collaborators ?? []) ensureMember(projectId, c, a.id);
       const id = crypto.randomUUID();
-      tasks.push({ ...cleanTask(input), id, projectId, createdBy: a.id, updatedAt: now().toISOString() });
+      const at = now().toISOString();
+      tasks.push({
+        ...cleanTask(input),
+        id,
+        projectId,
+        parentId: extras.parentId ?? null,
+        createdBy: a.id,
+        updatedAt: at,
+        startedAt: input.status === 'doing' ? at : null,
+        completedAt: null,
+        collaborators: (extras.collaborators ?? []).filter((c) => c !== input.assigneeId),
+        criteria: (extras.criteria ?? []).map((text) => text.trim()).filter(Boolean).map((text) => ({ id: crypto.randomUUID(), text, met: false })),
+      });
+      log(id, 'created', { status: input.status, assignee: input.assigneeId });
       return id;
     },
     updateTask: async (taskId, input) => {
+      const a = me();
       const t = findTask(taskId);
-      if (!canManageProject(t.projectId, me().id)) fail('No permitido');
+      if (!canManageProject(t.projectId, a.id)) fail('No permitido');
       assertOpen(t.projectId);
-      assertAssignee(t.projectId, input.assigneeId);
-      Object.assign(t, cleanTask(input), { updatedAt: now().toISOString() });
+      if (input.status !== t.status && !['todo', 'doing'].includes(input.status)) {
+        fail('A «En revisión» se llega enviando la tarea y a «Hecha» aprobándola', 'invalid');
+      }
+      ensureMember(t.projectId, input.assigneeId, a.id);
+      if (t.status === 'review' && input.status !== 'review') {
+        for (const r of reviews) if (r.taskId === taskId && r.status === 'pending') Object.assign(r, { status: 'changes_requested', decidedBy: a.id, decidedAt: now().toISOString(), comment: 'Reabierta por quien gestiona el proyecto' });
+      }
+      const before = { ...t };
+      Object.assign(t, cleanTask(input), {
+        updatedAt: now().toISOString(),
+        startedAt: input.status === 'doing' ? (t.startedAt ?? now().toISOString()) : t.startedAt,
+        completedAt: input.status === 'done' ? t.completedAt : null,
+      });
+      if (before.status !== t.status) log(taskId, 'status_changed', { from: before.status, to: t.status });
+      if (before.assigneeId !== t.assigneeId) log(taskId, 'assignee_changed', { from: before.assigneeId, to: t.assigneeId });
+      if (before.estimateMinutes !== t.estimateMinutes) log(taskId, 'estimate_changed', { from: before.estimateMinutes, to: t.estimateMinutes });
     },
     setTaskStatus: async (taskId, status) => {
       const a = me();
       const t = findTask(taskId);
-      if (!(canManageProject(t.projectId, a.id) || (t.assigneeId === a.id && projectRole(t.projectId, a.id)))) fail('No permitido');
+      const manager = canManageProject(t.projectId, a.id);
+      if (!(manager || (isWorker(t, a.id) && projectRole(t.projectId, a.id)))) fail('No permitido');
       assertOpen(t.projectId);
-      t.status = status;
-      t.updatedAt = now().toISOString();
+      if (t.status === 'review') fail('La tarea está en revisión: espera la decisión', 'invalid');
+      if (t.status === 'done' && !manager) fail('Solo quien gestiona el proyecto reabre una tarea hecha');
+      if (t.status === status) return;
+      log(taskId, 'status_changed', { from: t.status, to: status });
+      Object.assign(t, { status, startedAt: status === 'doing' ? (t.startedAt ?? now().toISOString()) : t.startedAt, completedAt: null, updatedAt: now().toISOString() });
     },
+    setTaskCollaborators: async (taskId, userIds) => {
+      const a = me();
+      const t = findTask(taskId);
+      if (!(canManageProject(t.projectId, a.id) || (t.assigneeId === a.id && t.assigneeCanManage && projectRole(t.projectId, a.id)))) fail('No permitido');
+      assertOpen(t.projectId);
+      for (const u of userIds) ensureMember(t.projectId, u, a.id);
+      t.collaborators = [...new Set(userIds)].filter((u) => u !== t.assigneeId);
+      log(taskId, 'collaborators_changed', { users: userIds });
+    },
+    setTaskCriteria: async (taskId, texts) => {
+      const t = findTask(taskId);
+      if (!canManageProject(t.projectId, me().id)) fail('No permitido');
+      assertOpen(t.projectId);
+      if (texts.length > 20) fail('Una tarea tiene como máximo 20 criterios', 'invalid');
+      t.criteria = texts.map((text) => text.trim()).filter(Boolean).map((text) => ({ id: crypto.randomUUID(), text, met: false }));
+      log(taskId, 'criteria_changed', { count: texts.length });
+    },
+    submitForReview: async (task, _teamId, sub) => {
+      const a = me();
+      const t = findTask(task.id);
+      if (!isWorker(t, a.id) || !projectRole(t.projectId, a.id)) fail('No permitido: envía a revisión el responsable o un apoyo de la tarea');
+      assertOpen(t.projectId);
+      if (!['todo', 'doing'].includes(t.status)) fail('La tarea ya está en revisión o hecha', 'invalid');
+      for (const f of templateOf(t.projectId)) {
+        const v = (sub.answers[f.key] ?? '').trim();
+        if (f.required && (v === '' || (f.kind === 'checklist' && v !== 'true'))) fail(`Falta completar «${f.label}» en el formulario de entrega`, 'invalid');
+        if (f.kind === 'url' && v !== '' && !URL_RE.test(v)) fail(`«${f.label}» debe ser un enlace que empiece por http:// o https://`, 'invalid');
+      }
+      if (sub.links.length > 10 || sub.links.some((l) => !URL_RE.test(l))) fail('Hasta 10 enlaces de evidencia, cada uno empezando por http:// o https://', 'invalid');
+      if (t.criteria.some((c) => !sub.criteriaMet.includes(c.id))) fail('Marca todos los criterios de aceptación antes de enviar a revisión', 'invalid');
+      if (sub.reviewerId && (sub.reviewerId === a.id || !projectMembers.some((m) => m.projectId === t.projectId && m.userId === sub.reviewerId))) {
+        fail('El revisor debe ser otra persona del proyecto', 'invalid');
+      }
+      const id = crypto.randomUUID();
+      t.criteria = t.criteria.map((c) => ({ ...c, met: true }));
+      reviews.push({
+        id,
+        taskId: t.id,
+        submittedBy: a.id,
+        reviewerId: sub.reviewerId,
+        answers: sub.answers,
+        links: sub.links,
+        createdAt: now().toISOString(),
+        attachments: sub.files.map((f) => ({ id: crypto.randomUUID(), path: `mock/${t.id}/${f.name}`, name: f.name, size: f.size })),
+        status: 'pending',
+        decidedBy: null,
+        comment: null,
+        decidedAt: null,
+      });
+      Object.assign(t, { status: 'review', startedAt: t.startedAt ?? now().toISOString(), updatedAt: now().toISOString() });
+      log(t.id, 'review_submitted', { review: id, reviewer: sub.reviewerId });
+      return id;
+    },
+    reviewTask: async (reviewId, approve, comment) => {
+      const a = me();
+      const r = reviews.find((x) => x.id === reviewId);
+      const t = r ? findTask(r.taskId) : null;
+      const manager = t ? canManageProject(t.projectId, a.id) : false;
+      if (!r || !t || !projectRole(t.projectId, a.id) || !(manager || r.reviewerId === a.id) || (r.submittedBy === a.id && !manager)) {
+        fail('No permitido: decide el revisor pedido o quien gestiona el proyecto');
+      }
+      if (r!.status !== 'pending') fail('Esta revisión ya tiene decisión', 'invalid');
+      if (!approve && !(comment ?? '').trim()) fail('Explica qué cambios hacen falta (hasta 2000 caracteres)', 'invalid');
+      Object.assign(r!, { status: approve ? 'approved' : 'changes_requested', decidedBy: a.id, decidedAt: now().toISOString(), comment: comment?.trim() || null });
+      Object.assign(t!, { status: approve ? 'done' : 'doing', completedAt: approve ? now().toISOString() : null, updatedAt: now().toISOString() });
+      log(t!.id, approve ? 'review_approved' : 'changes_requested', { review: reviewId, comment: comment?.trim() || null });
+    },
+    taskHistory: async (taskId) => {
+      const t = findTask(taskId);
+      if (!projectRole(t.projectId, me().id)) fail('No permitido');
+      return {
+        events: events.filter((e) => e.taskId === taskId),
+        reviews: reviews.filter((r) => r.taskId === taskId).reverse(),
+      };
+    },
+    evidenceUrl: async (path) => `data:text/plain,${encodeURIComponent(`Archivo de ejemplo: ${path}`)}`,
     projectTimeSummary: async (projectId, from, to) => {
       if (!canManageProject(projectId, me().id)) fail('No permitido');
       const team = projects.find((p) => p.id === projectId)?.teamId ?? '';

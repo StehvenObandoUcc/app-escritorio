@@ -93,11 +93,11 @@ describe('puente simulado', () => {
 
   it('los ajustes se validan, normalizan y persisten', async () => {
     const bridge = createMockBridge();
-    expect(SettingsSchema.parse(await bridge.settingsGet())).toEqual({ idleMinutes: 5, hiddenApps: [] });
+    expect(SettingsSchema.parse(await bridge.settingsGet())).toEqual({ idleMinutes: 5, hiddenApps: [], language: 'es' });
     await expect(bridge.settingsSet({ idleMinutes: 2 })).rejects.toThrow(/entre 3 y 15/);
     await expect(bridge.settingsSet({ idleMinutes: 16 })).rejects.toThrow(/entre 3 y 15/);
     const next = await bridge.settingsSet({ idleMinutes: 10, hiddenApps: ['  KeePass ', 'keepass', ''] });
-    expect(next).toEqual({ idleMinutes: 10, hiddenApps: ['keepass'] });
+    expect(next).toEqual({ idleMinutes: 10, hiddenApps: ['keepass'], language: 'es' });
     expect(await bridge.settingsGet()).toEqual(next);
   });
 });

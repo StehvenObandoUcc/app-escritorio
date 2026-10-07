@@ -12,3 +12,6 @@ export * from './HiddenAppsPicker';
 export * from './TaskList';
 export * from './TaskBoard';
 export * from './ProjectMemberList';
+export * from './ReviewForm';
+export * from './ReviewTemplateEditor';
+export * from './TaskPanel';

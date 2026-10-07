@@ -101,7 +101,7 @@ export function createMockBridge(now: () => Date = () => new Date()): Bridge {
     timer: { running: false, startedAt: null, taskId: null },
   };
   let entries: TimeEntry[] = [];
-  let settings: Settings = { idleMinutes: 5, hiddenApps: [] };
+  let settings: Settings = { idleMinutes: 5, hiddenApps: [], language: 'es' };
   // F2: la sesión vive en memoria (en la app real, Rust la guarda cifrada).
   let session: string | null = null;
   let activeTeam: string | null = null;
