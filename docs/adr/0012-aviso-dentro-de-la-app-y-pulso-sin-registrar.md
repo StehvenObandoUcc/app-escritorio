@@ -21,4 +21,4 @@ En la prueba real:
 ## Consecuencias
 - Sin comando nuevo: el evento no es un comando de Rust (§6 de `docs/ARQUITECTURA.md` solo lista comandos).
 - Una app que se usa antes y después de mirar Pulso queda en dos bloques seguidos, con un hueco entre ellos.
-- Sigue pendiente para F5 (TA-11): que leer o estar en una reunión sin teclado no cuente como inactividad.
+- Leer o estar en una reunión sin teclado: resuelto en versión mínima en ADR-0013.

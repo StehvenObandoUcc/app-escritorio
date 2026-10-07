@@ -278,7 +278,5 @@ previsto, sin margen: F2 empieza el martes 6.
 
 Decisiones abiertas:
 - **A-4** · *Olvidé mi contraseña* necesita que Supabase envíe correos: hoy responde 504. Hay que revisar o configurar el SMTP del proyecto. El registro ya no depende del correo (ADR-0008).
-- **Pasan a F5** (con TA-11, pedido el 6 oct):
-  - Reglas de productividad del equipo.
-  - Apps de lectura y reunión que no cuentan como inactividad: hoy, leer en Readest sin tocar el teclado cuenta como inactividad pasado el umbral.
+- **Pasa a F5** (con TA-11, pedido el 6 oct): reglas de productividad del equipo y editar la lista de apps sin teclado. La lista fija ya está en F2 (TA-15, ADR-0013).
 - **A-5** · Enviar por correo el código de invitación, además de mostrarlo para compartirlo (pedido el 6 oct). Depende de A-4 y necesita una Edge Function o el SMTP del proyecto; se retoma después de G2.

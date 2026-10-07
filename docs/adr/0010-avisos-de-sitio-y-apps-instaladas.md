@@ -37,5 +37,5 @@ En la prueba real de ADR-0009 aparecieron tres problemas:
 - Fila de `docs/ARQUITECTURA.md` §6, `contract.ts`, `mock.ts` y `tauri.ts`.
 - En `tauri dev` la notificación sale a nombre de PowerShell: el plugin solo asigna el identificador de la app al
   ejecutable instalado. Con el instalador (`tauri build`) sale como Pulso.
-- Prueba de la lista en el equipo del responsable: 108 apps en 50 ms, 7 abiertas (`examples/apps_list.rs`).
+- Prueba de la lista en el equipo del responsable: 108 apps en 50 ms, 7 abiertas (ejemplo `examples/apps_list.rs`, retirado tras la prueba).
 - Los demás miembros reciben una regla nueva en un máximo de 5 min o al volver a Pulso.
