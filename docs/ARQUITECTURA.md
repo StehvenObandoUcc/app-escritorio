@@ -110,7 +110,7 @@ Comandos (nombres exactos; `src/bridge/contract.ts` es su espejo en TypeScript):
 | F2 | `team_policy_set(policy)` (ADR-0009, ADR-0010) | — (política del equipo: apps ocultas y avisos de sitio no permitido) |
 | F2 | `installed_apps()` (ADR-0010) | apps instaladas y abiertas para elegir cuáles ocultar; solo local |
 | F2 | `notifications_status()` (ADR-0011) | `{ windowsToastsEnabled }`: si Windows muestra notificaciones de apps |
-| F3 | `tasks_cache_put(json)` · `tasks_cache_get()` | copia local de tareas |
+| F3 | `tasks_cache_put(json)` · `tasks_cache_get()` | copia local de tareas del equipo y la cuenta activos (máx. 2 MB); `tasks_cache_get` devuelve `null` si no hay |
 | F4 | `ai_config_set(base_url, model, key)` · `ai_config_get()` · `ai_config_clear()` | `ai_config_get` devuelve `{base_url, model, has_key}`, **nunca la clave** |
 | F4 | `ai_chat(messages)` | texto de la respuesta |
 | F5 | `export_my_data(path)` | ruta del archivo |
@@ -139,8 +139,8 @@ Presupuesto de rendimiento (se mide en F1 y F6): RAM en reposo < 120 MB, CPU med
 | `activity_blocks` | inicio, fin, app, categoría, herramienta de IA, tipo de uso de IA, dominio del sitio (ADR-0009). **Sin títulos ni URL.** | F2 ✔ |
 | `time_entries` | inicio, fin, tarea opcional, origen (`timer`/`manual`) | F2 ✔ |
 | `classification_rules` | prioridad, tipo (`process`/`title`/`domain`), patrón, categoría, `not_allowed` (sitio no permitido: se marca, no se bloquea) | F2 ✔ |
-| `projects`, `project_members` | proyecto y rol de proyecto (`lead`/`contributor`) | F3 |
-| `tasks` | título, descripción, responsable, estado (`todo`/`doing`/`done`), fecha límite, etiquetas, estimación | F3 |
+| `projects`, `project_members` | proyecto (archivable) y rol de proyecto (`lead`/`contributor`) | F3 (migración `20261008000001`) |
+| `tasks` | título, descripción, responsable, estado (`todo`/`doing`/`done`), fecha límite, etiquetas, estimación; `time_entries.task_id` apunta aquí | F3 (migración `20261008000001`) |
 | `report_runs` | alcance, periodo, hechos, narrativa, modo de IA, resultado de la validación | F4 |
 | `ai_usage` | contador diario de la IA gratuita | F4 |
 
@@ -153,7 +153,7 @@ Reglas de toda migración (ya aplicadas en la primera, que sirve de modelo):
 
 ### 7.2 En el equipo (SQLite, solo Rust)
 
-`activity_blocks_local` (con `title_enc`, `team_id`, `user_id` y `synced_at`), `time_entries_local` (con `team_id` y `user_id`), `app_closures_local` (con `user_id`), `tasks_cache`, `kv_settings` (ajustes, equipo activo, reglas del equipo y la sesión cifrada).
+`activity_blocks_local` (con `title_enc`, `team_id`, `user_id` y `synced_at`), `time_entries_local` (con `team_id` y `user_id`), `app_closures_local` (con `user_id`), `tasks_cache` (JSON por cuenta y equipo, F3), `kv_settings` (ajustes, equipo activo, reglas del equipo y la sesión cifrada).
 
 ### 7.3 Sincronización (TypeScript)
 

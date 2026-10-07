@@ -45,7 +45,7 @@ Resumen: 107 funcionalidades en total: 89 antes de la entrega y 18 después (TA-
 | TA-02 | Bloques de actividad; los de menos de 10 s se fusionan | 05 | F1 | Prueba unitaria de Rust |
 | TA-03 | Clasificación en productivo, neutro, distracción o IA mediante reglas | 05 | F1 | Prueba unitaria del clasificador |
 | TA-04 | Inactividad con umbral configurable (3 a 15 min) | 04, 05 | F1 | Dejar el equipo quieto: aparece un bloque sin actividad |
-| TA-05 | Temporizador: iniciar y detener, con tarea opcional | 04 | F1 (tarea en F3) | Iniciar, esperar, detener: queda la entrada |
+| TA-05 | Temporizador: iniciar y detener, con tarea opcional | 04 | F1 (tarea en F3: desde el detalle de la tarea) | Iniciar, esperar, detener: queda la entrada |
 | TA-06 | Registro manual de tiempo; editar y eliminar entradas propias | 04 | F1 | Añadir una entrada de ayer |
 | TA-07 | Jornada: empieza con la primera actividad y termina con la última | 06 | F1 | El resumen muestra inicio y fin |
 | TA-08 | Descansos manuales | 06 | F1 | *Tomar un descanso* crea un bloque de descanso |
