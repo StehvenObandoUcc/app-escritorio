@@ -1,7 +1,7 @@
 # Spec F4 · IA y reportes
 
 Funcionalidades: RI-01 a RI-10, IA-04
-Estado: aprobada (por StehvenObando, 8 oct). Detalle de la IA en `docs/IA.md`; decisiones nuevas en ADR-0022.
+Estado: aprobada (por StehvenObando, 8 oct). Implementada el 8 oct; falta la validación real (`docs/VALIDACION.md`). Detalle de la IA en `docs/IA.md`; decisiones nuevas en ADR-0022.
 
 ## Objetivo
 Al terminar, cada persona genera su reporte del día o de la semana, y quien gestiona genera el del proyecto o
@@ -148,6 +148,59 @@ Probado en la app real (`tauri dev`, WebView2 en Windows 11) con dos botones tem
 - **`window.print()`:** abre el diálogo de impresión de WebView2 con la impresora «Microsoft Print to PDF», que sirve para guardar el PDF.
 
 Conclusión: D-15 se queda como está y **no se crea `export_save`**. La pantalla dirá que el archivo quedó en *Descargas*.
+
+## Estado de cada criterio (8 oct)
+
+«Cumple» = probado con pruebas automáticas (PGlite, Vitest o Rust). «Pendiente de validación» = solo se puede comprobar con Supabase real o con la app real; los pasos están en `docs/VALIDACION.md`.
+
+| AC | Estado | Evidencia |
+|---|---|---|
+| AC-1 | Cumple | `ia_y_reportes.test.ts` › «el reporte personal coincide con el diccionario de métricas» y «proyecto y equipo llevan solo totales del grupo» (cifras de ayer calculadas a mano; los otros periodos usan el mismo cálculo con otras fechas) |
+| AC-2 | Cumple | `ia_y_reportes.test.ts` › «ningún hecho trae apps, dominios, títulos ni personas…» |
+| AC-3 | Cumple | La misma prueba (un `ai_tool` con una instrucción cuenta como `other`) |
+| AC-4 | Cumple | `ia_y_reportes.test.ts` › «los mismos datos dan el mismo hash y un cambio lo cambia» |
+| AC-5 | Cumple | `ia_y_reportes.test.ts` › «cada rol genera solo lo que le toca»; `Reportes.test.tsx` › «cada rol ve solo lo que puede generar…» |
+| AC-6 | Cumple | `ia_y_reportes.test.ts` › «un reporte de grupo exige al menos 2 miembros» |
+| AC-7 | Cumple | `ia_y_reportes.test.ts` › «equipo: todos los roles; proyecto: owner, admin y sus miembros; personal: solo su autor»; `Reportes.test.tsx` (viewer) |
+| AC-8 | Cumple | `report_validator.test.ts` › «20 respuestas grabadas» (incluye F1, coma y punto, fechas del periodo y número en letras) |
+| AC-9 | Cumple | `ia_y_reportes.test.ts` › «save_report solo acepta la forma del reporte y siempre guarda validated_by = client» |
+| AC-10 | Cumple | `ia_y_reportes.test.ts` › «mark_trial_report: solo service_role…»; `ai_trial.test.ts` › «una respuesta válida se guarda en modo free y se marca…» |
+| AC-11 | Cumple | `ia_y_reportes.test.ts` › «data_until: fin del último bloque en el personal…» |
+| AC-12 | Cumple | `ai_trial.test.ts` › «inválida dos veces: sale la plantilla…»; `reports.test.ts` › «inválida y luego válida → retried; inválida dos veces → plantilla»; `report_validator.test.ts` › «plantilla de respaldo» |
+| AC-13a | Cumple | `report_validator.test.ts` › «ningún número inventado pasa…»; las cifras se pintan desde los hechos (`ReportView`) |
+| AC-13b | Pendiente de validación | `scripts/f4-reportes-reales.mjs` (lo ejecuta el usuario) |
+| AC-14 | Cumple · pendiente de validación en real | `ia_y_reportes.test.ts` › «5 por persona y día, 30 s entre peticiones…»; `ai_trial.test.ts` › «con el cupo agotado responde 429…»; `Reportes.test.tsx` › «el sexto reporte gratis del día muestra el aviso de límite». En real: con la Edge Function desplegada |
+| AC-15 | Pendiente de validación | `scripts/f4-cupos-simultaneos.mjs` (lo ejecuta el usuario) |
+| AC-16 | Cumple · pendiente de validación en real | `ai_trial.test.ts` › «si el proveedor falla (…), devuelve el cupo y responde 502» y «con el interruptor apagado responde 503» |
+| AC-17 | Cumple | `ia_y_reportes.test.ts` › «la caché distingue las fechas y no duplica»; `ai_trial.test.ts` › «un reporte ya guardado…»; `reports.test.ts`; `Reportes.test.tsx` |
+| AC-18 | Cumple · pendiente de validación en real | `ai.rs` › `a_400_is_retried_once_with_the_minimal_body`, `each_failure_has_a_clear_message`; `AiSection.test.tsx` › «probar conexión…». En real: con una clave válida y otra inválida |
+| AC-19 | Cumple · pendiente de validación en real | `ai.rs` › `the_key_lives_only_in_the_secure_store`; `AiConfigSchema` estricto (sin campo de clave); `AiSection.test.tsx` › «…nunca muestra la clave». En real: revisar `pulso.db` |
+| AC-20 | Cumple | `ai.rs` › `only_https_or_local_http_urls`; `AiSection.test.tsx` |
+| AC-21 | Cumple | `reports.test.ts` › «modo Manual»; `Reportes.test.tsx` › «modo Manual: copiar el prompt…»; `report_validator.test.ts` › «lectura del JSON en modo Manual» |
+| AC-22 | Cumple · pendiente de validación en real | `Reportes.test.tsx` (personal de hoy y equipo de ayer con la nube simulada); periodos en `ia_y_reportes.test.ts` |
+| AC-23 | Cumple · pendiente de validación en real | `Reportes.test.tsx` › «modo Gratis: “hoy” sube antes los datos…»; el servidor calcula la hora (AC-11) |
+| AC-24 | Cumple | `ReportView` muestra las cifras citadas por cada observación; `reports.test.ts` › «Markdown y CSV llevan las mismas cifras…». La calidad del texto real se mide en AC-13b |
+| AC-25 | Pendiente de validación | Necesita un día real: el reporte de ayer sigue en el historial (la lectura del historial está en `Reportes.test.tsx`) |
+| AC-26 | Cumple · pendiente de validación en real | `Reportes.test.tsx` › «exporta Markdown, JSON y CSV…»; V1 (descarga e impresión en la app real). Abrir los cuatro archivos: en real |
+| AC-27 | Cumple | `ia_y_reportes.test.ts` › «generar un reporte de proyecto o de equipo queda en la auditoría…» |
+| AC-28 | Cumple | `ia_y_reportes.test.ts` › «borra los reportes personales de esa persona en ese equipo…» |
+| AC-29 | Cumple · pendiente de validación en real | `store.rs` › `an_ai_usage_travels_with_an_unsynced_block_and_apart_once_synced`; `engine.test.ts` › «la etiqueta de IA viaja con un bloque sin subir…»; `ia_y_reportes.test.ts` › «etiquetar la IA»; `AiSection.test.tsx` › «etiquetar la IA en Mi día» |
+| AC-30 | Cumple · pendiente de validación en real | `check:i18n`; `server-messages.test.ts`; `report_validator.test.ts` › «los mensajes llevan el idioma…». En real: un reporte con la app en inglés |
+| AC-31 | Pendiente de validación | Las pantallas están en la galería (`/dev/galeria`, sección «Reportes (F4)») y usan la capa de teclado global; falta revisarlas en los tres anchos y en tema claro y oscuro |
+
+## Supuestos tomados al implementar
+
+1. `get_report_facts` devuelve también `period_from` y `period_to`: la app y la Edge Function los necesitan para la caché y el validador.
+2. `save_report` recibe `p_facts_hash` y rechaza el guardado si los datos cambiaron mientras se generaba (código 40001): así el texto de la IA siempre corresponde a las cifras guardadas.
+3. «Esta semana» va de lunes a domingo aunque el domingo no haya llegado; los días sin datos suman 0.
+4. `ai_tool` se normaliza en minúsculas y sin espacios ni signos (`LM Studio` → `lmstudio`) antes de compararlo con la lista cerrada.
+5. `data_until` personal es el fin del último bloque sincronizado, sin pasar del final del periodo; si no hay bloques, queda vacío.
+6. En `ai-trial`, cualquier respuesta del proveedor distinta de 2xx (también 400 o 401) cuenta como fallo del proveedor y devuelve el cupo. Si la primera respuesta llegó y el reintento falla por el proveedor, sale la plantilla y el cupo se gasta. Un fallo al guardar no devuelve el cupo.
+7. El aviso de que los hechos van a DeepSeek se muestra siempre bajo el modo Gratis, no solo antes del primer reporte.
+8. El script de AC-13b usa el proveedor de la persona y no el modo Gratis, que solo permite 5 reportes al día. El de AC-15 prueba el candado con una cuenta (una sola petición pasa); los cupos de equipo y global usan el mismo candado.
+9. Corrección de seguridad de F2 y F3 dentro de esta migración: Supabase concede `EXECUTE` a `authenticated` en toda función nueva, y las funciones internas (`write_audit`, `log_task_event`, `ensure_project_member` y otras) se podían llamar directamente. Ahora están revocadas, y una prueba fija la lista exacta de funciones que puede ejecutar una sesión. El doble de PGlite imita ese comportamiento de Supabase.
+10. La nube simulada genera en modo Gratis con la plantilla (sin IA), para usar la interfaz sin red.
+11. Se borró `PendingPage`: solo la usaba `/reportes`.
 
 ## Cómo se comprueba
 Puerta G4 de `docs/PLAN.md` más:

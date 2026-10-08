@@ -242,7 +242,7 @@ Lo de arriba es el plan original y sigue vigente. Esta sección añade lo acorda
 | **F1 · Sensor y *Mi día*** | **Hecha. Spec aprobada el 5 oct** | **G1 pasa** (evidencia en `docs/spikes/F1-medicion-app-real.md`) |
 | **F2 · Cuentas, equipos y sincronización** | **Hecha. Spec aprobada el 7 oct** (ADR-0007 a ADR-0013) | **G2 pasa** (pruebas reales del 6 y 7 oct, estado en la spec) |
 | **F3 · Proyectos y tareas** | **Hecha. Spec aprobada el 8 oct** (ADR-0014 a ADR-0021) | **G3 pasa** (prueba real del usuario el 8 oct) |
-| F4 · IA y reportes | Spec en borrador (`docs/specs/F4-ia-y-reportes.md`, ADR-0022) | — |
+| F4 · IA y reportes | Implementada (rama `feat/f4-ia-y-reportes`). Spec aprobada el 8 oct (ADR-0022); estado por criterio en la spec | G4 pendiente: validación real en `docs/VALIDACION.md` |
 | F5 y F6 | Por empezar | — |
 
 Funcionalidades antes de la entrega (`docs/FUNCIONALIDADES.md`): **86**.
