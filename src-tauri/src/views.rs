@@ -5,7 +5,7 @@ use crate::classifier::Category;
 use crate::store::{BlockRow, EntrySource, TimeEntry};
 use chrono::{DateTime, Duration, NaiveDate, SecondsFormat, TimeZone, Utc};
 use serde::Serialize;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 const ALL_CATEGORIES: [Category; 7] = [
   Category::Productive,
@@ -36,6 +36,8 @@ pub struct BlockView {
   pub ai_tool: Option<String>,
   /// Dominio del sitio (solo navegadores, ADR-0009).
   pub domain: Option<String>,
+  /// Tipo de uso de IA (IA-04): code, writing, analysis u other.
+  pub ai_usage: Option<String>,
 }
 
 #[derive(Debug, Serialize, PartialEq, Eq)]
@@ -123,11 +125,12 @@ fn add_totals(totals: &mut BTreeMap<&'static str, i64>, blocks: &[BlockRow], sta
   }
 }
 
-/// `blocks` trae el título ya descifrado (o `None`).
+/// `blocks` trae el título ya descifrado (o `None`); `usages`, las etiquetas de IA por id de bloque.
 pub fn build_day_view(
   date: NaiveDate,
   bounds: (DateTime<Utc>, DateTime<Utc>),
   blocks: Vec<(BlockRow, Option<String>)>,
+  usages: &HashMap<String, String>,
 ) -> DayView {
   let (start, end) = bounds;
   let rows: Vec<BlockRow> = blocks.iter().map(|(b, _)| b.clone()).collect();
@@ -142,7 +145,6 @@ pub fn build_day_view(
       work.push((s, e));
     }
     views.push(BlockView {
-      id: b.id,
       started_at: iso(s),
       ended_at: iso(e),
       app_name: b.app_name,
@@ -150,6 +152,8 @@ pub fn build_day_view(
       category: b.category,
       ai_tool: b.ai_tool,
       domain: b.domain,
+      ai_usage: usages.get(&b.id).cloned(),
+      id: b.id,
     });
   }
 
@@ -229,7 +233,7 @@ mod tests {
       (row("c", (5, 9, 0), (5, 9, 30), Category::Ai), None),
       (row("d", (5, 9, 30), (5, 10, 0), Category::Paused), None),
     ];
-    let v = build_day_view(date, bounds, blocks);
+    let v = build_day_view(date, bounds, blocks, &HashMap::new());
     assert_eq!(v.totals["productive"], 7200);
     assert_eq!(v.totals["ai"], 1800);
     assert_eq!(v.totals["idle"], 3600);
@@ -243,7 +247,7 @@ mod tests {
   #[test]
   fn empty_day_has_no_workday() {
     let date = parse_date("2026-10-05").unwrap();
-    let v = build_day_view(date, day_bounds(date, &bogota()).unwrap(), vec![]);
+    let v = build_day_view(date, day_bounds(date, &bogota()).unwrap(), vec![], &HashMap::new());
     assert_eq!((v.workday_start, v.workday_end), (None, None));
     assert!(v.totals.values().all(|s| *s == 0));
   }
@@ -257,7 +261,7 @@ mod tests {
     assert_eq!(range.days[1].totals["productive"], 7200);
 
     let date = parse_date("2026-10-05").unwrap();
-    let v = build_day_view(date, day_bounds(date, &bogota()).unwrap(), vec![(blocks[0].clone(), None)]);
+    let v = build_day_view(date, day_bounds(date, &bogota()).unwrap(), vec![(blocks[0].clone(), None)], &HashMap::new());
     assert_eq!(v.blocks[0].ended_at, "2026-10-06T05:00:00Z"); // recortado al fin del día
     assert_eq!(v.totals["productive"], 3600);
   }
@@ -273,7 +277,7 @@ mod tests {
   #[test]
   fn json_is_camel_case_as_the_contract_expects() {
     let date = parse_date("2026-10-05").unwrap();
-    let v = build_day_view(date, day_bounds(date, &bogota()).unwrap(), vec![]);
+    let v = build_day_view(date, day_bounds(date, &bogota()).unwrap(), vec![], &HashMap::new());
     let json = serde_json::to_value(&v).unwrap();
     assert!(json.get("workdayStart").is_some() && json.get("workday_start").is_none());
     assert_eq!(json["totals"]["productive"], 0);
