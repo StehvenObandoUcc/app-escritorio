@@ -37,7 +37,6 @@ async function recentApps(bridge: Bridge): Promise<AppCandidate[]> {
     .map(([process]) => ({ process, label: label.get(process) ?? displayAppName(process), group: 'recent' as const }));
 }
 
-const describe = errorMessage;
 
 /** Ajustes locales de este equipo: umbral de inactividad y apps ocultas (F1). */
 export function AjustesPage({ bridge }: { bridge: Bridge }) {
@@ -64,8 +63,9 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
         setHidden(s.hiddenApps);
       })
       .catch((cause: unknown) => {
-        if (!cancelled) setLoadError(describe(cause));
+        if (!cancelled) setLoadError(errorMessage(cause));
       });
+    // Las tres listas siguientes son ayudas opcionales: si fallan, el selector funciona igual y se escribe a mano.
     recentApps(bridge)
       .then((apps) => !cancelled && setRecent(apps))
       .catch(() => {});
@@ -107,6 +107,7 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
     const n = Number(minutes);
     if (!Number.isInteger(n) || n < IDLE_MINUTES_MIN || n > IDLE_MINUTES_MAX) {
       setFormError(t('settings.idleError', { min: IDLE_MINUTES_MIN, max: IDLE_MINUTES_MAX }));
+      document.querySelector<HTMLInputElement>('input[name="idleMinutes"]')?.focus();
       return;
     }
     setFormError(null);
@@ -117,7 +118,7 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
       setHidden(next.hiddenApps);
       setNotice(t('common.saved'));
     } catch (cause) {
-      setFormError(describe(cause));
+      setFormError(errorMessage(cause));
     }
   };
 
@@ -144,6 +145,7 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
           <form onSubmit={submit} className="flex max-w-prose flex-col gap-4" noValidate>
             <Heading level={2}>{t('settings.tracking')}</Heading>
             <FormField
+              name="idleMinutes"
               label={t('settings.idleMinutes')}
               type="number"
               inputMode="numeric"

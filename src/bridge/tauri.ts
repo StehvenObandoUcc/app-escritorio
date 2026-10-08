@@ -86,5 +86,8 @@ export function createTauriBridge(): Bridge {
       await invoke('tasks_cache_put', { json });
     },
     tasksCacheGet: async () => z.string().nullable().parse(await invoke('tasks_cache_get')),
+    openExternal: async (url) => {
+      await invoke('open_external', { url });
+    },
   };
 }

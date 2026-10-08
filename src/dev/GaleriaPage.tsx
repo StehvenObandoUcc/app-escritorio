@@ -36,7 +36,9 @@ import {
   ReviewTemplateEditor,
   TaskBoard,
   TaskList,
-  TaskPanel,
+  TaskDetails,
+  TaskReview,
+  TaskSidebar,
   TimeEntryList,
 } from '@/ui/organisms';
 import { AuthLayout, PageLayout } from '@/ui/templates';
@@ -233,33 +235,51 @@ export function GaleriaPage() {
         <TaskBoard {...TASK_VIEW} />
         <TaskForm people={PEOPLE} manage isNew submitLabel="Crear tarea" onSubmit={async () => {}} onCancel={() => {}} />
         <EstimateInput minutes={960} onChange={() => {}} />
-        <TaskPanel
-          task={SAMPLE_TASKS[1]!}
-          project={SAMPLE_PROJECT}
-          subtasks={[SAMPLE_TASKS[3]!]}
-          parentTitle={null}
-          me={PEOPLE[0]!.value}
-          nameOf={TASK_VIEW.nameOf}
-          people={PEOPLE}
-          projectPeople={PEOPLE}
-          readOnly={false}
-          timer={{ running: false, onThis: false }}
-          history={null}
-          today="2026-10-08"
-          onLoadHistory={() => {}}
-          onEdit={async () => {}}
-          onStatus={() => {}}
-          onCollaborators={async () => {}}
-          onCriteria={async () => {}}
-          onAddSubtask={async () => {}}
-          onSubmitReview={async () => {}}
-          onDecide={async () => {}}
-          onTimer={() => {}}
-          onOpenEvidence={() => {}}
-          onOpenTask={() => {}}
-          onClose={() => {}}
-        />
-        <ReviewForm task={SAMPLE_TASKS[0]!} template={SAMPLE_PROJECT.reviewTemplate} reviewers={PEOPLE} onSubmit={async () => {}} onCancel={() => {}} />
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="flex flex-col gap-6 lg:col-span-2">
+            <TaskDetails
+              task={SAMPLE_TASKS[0]!}
+              subtasks={[SAMPLE_TASKS[3]!]}
+              isSubtask={false}
+              canEditCriteria
+              canAddSubtask
+              nameOf={TASK_VIEW.nameOf}
+              onCriteria={async () => {}}
+              onAddSubtask={() => {}}
+              onOpenTask={() => {}}
+            />
+            <TaskReview
+              task={SAMPLE_TASKS[1]!}
+              project={SAMPLE_PROJECT}
+              me={PEOPLE[0]!.value}
+              readOnly={false}
+              nameOf={TASK_VIEW.nameOf}
+              onDecide={async () => {}}
+              onOpenLink={() => {}}
+              onOpenEvidence={() => {}}
+            />
+          </div>
+          <Surface className="h-fit">
+            <TaskSidebar
+              task={{ ...SAMPLE_TASKS[0]!, assigneeId: null }}
+              project={SAMPLE_PROJECT}
+              me={PEOPLE[0]!.value}
+              isProjectMember
+              nameOf={TASK_VIEW.nameOf}
+              people={PEOPLE}
+              readOnly={false}
+              timer={{ running: false, onThis: false }}
+              onStatus={() => {}}
+              onTake={() => {}}
+              onSubmit={() => {}}
+              onComplete={() => {}}
+              onDelete={() => {}}
+              onCollaborators={async () => {}}
+              onTimer={() => {}}
+            />
+          </Surface>
+        </div>
+        <ReviewForm mode="complete" task={SAMPLE_TASKS[0]!} template={SAMPLE_PROJECT.reviewTemplate} reviewers={PEOPLE} onSubmit={async () => {}} onCancel={() => {}} />
         <ReviewTemplateEditor fields={SAMPLE_PROJECT.reviewTemplate} onSave={async () => {}} />
         <ProjectMemberList
           members={[

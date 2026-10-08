@@ -1,7 +1,10 @@
-import { useId, useState, type FormEvent } from 'react';
+import { useId, useState } from 'react';
 import { TASK_TYPES, type NewTaskExtras, type TaskInput } from '@/cloud/contract';
 import { t } from '@/i18n';
+import { forms } from '@/lib/forms';
+import { LIMITS } from '@/lib/limits';
 import { STATUS_LABEL, TYPE_LABEL } from '@/lib/tasks';
+import { useForm } from '@/lib/useForm';
 import { Button, Select, type SelectOption } from '@/ui/atoms';
 import { EstimateInput } from './EstimateInput';
 import { FormField } from './FormField';
@@ -18,16 +21,19 @@ export const EMPTY_TASK: TaskInput = {
   estimateMinutes: null,
 };
 
+const textarea = 'w-full rounded-md border bg-surface px-3 py-2 text-base text-fg';
+
 /**
- * Crear o editar una tarea (PT-03, ADR-0014). `people`: a quién se puede asignar (todo el equipo salvo
- * observadores si gestionas; solo tú si eres colaborador). `manage`: muestra apoyos, criterios y el permiso
- * del responsable. Al editar, los apoyos y criterios se cambian desde el panel de la tarea.
+ * Crear o editar una tarea o una subtarea (PT-03, ADR-0014): el mismo formulario para las dos (C6).
+ * `people`: a quién se puede asignar. `manage`: muestra apoyos, criterios y el permiso del responsable.
+ * Validación por campo (AC-42); Enter avanza, Ctrl+Enter guarda desde un área de texto y Esc cancela (AC-43).
  */
 export function TaskForm({
   initial = EMPTY_TASK,
   people,
   manage,
   isNew,
+  parentTitle,
   submitLabel,
   onSubmit,
   onCancel,
@@ -36,8 +42,9 @@ export function TaskForm({
   people: SelectOption[];
   manage: boolean;
   isNew: boolean;
+  /** Si es una subtarea, el título de su madre. */
+  parentTitle?: string | null;
   submitLabel: string;
-  /** Si rechaza, el mensaje del error se muestra en el formulario. */
   onSubmit: (input: TaskInput, extras: NewTaskExtras) => Promise<void>;
   onCancel: () => void;
 }) {
@@ -46,41 +53,45 @@ export function TaskForm({
   const [labels, setLabels] = useState(initial.labels.join(', '));
   const [criteria, setCriteria] = useState('');
   const [collaborators, setCollaborators] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const { ref, errors: err, formError, busy, submit, onKeyDown } = useForm(forms.task, onCancel);
   const set = <K extends keyof TaskInput>(key: K, value: TaskInput[K]) => setV((prev) => ({ ...prev, [key]: value }));
-  // Una tarea en revisión o hecha conserva su estado: a esos estados se llega con la revisión.
+  // Una tarea en revisión o hecha conserva su estado: a esos estados se llega con la entrega.
   const statuses = v.status === 'review' || v.status === 'done' ? [v.status, 'todo', 'doing'] : ['todo', 'doing'];
 
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!v.title.trim()) return setError(t('tasks.form.errorTitle'));
-    if (v.estimateMinutes !== null && !(v.estimateMinutes >= 1 && v.estimateMinutes <= 100_000)) return setError(t('tasks.form.errorEstimate'));
-    const tags = labels.split(',').map((l) => l.trim()).filter(Boolean);
-    if (tags.length > 10 || tags.some((l) => l.length > 30)) return setError(t('tasks.form.errorLabels'));
-    setBusy(true);
-    setError(null);
-    try {
-      await onSubmit(
-        { ...v, title: v.title.trim(), description: v.description.trim(), labels: tags },
-        { criteria: criteria.split('\n').map((c) => c.trim()).filter(Boolean), collaborators },
-      );
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
-    } finally {
-      setBusy(false);
-    }
-  };
-
   return (
-    <form onSubmit={submit} className="flex flex-col gap-3" noValidate>
+    <form
+      ref={ref}
+      onKeyDown={onKeyDown}
+      onSubmit={(e) =>
+        void submit(
+          { title: v.title, description: v.description, labels, estimateMinutes: v.estimateMinutes, criteria },
+          (data) =>
+            onSubmit(
+              { ...v, title: data.title, description: data.description.trim(), labels: data.labels, estimateMinutes: data.estimateMinutes },
+              { criteria: data.criteria, collaborators },
+            ),
+          e,
+        )
+      }
+      className="flex flex-col gap-4"
+      noValidate
+    >
+      {parentTitle && <p className="text-sm text-fg-muted">{t('tasks.subtaskOf', { title: parentTitle })}</p>}
       <div className="flex flex-wrap items-start gap-3">
         <div className="min-w-48 grow-2 basis-0">
-          <FormField label={t('tasks.form.title')} value={v.title} maxLength={200} onChange={(e) => set('title', e.target.value)} />
+          <FormField
+            name="title"
+            label={`${t('tasks.form.title')} *`}
+            value={v.title}
+            maxLength={LIMITS.taskTitle.max}
+            error={err.title}
+            autoFocus
+            onChange={(e) => set('title', e.target.value)}
+          />
         </div>
         <label className="flex min-w-32 flex-1 flex-col gap-1 text-sm font-medium text-fg">
           {t('tasks.form.type')}
-          <Select value={v.type} onChange={(e) => set('type', e.target.value as TaskInput['type'])} options={TASK_TYPES.map((k) => ({ value: k, label: TYPE_LABEL[k] }))} />
+          <Select name="type" value={v.type} onChange={(e) => set('type', e.target.value as TaskInput['type'])} options={TASK_TYPES.map((k) => ({ value: k, label: TYPE_LABEL[k] }))} />
         </label>
       </div>
       <div className="flex flex-col gap-1">
@@ -89,25 +100,25 @@ export function TaskForm({
         </label>
         <textarea
           id={`${id}-description`}
-          rows={3}
-          maxLength={5000}
+          name="description"
+          rows={4}
+          maxLength={LIMITS.taskDescription.max}
           value={v.description}
+          aria-invalid={Boolean(err.description) || undefined}
           onChange={(e) => set('description', e.target.value)}
-          className="w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-base text-fg"
+          className={`${textarea} ${err.description ? 'border-danger' : 'border-line-strong'}`}
         />
+        {err.description && <p className="text-sm text-danger">{err.description}</p>}
       </div>
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex min-w-40 flex-1 flex-col gap-1 text-sm font-medium text-fg">
           {t('tasks.form.assignee')}
-          <Select
-            value={v.assigneeId ?? ''}
-            onChange={(e) => set('assigneeId', e.target.value || null)}
-            options={[{ value: '', label: t('tasks.noAssignee') }, ...people]}
-          />
+          <Select name="assigneeId" value={v.assigneeId ?? ''} onChange={(e) => set('assigneeId', e.target.value || null)} options={[{ value: '', label: t('tasks.noAssignee') }, ...people]} />
         </label>
         <label className="flex min-w-32 flex-1 flex-col gap-1 text-sm font-medium text-fg">
           {t('tasks.form.status')}
           <Select
+            name="status"
             value={v.status}
             onChange={(e) => set('status', e.target.value as TaskInput['status'])}
             options={statuses.map((s) => ({ value: s, label: STATUS_LABEL[s as TaskInput['status']] }))}
@@ -116,7 +127,7 @@ export function TaskForm({
       </div>
       {manage && (
         <label className="flex items-center gap-2 text-sm text-fg">
-          <input type="checkbox" checked={v.assigneeCanManage} onChange={(e) => set('assigneeCanManage', e.target.checked)} />
+          <input type="checkbox" name="assigneeCanManage" checked={v.assigneeCanManage} onChange={(e) => set('assigneeCanManage', e.target.checked)} />
           {t('tasks.form.assigneeCanManage')}
         </label>
       )}
@@ -141,13 +152,20 @@ export function TaskForm({
       )}
       <div className="flex flex-wrap items-start gap-3">
         <div className="min-w-40 flex-1">
-          <FormField label={t('tasks.form.dueDate')} type="date" value={v.dueDate ?? ''} onChange={(e) => set('dueDate', e.target.value || null)} />
+          <FormField name="dueDate" label={t('tasks.form.dueDate')} type="date" value={v.dueDate ?? ''} onChange={(e) => set('dueDate', e.target.value || null)} />
         </div>
         <div className="min-w-48 flex-1">
-          <EstimateInput minutes={v.estimateMinutes} onChange={(m) => set('estimateMinutes', m)} />
+          <EstimateInput minutes={v.estimateMinutes} error={err.estimateMinutes} onChange={(m) => set('estimateMinutes', m)} />
         </div>
       </div>
-      <FormField label={t('tasks.form.labels')} hint={t('tasks.form.labelsHint')} value={labels} onChange={(e) => setLabels(e.target.value)} />
+      <FormField
+        name="labels"
+        label={t('tasks.form.labels')}
+        hint={t('tasks.form.labelsHint')}
+        error={err.labels}
+        value={labels}
+        onChange={(e) => setLabels(e.target.value)}
+      />
       {manage && isNew && (
         <div className="flex flex-col gap-1">
           <label htmlFor={`${id}-criteria`} className="text-sm font-medium text-fg">
@@ -155,26 +173,29 @@ export function TaskForm({
           </label>
           <textarea
             id={`${id}-criteria`}
+            name="criteria"
             rows={3}
             value={criteria}
+            aria-invalid={Boolean(err.criteria) || undefined}
             onChange={(e) => setCriteria(e.target.value)}
-            className="w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-base text-fg"
+            className={`${textarea} ${err.criteria ? 'border-danger' : 'border-line-strong'}`}
           />
-          <p className="text-sm text-fg-muted">{t('tasks.form.criteriaHint')}</p>
+          <p className={err.criteria ? 'text-sm text-danger' : 'text-sm text-fg-muted'}>{err.criteria ?? t('tasks.form.criteriaHint')}</p>
         </div>
       )}
-      {error && (
-        <p role="alert" className="text-sm text-danger">
-          {error}
+      {formError && (
+        <p role="alert" className="rounded-md bg-danger-soft p-3 text-sm text-danger">
+          {formError}
         </p>
       )}
-      <div className="flex flex-wrap gap-2">
-        <Button type="submit" variant="primary" size="sm" disabled={busy}>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button type="submit" variant="primary" disabled={busy}>
           {submitLabel}
         </Button>
-        <Button size="sm" variant="ghost" onClick={onCancel} disabled={busy}>
+        <Button variant="ghost" onClick={onCancel} disabled={busy}>
           {t('common.cancel')}
         </Button>
+        <span className="text-xs text-fg-muted">{t('forms.keysHint')}</span>
       </div>
     </form>
   );

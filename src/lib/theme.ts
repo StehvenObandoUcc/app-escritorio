@@ -22,14 +22,26 @@ export function visibleTheme(choice: ThemeChoice): 'light' | 'dark' {
   }
 }
 
+function apply(theme: ThemeChoice) {
+  const root = document.documentElement;
+  if (theme === 'system') root.removeAttribute('data-theme');
+  else root.setAttribute('data-theme', theme);
+}
+
+/**
+ * Aplica el tema guardado antes de montar React (C4, AC-46): si se esperara al primer efecto, la primera
+ * pintura saldría con el tema de Windows y luego cambiaría.
+ */
+export function applyStoredTheme() {
+  apply(read());
+}
+
 /** Preferencia de tema. Solo guarda una preferencia visual: nada sensible. */
 export function useTheme() {
   const [theme, setTheme] = useState<ThemeChoice>(read);
 
   useEffect(() => {
-    const root = document.documentElement;
-    if (theme === 'system') root.removeAttribute('data-theme');
-    else root.setAttribute('data-theme', theme);
+    apply(theme);
     try {
       localStorage.setItem(KEY, theme);
     } catch {

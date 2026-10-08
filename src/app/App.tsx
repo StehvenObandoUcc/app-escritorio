@@ -14,6 +14,7 @@ import { PrivacidadPage } from '@/pages/equipo/PrivacidadPage';
 import { MiDiaPage } from '@/pages/mi-dia/MiDiaPage';
 import { PendingPage } from '@/pages/PendingPage';
 import { ProyectoPage } from '@/pages/proyectos/ProyectoPage';
+import { TareaPage } from '@/pages/proyectos/TareaPage';
 import { ProyectosPage } from '@/pages/proyectos/ProyectosPage';
 import { MisTareasPage } from '@/pages/tareas/MisTareasPage';
 import { Select } from '@/ui/atoms';
@@ -42,14 +43,16 @@ function NavFooter() {
   return (
     <div className="flex flex-col items-center gap-3 lg:items-stretch">
       {teams.length > 1 && activeTeam && (
-        <Select
-          size="sm"
-          aria-label={t('nav.activeTeam')}
-          className="hidden lg:block"
-          value={activeTeam.id}
-          onChange={(e) => selectTeam(e.target.value)}
-          options={teams.map((x) => ({ value: x.id, label: x.name }))}
-        />
+        <div className="hidden lg:block">
+          <Select
+            size="sm"
+            aria-label={t('nav.activeTeam')}
+            className="w-full"
+            value={activeTeam.id}
+            onChange={(e) => selectTeam(e.target.value)}
+            options={teams.map((x) => ({ value: x.id, label: x.name }))}
+          />
+        </div>
       )}
       <SyncStatus phase={sync.phase} message={sync.message} lastSyncedAt={sync.lastSyncedAt} compact />
       <ThemeToggle theme={theme} onCycle={cycle} />
@@ -83,6 +86,7 @@ function Gate() {
         <Route path="/tareas" element={<MisTareasPage />} />
         <Route path="/proyectos" element={<ProyectosPage />} />
         <Route path="/proyectos/:id" element={<ProyectoPage />} />
+        <Route path="/proyectos/:id/tareas/:tarea" element={<TareaPage />} />
         <Route path="/equipo" element={<EquipoPage />} />
         <Route path="/equipo/privacidad" element={<PrivacidadPage />} />
         <Route path="/reportes" element={<PendingPage title={t('nav.reports')} phase="F4" what={t('app.reportsPending')} />} />

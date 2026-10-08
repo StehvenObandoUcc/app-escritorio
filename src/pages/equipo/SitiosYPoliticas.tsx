@@ -1,4 +1,5 @@
 import { errorMessage, t } from '@/i18n';
+import { LIMITS } from '@/lib/limits';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Trash2 } from 'lucide-react';
 import { useMemo, useState, type FormEvent } from 'react';
@@ -10,7 +11,6 @@ import { formatShortDuration } from '@/lib/time';
 import { Button, Heading, ProgressBar, Select, Surface } from '@/ui/atoms';
 import { FormField, SegmentedControl } from '@/ui/molecules';
 
-const describe = errorMessage;
 
 /** Lo que se escribe como sitio: se acepta una URL y se queda solo el dominio. */
 export function toDomain(input: string): string | null {
@@ -57,13 +57,14 @@ export function SitiosYPoliticas({ team }: { team: MyTeam }) {
     queryFn: () => cloud.teamDomainSummary(team.id, period.from, period.to),
   });
 
+  const [domainError, setDomainError] = useState<string | null>(null);
   const run = async (action: () => Promise<void>) => {
     setBusy(true);
     setError(null);
     try {
       await action();
     } catch (cause) {
-      setError(describe(cause));
+      setError(errorMessage(cause));
     } finally {
       setBusy(false);
     }
@@ -73,9 +74,11 @@ export function SitiosYPoliticas({ team }: { team: MyTeam }) {
     e.preventDefault();
     const d = toDomain(domain);
     if (!d) {
-      setError(t('sites.domainError'));
+      setDomainError(t('sites.domainError'));
+      document.querySelector<HTMLInputElement>('input[name="domain"]')?.focus();
       return;
     }
+    setDomainError(null);
     void run(async () => {
       await cloud.addNotAllowedDomain(team.id, d);
       setDomain('');
@@ -169,7 +172,7 @@ export function SitiosYPoliticas({ team }: { team: MyTeam }) {
         </div>
         <form onSubmit={add} className="flex flex-wrap items-end gap-2" noValidate>
           <div className="min-w-0 flex-1">
-            <FormField label={t('sites.site')} placeholder="youtube.com" value={domain} onChange={(e) => setDomain(e.target.value)} />
+            <FormField name="domain" label={t('sites.site')} placeholder="youtube.com" maxLength={LIMITS.links.length} value={domain} error={domainError ?? undefined} onChange={(e) => setDomain(e.target.value)} />
           </div>
           <Button type="submit" disabled={busy}>
             {t('sites.mark')}
@@ -220,7 +223,7 @@ export function SitiosYPoliticas({ team }: { team: MyTeam }) {
           </p>
         ) : usage.error ? (
           <p role="alert" className="text-sm text-danger">
-            {describe(usage.error)}
+            {errorMessage(usage.error)}
           </p>
         ) : byPerson.length === 0 ? (
           <p className="text-sm text-fg-muted">{t('sites.noUsage')}</p>

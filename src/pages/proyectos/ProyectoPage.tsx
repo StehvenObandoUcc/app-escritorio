@@ -1,48 +1,54 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Archive, ArchiveRestore, ArrowLeft, Plus } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Archive, ArchiveRestore, ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { useParams, useSearchParams } from 'react-router';
-import { useSession } from '@/app/session';
-import type { Member, ManualStatus, Project, ProjectMember, Task } from '@/cloud/contract';
+import { useNavigate, useParams } from 'react-router';
+import { useAction } from '@/app/useAction';
+import type { Project, ProjectMember, Task, TaskStatus } from '@/cloud/contract';
 import { errorMessage, t } from '@/i18n';
-import { allLabels, canChangeStatus, canManageProject, canReview, NO_FILTER, PROJECT_ROLE_LABEL, taskTree, type TaskFilter } from '@/lib/tasks';
+import { fieldErrors, forms } from '@/lib/forms';
+import { LIMITS } from '@/lib/limits';
+import { allLabels, canChangeStatus, canManageProject, canReview, NO_FILTER, PROJECT_ROLE_LABEL, statusAction, taskTree, type TaskFilter } from '@/lib/tasks';
 import { localDate } from '@/lib/time';
-import { Badge, Button, Heading, Surface } from '@/ui/atoms';
+import { Badge, Button, Heading, Input, Surface } from '@/ui/atoms';
 import { ConfirmDialog, EmptyState, ProjectProgress, SegmentedControl, TaskFilters, TaskForm, Toast } from '@/ui/molecules';
-import { ProjectMemberList, ReviewTemplateEditor, TaskBoard, TaskList, TaskPanel } from '@/ui/organisms';
+import { ProjectMemberList, ReviewTemplateEditor, TaskBoard, TaskList } from '@/ui/organisms';
 import { PageLayout } from '@/ui/templates';
 import { noTeamState, OfflineNote } from './ProyectosPage';
-import { useWork } from './useWork';
+import { useProject } from './useProject';
 
 type Tab = 'board' | 'list' | 'reviews' | 'members' | 'settings';
 const DAYS_30 = 30 * 24 * 3600 * 1000;
 
-/** Un proyecto (D-14): la selección vive en la URL (`/proyectos/:id?tarea=…`), así volver a él lo muestra a él (B1). */
-export function ProyectoPage() {
-  const { id = '' } = useParams();
-  const session = useSession();
-  const { cloud, bridge, user, activeTeam, sync } = session;
-  const data = useWork(cloud, bridge, activeTeam?.id ?? null, sync.lastSyncedAt);
-  if (!user) return null;
-  const back = (
-    <a href="#/proyectos" className="inline-flex items-center gap-1 text-sm text-fg-muted hover:text-fg">
+export const taskPath = (projectId: string, taskId: string, action?: 'enviar' | 'completar') =>
+  `/proyectos/${projectId}/tareas/${taskId}${action ? `?accion=${action}` : ''}`;
+
+export function BackLink({ href, label }: { href: string; label: string }) {
+  return (
+    <a href={href} className="inline-flex items-center gap-1 rounded-xs text-sm text-fg-muted hover:text-fg">
       <ArrowLeft size={16} aria-hidden="true" />
-      {t('projects.back')}
+      {label}
     </a>
   );
-  const blocked = noTeamState(activeTeam?.role ?? null);
-  const project = data.data?.work.projects.find((p) => p.id === id);
-  if (blocked || data.isError || (!data.isPending && !project)) {
+}
+
+/** Un proyecto (D-14): la selección vive en la URL, así volver a él lo muestra a él (B1). */
+export function ProyectoPage() {
+  const { id = '' } = useParams();
+  const ctx = useProject(id);
+  if (!ctx.user) return null;
+  const back = <BackLink href="#/proyectos" label={t('projects.back')} />;
+  const blocked = noTeamState(ctx.activeTeam?.role ?? null);
+  if (blocked || ctx.loadError || (!ctx.data.isPending && !ctx.project)) {
     return (
       <PageLayout title={t('projects.title')} actions={back}>
         <EmptyState
-          title={blocked?.title ?? (data.isError ? t('projects.loadError') : t('projects.notFound'))}
-          description={blocked?.description ?? (data.isError ? t('projects.loadErrorHint', { error: errorMessage(data.error) }) : t('projects.notFoundHint'))}
+          title={blocked?.title ?? (ctx.loadError ? t('projects.loadError') : t('projects.notFound'))}
+          description={blocked?.description ?? (ctx.loadError ? t('projects.loadErrorHint', { error: ctx.loadError }) : t('projects.notFoundHint'))}
         />
       </PageLayout>
     );
   }
-  if (!project || !data.data) {
+  if (!ctx.project) {
     return (
       <PageLayout title={t('projects.title')} actions={back}>
         <p role="status" className="text-fg-muted">
@@ -51,83 +57,42 @@ export function ProyectoPage() {
       </PageLayout>
     );
   }
-  const { work, offline } = data.data;
-  return (
-    <ProjectView
-      key={project.id}
-      project={project}
-      tasks={work.tasks.filter((x) => x.projectId === project.id)}
-      members={work.members[project.id] ?? []}
-      offline={offline}
-      savedAt={work.savedAt}
-      back={back}
-      refresh={data.refresh}
-    />
-  );
+  return <ProjectView key={ctx.project.id} ctx={ctx} project={ctx.project} back={back} />;
 }
 
-function ProjectView({
-  project,
-  tasks,
-  members,
-  offline,
-  savedAt,
-  back,
-  refresh,
-}: {
-  project: Project;
-  tasks: Task[];
-  members: ProjectMember[];
-  offline: boolean;
-  savedAt: string;
-  back: React.ReactNode;
-  refresh: () => Promise<void>;
-}) {
-  const { cloud, bridge, user, activeTeam, syncNow } = useSession();
-  const queryClient = useQueryClient();
-  const me = user?.id ?? '';
-  const [params, setParams] = useSearchParams();
+type Ctx = ReturnType<typeof useProject>;
+
+function ProjectView({ ctx, project, back }: { ctx: Ctx; project: Project; back: React.ReactNode }) {
+  const { cloud, me, tasks, members, offline, nameOf, projectPeople, teamPeople, assignable, activeTeam } = ctx;
+  const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('board');
   const [filter, setFilter] = useState<TaskFilter>(NO_FILTER);
   const [creating, setCreating] = useState(false);
-  const [confirmArchive, setConfirmArchive] = useState(false);
+  const [dialog, setDialog] = useState<'archive' | 'delete' | null>(null);
+  const [confirmName, setConfirmName] = useState('');
   const [toast, setToast] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [historyFor, setHistoryFor] = useState<string | null>(null);
+  const action = useAction();
   const writable = !offline && !project.archivedAt;
   const manager = canManageProject(project);
+  const teamManager = project.myRole === 'manager';
   const today = localDate();
 
-  // Personas: quien gestiona asigna a cualquiera del equipo que no sea observador (se añade al proyecto solo, AC-21).
-  const team = useQuery({ queryKey: ['members', activeTeam?.id], enabled: manager && !offline, queryFn: () => cloud.members(activeTeam!.id) });
-  const memberName = new Map(members.map((m) => [m.userId, m.displayName ?? t('common.noName')]));
-  for (const m of team.data ?? []) if (!memberName.has(m.userId)) memberName.set(m.userId, m.displayName ?? t('common.noName'));
-  const nameOf = (uid: string | null) => (uid ? (memberName.get(uid) ?? t('common.exMember')) : null);
-  const projectPeople = members.map((m) => ({ value: m.userId, label: memberName.get(m.userId) ?? '' }));
-  const teamPeople = (team.data ?? []).filter((m: Member) => m.role !== 'viewer').map((m) => ({ value: m.userId, label: m.displayName ?? t('common.noName') }));
-  const people = manager ? (teamPeople.length ? teamPeople : projectPeople) : projectPeople.filter((o) => o.value === me);
-
-  // B6: el estado del temporizador se vuelve a pedir al enfocar la ventana y cada 15 s.
-  const status = useQuery({ queryKey: ['sensor-status'], queryFn: () => bridge.sensorStatus(), refetchInterval: 15_000, refetchOnWindowFocus: true });
-  const history = useQuery({ queryKey: ['history', historyFor], enabled: historyFor !== null, queryFn: () => cloud.taskHistory(historyFor!) });
-
-  const openId = params.get('tarea');
-  const open = tasks.find((x) => x.id === openId) ?? null;
-  const openTask = (taskId: string | null) => setParams(taskId ? { tarea: taskId } : {}, { replace: true });
-
-  const act = async (action: () => Promise<unknown>, done?: string) => {
-    setError(null);
-    try {
-      await action();
-      await refresh();
-      if (historyFor) await queryClient.invalidateQueries({ queryKey: ['history', historyFor] });
-      if (done) setToast(done);
-    } catch (cause) {
-      setError(errorMessage(cause));
-      throw cause;
-    }
+  const act = async (run: () => Promise<unknown>, done?: string) => {
+    const ok = await action.run(async () => {
+      await run();
+      await ctx.refresh();
+    });
+    if (ok && done) setToast(done);
+    return ok;
   };
-  const quiet = (action: () => Promise<unknown>) => void act(action).catch(() => {});
+
+  // AC-45: el selector ofrece los 4 estados; En revisión y Hecha llevan al formulario de entrega.
+  const changeStatus = (task: Task, status: TaskStatus) => {
+    const next = statusAction(project, task, me, status);
+    if (next === 'set') void act(() => cloud.setTaskStatus(task.id, status as 'todo' | 'doing'));
+    else if (next === 'forbidden') action.setError(t('tasks.statusForbidden'));
+    else navigate(taskPath(project.id, task.id, next === 'submit' ? 'enviar' : 'completar'));
+  };
 
   const tree = taskTree(tasks, filter, me);
   const viewProps = {
@@ -135,25 +100,10 @@ function ProjectView({
     nameOf,
     today,
     canChangeStatus: (x: Task) => writable && canChangeStatus(project, x, me),
-    onStatusChange: (x: Task, s: ManualStatus) => quiet(() => cloud.setTaskStatus(x.id, s)),
-    onOpen: (x: Task) => openTask(x.id),
+    onStatusChange: changeStatus,
+    onOpen: (x: Task) => navigate(taskPath(project.id, x.id)),
   };
   const reviews = tasks.filter((x) => x.pendingReview);
-
-  // TA-05 y B13: el temporizador va sobre la tarea; si corre en otra, se detiene y empieza en esta.
-  const toggleTimer = async (task: Task) => {
-    const timer = status.data?.timer;
-    const onThis = timer?.running && timer.taskId === task.id;
-    try {
-      if (timer?.running) await bridge.timerStop();
-      if (!onThis) await bridge.timerStart(task.id);
-      else syncNow();
-      await queryClient.invalidateQueries({ queryKey: ['sensor-status'] });
-    } catch (cause) {
-      setError(errorMessage(cause));
-    }
-  };
-
   const tabs: { value: Tab; label: string }[] = [
     { value: 'board', label: t('projects.tabs.board') },
     { value: 'list', label: t('projects.tabs.list') },
@@ -161,13 +111,36 @@ function ProjectView({
     { value: 'members', label: t('projects.tabs.members') },
     ...(manager && !offline ? [{ value: 'settings' as Tab, label: t('projects.tabs.settings') }] : []),
   ];
+  const deleteCheck = fieldErrors(forms.deleteProject(project.name), { confirm: confirmName });
 
   return (
-    <PageLayout title={project.name} subtitle={activeTeam?.name} actions={back}>
-      {offline && <OfflineNote savedAt={savedAt} />}
-      {error && (
+    <PageLayout
+      title={project.name}
+      subtitle={activeTeam?.name}
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          {back}
+          {teamManager && !offline && (
+            <>
+              <Button
+                size="sm"
+                icon={project.archivedAt ? <ArchiveRestore size={16} aria-hidden="true" /> : <Archive size={16} aria-hidden="true" />}
+                onClick={() => (project.archivedAt ? void act(() => cloud.setProjectArchived(project.id, false), t('projects.unarchived')) : setDialog('archive'))}
+              >
+                {project.archivedAt ? t('projects.unarchive') : t('projects.archive')}
+              </Button>
+              <Button size="sm" variant="danger" icon={<Trash2 size={16} aria-hidden="true" />} onClick={() => setDialog('delete')}>
+                {t('projects.delete')}
+              </Button>
+            </>
+          )}
+        </div>
+      }
+    >
+      {offline && <OfflineNote savedAt={ctx.work?.savedAt ?? ''} />}
+      {action.error && (
         <p role="alert" className="rounded-md bg-danger-soft p-3 text-sm text-danger">
-          {error}
+          {action.error}
         </p>
       )}
       <Surface as="section" aria-label={t('projects.progressLabel')} className="flex flex-col gap-4">
@@ -179,39 +152,9 @@ function ProjectView({
         <ProjectProgress tasksDone={project.tasksDone} tasksTotal={project.tasksTotal} loggedSeconds={project.loggedSeconds} estimateMinutes={project.estimateMinutes} />
       </Surface>
 
-      {open && (
-        <TaskPanel
-          key={open.id}
-          task={open}
-          project={project}
-          subtasks={tasks.filter((x) => x.parentId === open.id)}
-          parentTitle={open.parentId ? (tasks.find((x) => x.id === open.parentId)?.title ?? null) : null}
-          me={me}
-          nameOf={nameOf}
-          people={manager ? people : projectPeople}
-          projectPeople={projectPeople}
-          readOnly={offline}
-          timer={{ running: Boolean(status.data?.timer.running), onThis: status.data?.timer.taskId === open.id && Boolean(status.data?.timer.running) }}
-          history={historyFor === open.id ? (history.data ?? null) : null}
-          today={today}
-          onLoadHistory={() => setHistoryFor(open.id)}
-          onEdit={(input) => act(() => cloud.updateTask(open.id, input), t('common.saved'))}
-          onStatus={(s) => quiet(() => cloud.setTaskStatus(open.id, s))}
-          onCollaborators={(ids) => act(() => cloud.setTaskCollaborators(open.id, ids), t('common.saved'))}
-          onCriteria={(texts) => act(() => cloud.setTaskCriteria(open.id, texts), t('common.saved'))}
-          onAddSubtask={(input, extras) => act(() => cloud.createTask(project.id, input, extras), t('tasks.created'))}
-          onSubmitReview={(sub) => act(() => cloud.submitForReview(open, activeTeam!.id, sub), t('review.sent'))}
-          onDecide={(approve, comment) => act(() => cloud.reviewTask(open.pendingReview!.id, approve, comment), approve ? t('review.approved') : t('review.changesRequested'))}
-          onTimer={() => void toggleTimer(open)}
-          onOpenEvidence={(path) => void cloud.evidenceUrl(path).then((url) => window.open(url, '_blank', 'noopener'), (cause: unknown) => setError(errorMessage(cause)))}
-          onOpenTask={openTask}
-          onClose={() => openTask(null)}
-        />
-      )}
-
       <div className="flex flex-wrap items-center justify-between gap-3">
         <SegmentedControl label={t('projects.tabs.label')} options={tabs} value={tab} onChange={setTab} />
-        {writable && (tab === 'board' || tab === 'list') && (
+        {writable && (tab === 'board' || tab === 'list') && !creating && (
           <Button variant="primary" icon={<Plus size={16} aria-hidden="true" />} onClick={() => setCreating(true)}>
             {t('tasks.new')}
           </Button>
@@ -221,14 +164,16 @@ function ProjectView({
       {creating && (
         <Surface as="section" aria-label={t('tasks.new')}>
           <TaskForm
-            people={people}
+            people={assignable}
             manage={manager}
             isNew
             submitLabel={t('tasks.create')}
             onCancel={() => setCreating(false)}
             onSubmit={async (input, extras) => {
-              await act(() => cloud.createTask(project.id, input, extras), t('tasks.created'));
+              await cloud.createTask(project.id, input, extras);
+              await ctx.refresh();
               setCreating(false);
+              setToast(t('tasks.created'));
             }}
           />
         </Surface>
@@ -249,9 +194,9 @@ function ProjectView({
             <ul className="flex flex-col divide-y divide-line">
               {reviews.map((x) => (
                 <li key={x.id} className="flex flex-wrap items-center gap-3 py-3">
-                  <button type="button" onClick={() => openTask(x.id)} className="min-w-0 flex-1 truncate text-left font-medium text-fg hover:underline">
+                  <a href={`#${taskPath(project.id, x.id)}`} className="min-w-0 flex-1 truncate rounded-xs font-medium text-fg hover:underline">
                     {x.title}
-                  </button>
+                  </a>
                   <span className="text-sm text-fg-muted">{t('review.submittedByShort', { name: nameOf(x.pendingReview?.submittedBy ?? null) ?? t('common.exMember') })}</span>
                   {canReview(project, x, me) && x.pendingReview?.submittedBy !== me && <Badge tone="accent">{t('review.yourTurn')}</Badge>}
                 </li>
@@ -263,7 +208,7 @@ function ProjectView({
 
       {tab === 'members' && (
         <Surface as="section" aria-label={t('projects.tabs.members')}>
-          <MembersTab project={project} members={members} me={me} manage={manager && writable} candidates={teamPeople.filter((o) => !members.some((m) => m.userId === o.value))} act={act} />
+          <MembersTab ctx={ctx} project={project} members={members} manage={manager && writable} candidates={teamPeople.filter((o) => !members.some((m) => m.userId === o.value))} act={act} />
         </Surface>
       )}
 
@@ -271,58 +216,70 @@ function ProjectView({
         <Surface as="section" aria-label={t('projects.tabs.settings')} className="flex flex-col gap-4">
           <Heading level={2}>{t('projects.template.title')}</Heading>
           <p className="text-sm text-fg-muted">{t('projects.template.hint')}</p>
-          <ReviewTemplateEditor fields={project.reviewTemplate} onSave={(fields) => act(() => cloud.setReviewTemplate(project.id, fields), t('common.saved'))} />
-          {project.myRole === 'manager' && (
-            <div className="flex flex-col gap-2 border-t border-line pt-4">
-              <Heading level={2}>{project.archivedAt ? t('projects.unarchive') : t('projects.archive')}</Heading>
-              <p className="text-sm text-fg-muted">{project.archivedAt ? t('projects.unarchiveHint') : t('projects.archiveHint')}</p>
-              <div>
-                <Button
-                  variant={project.archivedAt ? 'secondary' : 'danger'}
-                  icon={project.archivedAt ? <ArchiveRestore size={16} aria-hidden="true" /> : <Archive size={16} aria-hidden="true" />}
-                  onClick={() => (project.archivedAt ? quiet(() => cloud.setProjectArchived(project.id, false)) : setConfirmArchive(true))}
-                >
-                  {project.archivedAt ? t('projects.unarchive') : t('projects.archive')}
-                </Button>
-              </div>
-            </div>
-          )}
+          <ReviewTemplateEditor fields={project.reviewTemplate} onSave={(fields) => act(() => cloud.setReviewTemplate(project.id, fields), t('common.saved')).then(() => {})} />
         </Surface>
       )}
 
       <ConfirmDialog
-        open={confirmArchive}
+        open={dialog === 'archive'}
         title={t('projects.archiveConfirmTitle', { name: project.name })}
         message={t('projects.archiveHint')}
         confirmLabel={t('projects.archive')}
-        danger
-        onCancel={() => setConfirmArchive(false)}
+        busy={action.busy}
+        onCancel={() => setDialog(null)}
         onConfirm={() => {
-          setConfirmArchive(false);
-          quiet(() => cloud.setProjectArchived(project.id, true));
+          setDialog(null);
+          void act(() => cloud.setProjectArchived(project.id, true), t('projects.archivedToast'));
         }}
       />
+      <ConfirmDialog
+        open={dialog === 'delete'}
+        title={t('projects.deleteConfirmTitle', { name: project.name })}
+        message={t('projects.deleteHint')}
+        confirmLabel={t('projects.delete')}
+        danger
+        busy={action.busy}
+        error={action.error}
+        confirmDisabled={Boolean(deleteCheck.errors)}
+        onCancel={() => {
+          setDialog(null);
+          setConfirmName('');
+        }}
+        onConfirm={() =>
+          void action
+            .run(async () => {
+              await cloud.deleteProject(project.id, confirmName.trim());
+              await ctx.refresh();
+            })
+            .then((ok) => ok && navigate('/proyectos'))
+        }
+      >
+        <label className="flex flex-col gap-1 text-sm font-medium text-fg">
+          {t('projects.deleteType', { name: project.name })}
+          <Input name="confirm" autoFocus maxLength={LIMITS.projectName.max} value={confirmName} onChange={(e) => setConfirmName(e.target.value)} />
+        </label>
+      </ConfirmDialog>
       <Toast message={toast} onDone={() => setToast(null)} />
     </PageLayout>
   );
 }
 
 function MembersTab({
+  ctx,
   project,
   members,
-  me,
   manage,
   candidates,
   act,
 }: {
+  ctx: Ctx;
   project: Project;
   members: ProjectMember[];
-  me: string;
   manage: boolean;
   candidates: { value: string; label: string }[];
-  act: (action: () => Promise<unknown>, done?: string) => Promise<void>;
+  act: (run: () => Promise<unknown>, done?: string) => Promise<boolean>;
 }) {
-  const { cloud } = useSession();
+  const { cloud, me } = ctx;
   // Fila 13 «P»: tiempo por persona en los últimos 30 días, solo para quien gestiona.
   const time = useQuery({
     queryKey: ['project-time', project.id],
@@ -332,6 +289,7 @@ function MembersTab({
       return cloud.projectTimeSummary(project.id, new Date(to.getTime() - DAYS_30).toISOString(), to.toISOString());
     },
   });
+  if (time.error) return <p role="alert" className="text-sm text-danger">{errorMessage(time.error)}</p>;
   return (
     <div className="flex flex-col gap-3">
       {time.data && <p className="text-sm text-fg-muted">{t('projects.members.timeHint')}</p>}
@@ -341,8 +299,8 @@ function MembersTab({
         canManage={manage}
         candidates={candidates}
         seconds={time.data ? new Map(time.data.map((r) => [r.userId, r.seconds])) : undefined}
-        onSetRole={(userId, role) => void act(() => cloud.setProjectMember(project.id, userId, role), t('common.saved')).catch(() => {})}
-        onRemove={(userId) => void act(() => cloud.removeProjectMember(project.id, userId), t('common.saved')).catch(() => {})}
+        onSetRole={(userId, role) => void act(() => cloud.setProjectMember(project.id, userId, role), t('common.saved'))}
+        onRemove={(userId) => void act(() => cloud.removeProjectMember(project.id, userId), t('common.saved'))}
       />
     </div>
   );

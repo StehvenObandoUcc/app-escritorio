@@ -145,6 +145,14 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
   const auth = client.auth;
   type Fn = keyof Database['public']['Functions'];
   const rpc = <F extends Fn>(fn: F, args?: Database['public']['Functions'][F]['Args']) => run(client.rpc(fn, args));
+  /** La revisión ya existe: los archivos se suben después y quedan ligados a ella. El tamaño lo toma la base de Storage. */
+  const uploadEvidence = async (task: { id: string; projectId: string }, teamId: string, reviewId: string, files: File[]) => {
+    for (const file of files) {
+      const path = `${teamId}/${task.projectId}/${task.id}/${crypto.randomUUID()}-${safeName(file.name)}`;
+      await run(client.storage.from(EVIDENCE_BUCKET).upload(path, file, { contentType: file.type }));
+      await rpc('add_task_attachment', { p_task: task.id, p_path: path, p_name: file.name, p_review: reviewId });
+    }
+  };
 
   const requireUser = async () => {
     const { data } = await auth.getSession();
@@ -456,13 +464,24 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
           p_criteria_met: sub.criteriaMet,
         }),
       );
-      // La revisión ya existe: los archivos se suben después y quedan ligados a ella.
-      for (const file of sub.files) {
-        const path = `${teamId}/${task.projectId}/${task.id}/${crypto.randomUUID()}-${safeName(file.name)}`;
-        await run(client.storage.from(EVIDENCE_BUCKET).upload(path, file));
-        await rpc('add_task_attachment', { p_task: task.id, p_path: path, p_name: file.name, p_size: file.size, p_review: reviewId });
-      }
+      await uploadEvidence(task, teamId, reviewId, sub.files);
       return reviewId;
+    },
+    completeTask: async (task, teamId, sub) => {
+      const reviewId = z.uuid().parse(
+        await rpc('complete_task', { p_task: task.id, p_answers: sub.answers, p_links: sub.links, p_criteria_met: sub.criteriaMet }),
+      );
+      await uploadEvidence(task, teamId, reviewId, sub.files);
+      return reviewId;
+    },
+    takeTask: async (taskId) => {
+      await rpc('take_task', { p_task: taskId });
+    },
+    deleteTask: async (taskId) => {
+      await rpc('delete_task', { p_task: taskId });
+    },
+    deleteProject: async (projectId, confirmName) => {
+      await rpc('delete_project', { p_project: projectId, p_confirm_name: confirmName });
     },
     reviewTask: async (reviewId, approve, comment) => {
       await rpc('review_task', { p_review: reviewId, p_approve: approve, p_comment: comment ?? undefined });

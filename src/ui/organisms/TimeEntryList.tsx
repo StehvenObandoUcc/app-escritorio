@@ -3,14 +3,13 @@ import { useState } from 'react';
 import type { TimeEntry } from '@/bridge/contract';
 import { formatDuration, formatHour, localDate, localDateTimeToIso } from '@/lib/time';
 import { Badge, Button } from '@/ui/atoms';
-import { TimeEntryForm, type TimeEntryValues } from '@/ui/molecules';
+import { ConfirmDialog, TimeEntryForm, type TimeEntryValues } from '@/ui/molecules';
 
 export interface TimeEntryListProps {
   entries: TimeEntry[];
   onUpdate: (id: string, start: string, end: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }
-
 
 const toValues = (e: TimeEntry): TimeEntryValues => ({
   date: localDate(new Date(e.startedAt)),
@@ -35,44 +34,44 @@ export function TimeEntryList({ entries, onUpdate, onDelete }: TimeEntryListProp
   };
 
   return (
-    <ul aria-label={t('entries.label')} className="divide-y divide-line">
-      {entries.map((entry) => {
-        const range = `${formatHour(entry.startedAt)}–${entry.endedAt ? formatHour(entry.endedAt) : t('entries.running')}`;
-        if (editing === entry.id) {
+    <>
+      <ConfirmDialog
+        open={confirming !== null}
+        title={t('entries.confirmDelete')}
+        message={t('entries.deleteHint')}
+        confirmLabel={t('entries.yesDelete')}
+        danger
+        error={deleteError}
+        onCancel={() => setConfirming(null)}
+        onConfirm={() => confirming && void remove(confirming)}
+      />
+      <ul aria-label={t('entries.label')} className="divide-y divide-line">
+        {entries.map((entry) => {
+          const range = `${formatHour(entry.startedAt)}–${entry.endedAt ? formatHour(entry.endedAt) : t('entries.running')}`;
+          if (editing === entry.id) {
+            return (
+              <li key={entry.id} className="px-4 py-3 md:px-5">
+                <TimeEntryForm
+                  initial={toValues(entry)}
+                  submitLabel={t('common.save')}
+                  onCancel={() => setEditing(null)}
+                  onSubmit={async (v) => {
+                    await onUpdate(entry.id, localDateTimeToIso(v.date, v.start), localDateTimeToIso(v.date, v.end));
+                    setEditing(null);
+                  }}
+                />
+              </li>
+            );
+          }
           return (
-            <li key={entry.id} className="px-4 py-3 md:px-5">
-              <TimeEntryForm
-                initial={toValues(entry)}
-                submitLabel={t('common.save')}
-                onCancel={() => setEditing(null)}
-                onSubmit={async (v) => {
-                  await onUpdate(entry.id, localDateTimeToIso(v.date, v.start), localDateTimeToIso(v.date, v.end));
-                  setEditing(null);
-                }}
-              />
-            </li>
-          );
-        }
-        return (
-          <li key={entry.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 md:px-5">
-            <span className="w-32 shrink-0 text-sm text-fg tabular-nums">{range}</span>
-            <span className="w-20 shrink-0 text-sm text-fg-muted tabular-nums">
-              {entry.endedAt ? formatDuration((Date.parse(entry.endedAt) - Date.parse(entry.startedAt)) / 1000) : '—'}
-            </span>
-            <Badge>{t(`entries.source.${entry.source}`)}</Badge>
-            <span className="flex min-w-0 flex-1 basis-48 flex-wrap items-center justify-end gap-2">
-              {entry.endedAt &&
-                (confirming === entry.id ? (
-                  <>
-                    <span className="text-sm text-fg">{t('entries.confirmDelete')}</span>
-                    <Button size="sm" variant="danger" onClick={() => remove(entry.id)}>
-                      {t('entries.yesDelete')}
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => setConfirming(null)}>
-                      {t('common.cancel')}
-                    </Button>
-                  </>
-                ) : (
+            <li key={entry.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 md:px-5">
+              <span className="w-32 shrink-0 text-sm text-fg tabular-nums">{range}</span>
+              <span className="w-20 shrink-0 text-sm text-fg-muted tabular-nums">
+                {entry.endedAt ? formatDuration((Date.parse(entry.endedAt) - Date.parse(entry.startedAt)) / 1000) : '—'}
+              </span>
+              <Badge>{t(`entries.source.${entry.source}`)}</Badge>
+              <span className="flex min-w-0 flex-1 basis-48 flex-wrap items-center justify-end gap-2">
+                {entry.endedAt && (
                   <>
                     <Button size="sm" variant="ghost" aria-label={t('entries.editOf', { range })} onClick={() => setEditing(entry.id)}>
                       {t('entries.edit')}
@@ -89,16 +88,12 @@ export function TimeEntryList({ entries, onUpdate, onDelete }: TimeEntryListProp
                       {t('entries.delete')}
                     </Button>
                   </>
-                ))}
-            </span>
-            {confirming === entry.id && deleteError && (
-              <p role="alert" className="basis-full text-sm text-danger">
-                {deleteError}
-              </p>
-            )}
-          </li>
-        );
-      })}
-    </ul>
+                )}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </>
   );
 }

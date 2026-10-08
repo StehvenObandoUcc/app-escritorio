@@ -1,19 +1,11 @@
-import { errorMessage, t } from '@/i18n';
 import { useState, type FormEvent } from 'react';
 import { useOptionalSession, type SessionValue } from '@/app/session';
+import { t } from '@/i18n';
+import { forms } from '@/lib/forms';
+import { LIMITS } from '@/lib/limits';
+import { useForm } from '@/lib/useForm';
 import { Avatar, Button, Heading, Surface } from '@/ui/atoms';
 import { FormField } from '@/ui/molecules';
-
-const describe = errorMessage;
-
-const validTimezone = (tz: string) => {
-  try {
-    new Intl.DateTimeFormat('es', { timeZone: tz });
-    return true;
-  } catch {
-    return false;
-  }
-};
 
 /** Perfil (CU-04) y cerrar sesión (CU-02). Sin proveedor de sesión (p. ej. en pruebas de F1) no se muestra. */
 export function PerfilSection() {
@@ -49,32 +41,25 @@ function PerfilForm({
 }) {
   const [name, setName] = useState(name0);
   const [tz, setTz] = useState(tz0);
-  const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const { ref, errors, formError, busy, submit: send, onKeyDown } = useForm(forms.profile);
 
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
+  const submit = (e: FormEvent) => {
     setNotice(null);
-    const clean = name.trim();
-    if (clean.length < 1 || clean.length > 80) return setError(t('profile.nameError'));
-    if (!validTimezone(tz.trim())) return setError(t('profile.timezoneError'));
-    setError(null);
-    setBusy(true);
-    try {
-      await session.cloud.saveProfile(clean, tz.trim());
-      await session.refresh();
-      setNotice(t('profile.saved'));
-    } catch (cause) {
-      setError(describe(cause));
-    } finally {
-      setBusy(false);
-    }
+    void send(
+      { name, timezone: tz },
+      async (data) => {
+        await session.cloud.saveProfile(data.name, data.timezone);
+        await session.refresh();
+        setNotice(t('profile.saved'));
+      },
+      e,
+    );
   };
 
   return (
     <Surface as="section" aria-label={t('profile.title')}>
-      <form onSubmit={submit} className="flex max-w-prose flex-col gap-4" noValidate>
+      <form ref={ref} onSubmit={submit} onKeyDown={onKeyDown} className="flex max-w-prose flex-col gap-4" noValidate>
         <div className="flex items-center gap-3">
           <Avatar name={name || email} />
           <div className="min-w-0">
@@ -82,16 +67,19 @@ function PerfilForm({
             <p className="truncate text-sm text-fg-muted">{email}</p>
           </div>
         </div>
-        <FormField label={t('profile.name')} value={name} onChange={(e) => setName(e.target.value)} hint={t('profile.nameHint')} />
+        <FormField name="name" label={t('profile.name')} maxLength={LIMITS.displayName.max} value={name} error={errors.name} onChange={(e) => setName(e.target.value)} hint={t('profile.nameHint')} />
         <FormField
+          name="timezone"
           label={t('profile.timezone')}
+          error={errors.timezone}
+          maxLength={64}
           value={tz}
           onChange={(e) => setTz(e.target.value)}
           hint={t('profile.timezoneHint')}
         />
-        {error && (
+        {formError && (
           <p role="alert" className="text-sm text-danger">
-            {error}
+            {formError}
           </p>
         )}
         {notice && (

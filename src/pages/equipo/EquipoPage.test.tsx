@@ -168,7 +168,7 @@ describe('Equipo (EQ-01 a EQ-08, PS-02)', () => {
     const list = await screen.findByRole('list', { name: 'Miembros del equipo' });
     await within(list).findByText('Caro');
     await userEvent.click(within(list).getByRole('button', { name: 'Expulsar' }));
-    const confirm = screen.getByRole('alertdialog', { name: 'Confirmar expulsión' });
+    const confirm = await screen.findByRole('dialog', { name: 'Confirmar expulsión' });
     expect(confirm).toHaveTextContent('Se borrará su actividad');
     expect(confirm).toHaveTextContent('Exmiembro');
     await userEvent.click(within(confirm).getByRole('button', { name: 'Expulsar' }));
@@ -194,8 +194,9 @@ describe('Equipo (EQ-01 a EQ-08, PS-02)', () => {
     renderWithSession(<EquipoPage />, { path: '/equipo', cloud });
     await userEvent.click(await screen.findByRole('tab', { name: 'General' }));
     await userEvent.click(await screen.findByRole('button', { name: 'Salir del equipo' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Sí, salir de Equipo A' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('al menos un owner');
+    const dialog = await screen.findByRole('dialog', { name: 'Salir del equipo' });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Sí, salir de Equipo A' }));
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('al menos un owner');
   });
 
   it('con dos equipos, cambiar el activo cambia los datos y el equipo de las filas nuevas (AC-11)', async () => {

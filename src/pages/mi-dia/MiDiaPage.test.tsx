@@ -113,16 +113,16 @@ describe('Mi día', () => {
       fill('Inicio', '10:00');
       fill('Fin', '09:00');
       await userEvent.click(screen.getByRole('button', { name: 'Guardar entrada' }));
-      expect(await screen.findByRole('alert')).toHaveTextContent('El fin debe ser posterior al inicio.');
+      expect(screen.getByLabelText('Fin')).toHaveAccessibleDescription('El fin debe ser posterior al inicio.');
+      expect(screen.getByLabelText('Fin')).toHaveFocus();
     });
 
     it('pide completar los campos antes de guardar', async () => {
       render(<MiDiaPage bridge={createMockBridge()} date={DATE} />);
       await screen.findByText('Sin entradas de tiempo');
       await userEvent.click(screen.getByRole('button', { name: 'Guardar entrada' }));
-      expect(await screen.findByRole('alert')).toHaveTextContent(
-        'Completa el día, el inicio y el fin.',
-      );
+      expect(screen.getByLabelText('Inicio')).toHaveAccessibleDescription('Este campo es obligatorio.');
+      expect(screen.getByLabelText('Inicio')).toHaveFocus();
     });
 
     it('edita una entrada', async () => {

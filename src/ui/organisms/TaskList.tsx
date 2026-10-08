@@ -1,6 +1,7 @@
 import { CornerDownRight } from 'lucide-react';
-import type { ManualStatus, Task } from '@/cloud/contract';
+import { TASK_STATUSES, type Task, type TaskStatus } from '@/cloud/contract';
 import { t } from '@/i18n';
+import { arrowNav, NAV_ITEM } from '@/lib/keyboard';
 import { STATUS_LABEL } from '@/lib/tasks';
 import { Badge, Select } from '@/ui/atoms';
 import { TaskMeta } from '@/ui/molecules';
@@ -13,25 +14,21 @@ export interface TaskViewProps {
   today: string;
   /** Si es false para una tarea, su estado se muestra sin selector. */
   canChangeStatus: (task: Task) => boolean;
-  onStatusChange: (task: Task, status: ManualStatus) => void;
+  /** «En revisión» y «Hecha» no se aplican aquí: la página abre el formulario que corresponde (AC-45). */
+  onStatusChange: (task: Task, status: TaskStatus) => void;
   onOpen: (task: Task) => void;
 }
 
-/**
- * Selector de estado si se puede cambiar; si no, una etiqueta. Solo ofrece «Por hacer» y «En curso»:
- * a «En revisión» se llega enviando la tarea y a «Hecha» aprobándola (ADR-0014).
- */
-export function TaskStatusControl({ task, editable, onChange }: { task: Task; editable: boolean; onChange: (s: ManualStatus) => void }) {
+/** Selector con los 4 estados si se puede cambiar; si no, una etiqueta. */
+export function TaskStatusControl({ task, editable, onChange }: { task: Task; editable: boolean; onChange: (s: TaskStatus) => void }) {
   if (!editable) return <Badge tone={task.status === 'done' ? 'accent' : 'neutral'}>{STATUS_LABEL[task.status]}</Badge>;
-  const manual: ManualStatus[] = ['todo', 'doing'];
-  const options = (manual.includes(task.status as ManualStatus) ? manual : [task.status, ...manual]).map((s) => ({ value: s, label: STATUS_LABEL[s] }));
   return (
     <Select
       size="sm"
       aria-label={t('tasks.statusOf', { title: task.title })}
       value={task.status}
-      onChange={(e) => onChange(e.target.value as ManualStatus)}
-      options={options}
+      onChange={(e) => onChange(e.target.value as TaskStatus)}
+      options={TASK_STATUSES.map((s) => ({ value: s, label: STATUS_LABEL[s] }))}
     />
   );
 }
@@ -43,8 +40,9 @@ function Row({ task, sub, props }: { task: Task; sub: boolean; props: TaskViewPr
       <div className="min-w-0 flex-1">
         <button
           type="button"
+          {...{ [NAV_ITEM]: '' }}
           onClick={() => props.onOpen(task)}
-          className={`max-w-full truncate text-left font-medium hover:underline ${task.status === 'done' ? 'text-fg-muted line-through' : 'text-fg'}`}
+          className={`max-w-full truncate rounded-xs text-left font-medium hover:underline ${task.status === 'done' ? 'text-fg-muted line-through' : 'text-fg'}`}
         >
           {task.title}
         </button>
@@ -55,10 +53,10 @@ function Row({ task, sub, props }: { task: Task; sub: boolean; props: TaskViewPr
   );
 }
 
-/** Lista de tareas (PT-05) con sus subtareas debajo (un nivel, ADR-0014). */
+/** Lista de tareas (PT-05) con sus subtareas debajo. Flechas arriba y abajo para recorrerla, Enter para abrir. */
 export function TaskList(props: TaskViewProps) {
   return (
-    <ul aria-label={t('tasks.listLabel')} className="flex flex-col divide-y divide-line">
+    <ul aria-label={t('tasks.listLabel')} onKeyDown={arrowNav} className="flex flex-col divide-y divide-line">
       {props.tree.flatMap(({ task, children }) => [
         <Row key={task.id} task={task} sub={false} props={props} />,
         ...children.map((c) => <Row key={c.id} task={c} sub props={props} />),

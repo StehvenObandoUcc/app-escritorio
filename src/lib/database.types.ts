@@ -316,6 +316,7 @@ export type Database = {
           created_by: string
           id: string
           name: string
+          settings: Json
           team_id: string
         }
         Insert: {
@@ -324,6 +325,7 @@ export type Database = {
           created_by: string
           id?: string
           name: string
+          settings?: Json
           team_id: string
         }
         Update: {
@@ -332,6 +334,7 @@ export type Database = {
           created_by?: string
           id?: string
           name?: string
+          settings?: Json
           team_id?: string
         }
         Relationships: [
@@ -344,9 +347,212 @@ export type Database = {
           },
         ]
       }
+      task_attachments: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          path: string
+          review_id: string | null
+          size: number
+          task_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          path: string
+          review_id?: string | null
+          size: number
+          task_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          path?: string
+          review_id?: string | null
+          size?: number
+          task_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_attachments_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "task_reviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_attachments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_collaborators: {
+        Row: {
+          created_at: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_collaborators_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_criteria: {
+        Row: {
+          id: string
+          met: boolean
+          position: number
+          task_id: string
+          text: string
+        }
+        Insert: {
+          id?: string
+          met?: boolean
+          position: number
+          task_id: string
+          text: string
+        }
+        Update: {
+          id?: string
+          met?: boolean
+          position?: number
+          task_id?: string
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_criteria_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_events: {
+        Row: {
+          actor: string | null
+          created_at: string
+          details: Json
+          id: number
+          kind: string
+          project_id: string
+          task_id: string
+        }
+        Insert: {
+          actor?: string | null
+          created_at?: string
+          details?: Json
+          id?: never
+          kind: string
+          project_id: string
+          task_id: string
+        }
+        Update: {
+          actor?: string | null
+          created_at?: string
+          details?: Json
+          id?: never
+          kind?: string
+          project_id?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_events_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_events_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_reviews: {
+        Row: {
+          answers: Json
+          comment: string | null
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          id: string
+          links: string[]
+          reviewer_id: string | null
+          status: string
+          submitted_by: string | null
+          task_id: string
+        }
+        Insert: {
+          answers?: Json
+          comment?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          links?: string[]
+          reviewer_id?: string | null
+          status?: string
+          submitted_by?: string | null
+          task_id: string
+        }
+        Update: {
+          answers?: Json
+          comment?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          links?: string[]
+          reviewer_id?: string | null
+          status?: string
+          submitted_by?: string | null
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_reviews_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
+          assignee_can_manage: boolean
           assignee_id: string | null
+          completed_at: string | null
           created_at: string
           created_by: string
           description: string
@@ -354,14 +560,19 @@ export type Database = {
           estimate_minutes: number | null
           id: string
           labels: string[]
+          parent_id: string | null
           project_id: string
+          started_at: string | null
           status: string
           team_id: string
           title: string
+          type: string
           updated_at: string
         }
         Insert: {
+          assignee_can_manage?: boolean
           assignee_id?: string | null
+          completed_at?: string | null
           created_at?: string
           created_by: string
           description?: string
@@ -369,14 +580,19 @@ export type Database = {
           estimate_minutes?: number | null
           id?: string
           labels?: string[]
+          parent_id?: string | null
           project_id: string
+          started_at?: string | null
           status?: string
           team_id: string
           title: string
+          type?: string
           updated_at?: string
         }
         Update: {
+          assignee_can_manage?: boolean
           assignee_id?: string | null
+          completed_at?: string | null
           created_at?: string
           created_by?: string
           description?: string
@@ -384,13 +600,23 @@ export type Database = {
           estimate_minutes?: number | null
           id?: string
           labels?: string[]
+          parent_id?: string | null
           project_id?: string
+          started_at?: string | null
           status?: string
           team_id?: string
           title?: string
+          type?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tasks_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tasks_project_id_fkey"
             columns: ["project_id"]
@@ -530,15 +756,23 @@ export type Database = {
         Returns: string
       }
       add_task_attachment: {
+        Args: { p_name: string; p_path: string; p_review?: string; p_task: string }
+        Returns: string
+      }
+      complete_task: {
         Args: {
-          p_name: string
-          p_path: string
-          p_review?: string
-          p_size: number
+          p_answers: Json
+          p_criteria_met?: string[]
+          p_links?: string[]
           p_task: string
         }
         Returns: string
       }
+      delete_project: {
+        Args: { p_confirm_name: string; p_project: string }
+        Returns: undefined
+      }
+      delete_task: { Args: { p_task: string }; Returns: undefined }
       assert_assignee: {
         Args: { p_assignee: string; p_project: string }
         Returns: undefined
@@ -546,7 +780,10 @@ export type Database = {
       assert_project_open: { Args: { p_project: string }; Returns: undefined }
       caller_email: { Args: never; Returns: string }
       can_manage_project: { Args: { p_project: string }; Returns: boolean }
+      can_manage_task_people: { Args: { p_task: string }; Returns: boolean }
+      can_read_evidence: { Args: { p_path: string }; Returns: boolean }
       can_see_project: { Args: { p_project: string }; Returns: boolean }
+      can_upload_evidence: { Args: { p_path: string }; Returns: boolean }
       clean_labels: { Args: { p_labels: string[] }; Returns: string[] }
       create_project: {
         Args: { p_name: string; p_team: string }
@@ -556,11 +793,11 @@ export type Database = {
         Args: {
           p_assignee?: string
           p_assignee_can_manage?: boolean
+          p_collaborators?: string[]
+          p_criteria?: string[]
           p_description?: string
           p_due_date?: string
           p_estimate_minutes?: number
-          p_collaborators?: string[]
-          p_criteria?: string[]
           p_labels?: string[]
           p_parent?: string
           p_project: string
@@ -572,6 +809,11 @@ export type Database = {
       }
       create_team: { Args: { p_name: string }; Returns: string }
       decline_invitation: { Args: { p_id: string }; Returns: undefined }
+      ensure_project_member: {
+        Args: { p_project: string; p_user: string }
+        Returns: undefined
+      }
+      evidence_task: { Args: { p_path: string }; Returns: string }
       give_consent: {
         Args: { p_team: string; p_version: string }
         Returns: undefined
@@ -588,7 +830,12 @@ export type Database = {
           id: string
         }[]
       }
+      is_task_worker: { Args: { p_task: string }; Returns: boolean }
       leave_team: { Args: { p_team: string }; Returns: undefined }
+      log_task_event: {
+        Args: { p_details: Json; p_kind: string; p_task: string }
+        Returns: undefined
+      }
       my_invitations: {
         Args: never
         Returns: {
@@ -621,6 +868,7 @@ export type Database = {
         Args: { p_approve: boolean; p_comment?: string; p_review: string }
         Returns: undefined
       }
+      review_template: { Args: { p_project: string }; Returns: Json }
       revoke_invitation: { Args: { p_id: string }; Returns: undefined }
       set_alert_policy: {
         Args: { p_enabled: boolean; p_repeat_minutes: number; p_team: string }
@@ -669,8 +917,11 @@ export type Database = {
         }
         Returns: string
       }
+      take_task: { Args: { p_task: string }; Returns: undefined }
       task_history: { Args: { p_task: string }; Returns: Json }
+      task_project: { Args: { p_task: string }; Returns: string }
       task_seconds: { Args: { p_task: string }; Returns: number }
+      task_tree_seconds: { Args: { p_task: string }; Returns: number }
       team_activity_summary: {
         Args: { p_from: string; p_team: string; p_to: string }
         Returns: {

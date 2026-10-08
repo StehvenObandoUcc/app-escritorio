@@ -3,13 +3,16 @@ import type { Task } from '@/cloud/contract';
 import {
   bestUnit,
   canChangeStatus,
+  canComplete,
   canManagePeople,
   canReview,
   canSubmit,
+  canTake,
   formatMinutes,
   isOverdue,
   NO_FILTER,
   parseTasksCache,
+  statusAction,
   taskTree,
   timeRatio,
   toMinutes,
@@ -129,7 +132,8 @@ describe('permisos visibles (filas 19 y 27 a 29)', () => {
     expect(canChangeStatus(contributor, task({ assigneeId: ME }), ME)).toBe(true);
     expect(canChangeStatus(contributor, task({ collaborators: [ME] }), ME)).toBe(true);
     expect(canChangeStatus(contributor, task({ assigneeId: OTHER }), ME)).toBe(false);
-    expect(canChangeStatus(lead, task({ status: 'review' }), ME)).toBe(false);
+    expect(canChangeStatus(lead, task({ status: 'review' }), ME)).toBe(true);
+    expect(canChangeStatus(contributor, task({ assigneeId: ME, status: 'review' }), ME)).toBe(false);
     expect(canChangeStatus(contributor, task({ assigneeId: ME, status: 'done' }), ME)).toBe(false);
     expect(canChangeStatus(lead, task({ status: 'done' }), ME)).toBe(true);
     expect(canChangeStatus({ archivedAt: 'x', myRole: 'manager' }, task({}), ME)).toBe(false);
@@ -153,6 +157,34 @@ describe('permisos visibles (filas 19 y 27 a 29)', () => {
     expect(canManagePeople(contributor, task({ assigneeId: ME, assigneeCanManage: true }), ME)).toBe(true);
     expect(canManagePeople(contributor, task({ assigneeId: ME }), ME)).toBe(false);
     expect(canManagePeople(lead, task({}), ME)).toBe(true);
+  });
+});
+
+describe('completar, tomar y el selector de estado (AC-36, AC-37, AC-45)', () => {
+  const open = { archivedAt: null };
+  const contributor = { ...open, myRole: 'contributor' as const };
+  const lead = { ...open, myRole: 'lead' as const };
+
+  it('quien gestiona completa; un colaborador no', () => {
+    expect(canComplete(lead, task({}))).toBe(true);
+    expect(canComplete(lead, task({ status: 'done' }))).toBe(false);
+    expect(canComplete(contributor, task({ assigneeId: ME }))).toBe(false);
+  });
+
+  it('se toma una tarea sin responsable, por hacer o en curso, siendo del proyecto', () => {
+    expect(canTake(contributor, task({}), true)).toBe(true);
+    expect(canTake(contributor, task({ assigneeId: OTHER }), true)).toBe(false);
+    expect(canTake(contributor, task({ status: 'review' }), true)).toBe(false);
+    expect(canTake(contributor, task({}), false)).toBe(false);
+  });
+
+  it('En revisión y Hecha abren el formulario que corresponde', () => {
+    expect(statusAction(contributor, task({ assigneeId: ME }), ME, 'doing')).toBe('set');
+    expect(statusAction(contributor, task({ assigneeId: ME }), ME, 'review')).toBe('submit');
+    expect(statusAction(contributor, task({ assigneeId: ME }), ME, 'done')).toBe('submit');
+    expect(statusAction(lead, task({}), ME, 'done')).toBe('complete');
+    expect(statusAction(lead, task({}), ME, 'review')).toBe('forbidden');
+    expect(statusAction(contributor, task({ assigneeId: OTHER }), ME, 'done')).toBe('forbidden');
   });
 });
 
