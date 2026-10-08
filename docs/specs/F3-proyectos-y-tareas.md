@@ -1,7 +1,7 @@
 # Spec F3 · Proyectos y tareas
 
 Funcionalidades: PT-01 a PT-09, SY-04, TA-05 (tarea del temporizador)
-Estado: borrador v2 (7 oct). La v1 se probó el 7 oct; la v2 (ADR-0014, ADR-0015) responde a esa prueba.
+Estado: aprobada (por StehvenObando, 8 oct). Versiones v1 a v5 probadas del 7 al 8 oct.
 
 ## Objetivo
 Al terminar, un equipo organiza su trabajo en proyectos con tareas, en lista y en tablero. Cada persona inicia el
