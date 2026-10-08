@@ -15,6 +15,7 @@ import {
   TeamRuleSchema,
   TimeEntrySchema,
   type ActivityBlock,
+  type AiUsage,
   type Bridge,
   type Category,
   type DayView,
@@ -65,6 +66,7 @@ export function sampleDay(date: string): DayView {
     category,
     aiTool: ai ?? null,
     domain: SAMPLE_DOMAINS[title] ?? null,
+    aiUsage: null,
   }));
 
   const totals = Object.fromEntries(CATEGORIES.map((c) => [c, 0])) as Record<Category, number>;
@@ -94,6 +96,21 @@ function validateRange(start: string, end: string, now: Date): void {
   if (e > now.getTime()) throw new Error('No se puede registrar tiempo en el futuro.');
 }
 
+/** Mismas reglas que Rust para la URL del proveedor (AC-20). */
+function checkBaseUrl(raw: string): string {
+  let url: URL;
+  try {
+    url = new URL(raw.trim());
+  } catch {
+    throw new Error('La URL del proveedor no es válida.');
+  }
+  const local = url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+  if (!(url.protocol === 'https:' || (url.protocol === 'http:' && local))) {
+    throw new Error('La URL del proveedor debe empezar por https:// (http:// solo para localhost o 127.0.0.1).');
+  }
+  return url.toString().replace(/\/+$/, '');
+}
+
 export function createMockBridge(now: () => Date = () => new Date()): Bridge {
   let status: SensorStatus = {
     state: 'tracking',
@@ -108,6 +125,9 @@ export function createMockBridge(now: () => Date = () => new Date()): Bridge {
   let activeUser: string | null = null;
   /** Copia de tareas por equipo y cuenta, como en Rust (ADR-0013). */
   const tasksCache = new Map<string, string>();
+  // F4: configuración de IA; la clave nunca se devuelve, como en Rust.
+  let ai: { baseUrl: string | null; model: string | null; key: string | null } = { baseUrl: null, model: null, key: null };
+  const usages = new Map<string, AiUsage | null>();
   const cacheKey = () => (activeTeam && activeUser ? `${activeTeam}|${activeUser}` : null);
   const entryTeam = new Map<string, string | null>();
   const synced = new Set<string>();
@@ -123,7 +143,10 @@ export function createMockBridge(now: () => Date = () => new Date()): Bridge {
   return {
     source: 'mock',
     sensorStatus: async () => status,
-    dayView: async (date) => sampleDay(date),
+    dayView: async (date) => {
+      const day = sampleDay(date);
+      return { ...day, blocks: day.blocks.map((b) => ({ ...b, aiUsage: usages.get(b.id) ?? null })) };
+    },
     timerStart: async (taskId) => {
       if (status.timer.running) {
         throw new Error('Ya hay un temporizador en marcha. Deténlo antes de iniciar otro.');
@@ -220,7 +243,7 @@ export function createMockBridge(now: () => Date = () => new Date()): Bridge {
             .slice(0, limit)
             .map((e) => ({ ...e, teamId: team, updatedAt: e.endedAt ?? e.startedAt, deletedAt: null }))
         : [];
-      return SyncBatchSchema.parse({ blocks: [], entries: pending, closures: [] });
+      return SyncBatchSchema.parse({ blocks: [], entries: pending, closures: [], aiUsages: [] });
     },
     syncMarkSynced: async (_kind, ids) => {
       for (const id of ids) synced.add(id);
@@ -252,6 +275,26 @@ export function createMockBridge(now: () => Date = () => new Date()): Bridge {
     tasksCacheGet: async () => {
       const key = cacheKey();
       return (key && tasksCache.get(key)) ?? null;
+    },
+    aiConfigGet: async () => ({ baseUrl: ai.baseUrl, model: ai.model, hasKey: ai.key !== null }),
+    aiConfigSet: async (baseUrl, model, key) => {
+      const m = model.trim();
+      if (!m || m.length > 200) throw new Error('Escribe el nombre del modelo (hasta 200 caracteres).');
+      ai = { baseUrl: checkBaseUrl(baseUrl), model: m, key: key?.trim() ? key.trim() : ai.key };
+      return { baseUrl: ai.baseUrl, model: ai.model, hasKey: ai.key !== null };
+    },
+    aiConfigClear: async () => {
+      ai = { baseUrl: null, model: null, key: null };
+    },
+    // Datos de ejemplo: responde siempre con la plantilla mínima válida (sin cifras).
+    aiChat: async () => {
+      if (!ai.baseUrl || !ai.model) throw new Error('Configura primero el proveedor de IA en Ajustes.');
+      return JSON.stringify({ summary: 'Resumen de ejemplo.', insights: [], recommendations: [], insufficient_data: true });
+    },
+    blockSetAiUsage: async (id, usage) => {
+      const block = sampleDay(localDate(now())).blocks.find((b) => b.id === id);
+      if (!block || block.category !== 'ai') throw new Error('Solo puedes etiquetar tus bloques de IA.');
+      usages.set(id, usage);
     },
   };
 }
