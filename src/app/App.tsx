@@ -12,7 +12,7 @@ import { AjustesPage } from '@/pages/ajustes/AjustesPage';
 import { EquipoPage } from '@/pages/equipo/EquipoPage';
 import { PrivacidadPage } from '@/pages/equipo/PrivacidadPage';
 import { MiDiaPage } from '@/pages/mi-dia/MiDiaPage';
-import { PendingPage } from '@/pages/PendingPage';
+import { ReportesPage } from '@/pages/reportes/ReportesPage';
 import { ProyectoPage } from '@/pages/proyectos/ProyectoPage';
 import { TareaPage } from '@/pages/proyectos/TareaPage';
 import { ProyectosPage } from '@/pages/proyectos/ProyectosPage';
@@ -96,7 +96,7 @@ function Gate() {
         <Route path="/proyectos/:id/tareas/:tarea" element={<TareaPage />} />
         <Route path="/equipo" element={<EquipoPage />} />
         <Route path="/equipo/privacidad" element={<PrivacidadPage />} />
-        <Route path="/reportes" element={<PendingPage title={t('nav.reports')} phase="F4" what={t('app.reportsPending')} />} />
+        <Route path="/reportes" element={<ReportesPage />} />
         <Route path="/ajustes" element={<AjustesPage bridge={bridge} />} />
         {import.meta.env.DEV && <Route path="/dev/galeria" element={<GaleriaPage />} />}
         <Route path="*" element={<Navigate to="/mi-dia" replace />} />
