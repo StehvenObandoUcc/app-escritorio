@@ -349,6 +349,7 @@ export type Database = {
       }
       task_attachments: {
         Row: {
+          content_type: string
           created_at: string
           id: string
           name: string
@@ -359,6 +360,7 @@ export type Database = {
           uploaded_by: string | null
         }
         Insert: {
+          content_type?: string
           created_at?: string
           id?: string
           name: string
@@ -369,6 +371,7 @@ export type Database = {
           uploaded_by?: string | null
         }
         Update: {
+          content_type?: string
           created_at?: string
           id?: string
           name?: string
@@ -558,6 +561,7 @@ export type Database = {
           description: string
           due_date: string | null
           estimate_minutes: number | null
+          evidence: string[]
           id: string
           labels: string[]
           parent_id: string | null
@@ -578,6 +582,7 @@ export type Database = {
           description?: string
           due_date?: string | null
           estimate_minutes?: number | null
+          evidence?: string[]
           id?: string
           labels?: string[]
           parent_id?: string | null
@@ -598,6 +603,7 @@ export type Database = {
           description?: string
           due_date?: string | null
           estimate_minutes?: number | null
+          evidence?: string[]
           id?: string
           labels?: string[]
           parent_id?: string | null
@@ -823,10 +829,15 @@ export type Database = {
         Returns: undefined
       }
       delete_task: { Args: { p_task: string }; Returns: undefined }
+      delivery_attachment_ids: {
+        Args: { p_answers: Json; p_task: string }
+        Returns: string[]
+      }
       ensure_project_member: {
         Args: { p_project: string; p_user: string }
         Returns: undefined
       }
+      evidence_catalog: { Args: never; Returns: Json }
       evidence_task: { Args: { p_path: string }; Returns: string }
       give_consent: {
         Args: { p_team: string; p_version: string }
@@ -846,6 +857,10 @@ export type Database = {
       }
       is_task_worker: { Args: { p_task: string }; Returns: boolean }
       leave_team: { Args: { p_team: string }; Returns: undefined }
+      link_delivery_attachments: {
+        Args: { p_answers: Json; p_review: string; p_task: string }
+        Returns: undefined
+      }
       log_task_event: {
         Args: { p_details: Json; p_kind: string; p_task: string }
         Returns: undefined
@@ -936,6 +951,7 @@ export type Database = {
         Returns: string
       }
       take_task: { Args: { p_task: string }; Returns: undefined }
+      task_delivery_fields: { Args: { p_task: string }; Returns: Json }
       task_history: { Args: { p_task: string }; Returns: Json }
       task_project: { Args: { p_task: string }; Returns: string }
       task_seconds: { Args: { p_task: string }; Returns: number }
