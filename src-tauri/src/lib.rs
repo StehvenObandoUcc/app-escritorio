@@ -3,6 +3,7 @@ pub mod classifier;
 pub mod commands;
 pub mod crypto;
 pub mod instance;
+pub mod links;
 pub mod secrets;
 pub mod sensor;
 pub mod store;
@@ -135,6 +136,8 @@ pub fn run() {
     )
     // Avisos de sitio no permitido (ADR-0010): se usan solo desde Rust, sin permisos para la interfaz.
     .plugin(tauri_plugin_notification::init())
+    // ADR-0017: solo lo usa el comando open_external, que valida https; la interfaz no tiene sus permisos.
+    .plugin(tauri_plugin_opener::init())
     .setup(|app| {
       let dir = app.path().app_data_dir()?;
       std::fs::create_dir_all(&dir)?;
@@ -179,6 +182,7 @@ pub fn run() {
       commands::notifications_status,
       commands::tasks_cache_put,
       commands::tasks_cache_get,
+      commands::open_external,
     ])
     .build(context)
     .expect("error while building tauri application");
