@@ -24,6 +24,8 @@ export interface TestDb {
   createUser(email: string): Promise<string>;
   /** Ejecuta consultas como un usuario con sesión (o como `anon` si userId es null). */
   as<T>(userId: string | null, run: (q: Query) => Promise<T>): Promise<T>;
+  /** Ejecuta con el rol `service_role`, como una Edge Function con la clave de servicio. */
+  service<T>(run: (q: Query) => Promise<T>): Promise<T>;
   /** Ejecuta como administrador de la base (salta RLS). Solo para preparar datos. */
   admin<T extends Row = Row>(sql: string, params?: unknown[]): Promise<T[]>;
   close(): Promise<void>;
@@ -67,6 +69,14 @@ export async function createTestDb(): Promise<TestDb> {
         const claims = userId ? { sub: userId, role: 'authenticated' } : { role: 'anon' };
         await tx.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify(claims)]);
         await tx.exec(`set local role ${userId ? 'authenticated' : 'anon'}`);
+        return run(query(tx));
+      });
+    },
+
+    service(run) {
+      return pg.transaction(async (tx) => {
+        await tx.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ role: 'service_role' })]);
+        await tx.exec('set local role service_role');
         return run(query(tx));
       });
     },
