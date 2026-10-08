@@ -135,6 +135,14 @@ pub fn tasks_cache_get(t: Tr) -> Result<Option<String>> {
   t.tasks_cache_get()
 }
 
+/// ADR-0017: abre un enlace `https://` en el navegador del sistema (evidencia de las revisiones).
+#[tauri::command]
+pub fn open_external(app: tauri::AppHandle, url: String) -> Result<()> {
+  use tauri_plugin_opener::OpenerExt;
+  crate::links::check_https(&url)?;
+  app.opener().open_url(url, None::<&str>).map_err(|e| format!("No se pudo abrir el enlace: {e}"))
+}
+
 /// ADR-0010: apps instaladas y abiertas para el selector de apps ocultas. Todo local.
 /// Asíncrono para no bloquear la ventana mientras se lee el registro.
 #[tauri::command]
