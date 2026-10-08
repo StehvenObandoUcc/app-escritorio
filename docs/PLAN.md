@@ -122,11 +122,11 @@ Funcionalidades: PT-01 a PT-09, SY-04.
 | C · Interfaz | Proyectos, lista con filtros, tablero, detalle de tarea, avance |
 
 **Puerta G3**
-- [ ] Pruebas: un `contributor` no edita la tarea de otra persona; un `lead` sí.
-- [ ] Un temporizador sobre una tarea suma a su tiempo y al avance del proyecto.
-- [ ] Sin red, la lista de tareas sigue visible.
-- [ ] (v2) Una tarea solo llega a *Hecha* aprobando su revisión, y queda en el historial.
-- [ ] (v2) Toda la app se usa en inglés.
+- [x] Pruebas: un `contributor` no edita la tarea de otra persona; un `lead` sí.
+- [x] Un temporizador sobre una tarea suma a su tiempo y al avance del proyecto.
+- [x] Sin red, la lista de tareas sigue visible.
+- [x] (v2) Una tarea solo llega a *Hecha* aprobando su revisión, y queda en el historial.
+- [x] (v2) Toda la app se usa en inglés.
 
 ### F4 · IA y reportes (dom 11 – mar 13)
 
@@ -241,8 +241,9 @@ Lo de arriba es el plan original y sigue vigente. Esta sección añade lo acorda
 | F0 · Fundaciones | Hecha | G0 incompleta: faltan los informes S-2 (detección de IA por título) y S-4 (DeepSeek) |
 | **F1 · Sensor y *Mi día*** | **Hecha. Spec aprobada el 5 oct** | **G1 pasa** (evidencia en `docs/spikes/F1-medicion-app-real.md`) |
 | **F2 · Cuentas, equipos y sincronización** | **Hecha. Spec aprobada el 7 oct** (ADR-0007 a ADR-0013) | **G2 pasa** (pruebas reales del 6 y 7 oct, estado en la spec) |
-| F3 · Proyectos y tareas | En curso (rama `feat/f3-proyectos-y-tareas`): v1 probada el 7 oct; v2 (ADR-0014, ADR-0015: revisión, subtareas, apoyos, español e inglés) hecha con pruebas; falta aplicar `20261008000002` en `pulso-dev` y la prueba G3 v2 con dos cuentas | G3 pendiente |
-| F4 a F6 | Por empezar | — |
+| **F3 · Proyectos y tareas** | **Hecha. Spec aprobada el 8 oct** (ADR-0014 a ADR-0021) | **G3 pasa** (prueba real del usuario el 8 oct) |
+| F4 · IA y reportes | Spec en borrador (`docs/specs/F4-ia-y-reportes.md`, ADR-0022) | — |
+| F5 y F6 | Por empezar | — |
 
 Funcionalidades antes de la entrega (`docs/FUNCIONALIDADES.md`): **86**.
 
