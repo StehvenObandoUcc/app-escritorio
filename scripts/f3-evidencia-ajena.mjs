@@ -27,25 +27,30 @@ if (!match) {
 }
 const path = decodeURIComponent(match[1]);
 
-const supabase = createClient(env('PULSO_SUPABASE_URL'), env('PULSO_SUPABASE_ANON_KEY'), { auth: { persistSession: false } });
-const { error: authError } = await supabase.auth.signInWithPassword({ email: env('PULSO_EMAIL'), password: env('PULSO_PASSWORD') });
-if (authError) {
-  console.error('No se pudo iniciar sesión con esa cuenta.');
-  process.exit(2);
+// Todo lo que usa la red va en main(): process.exit() con conexiones abiertas hace caer a Node 24 en Windows.
+async function main() {
+  const supabase = createClient(env('PULSO_SUPABASE_URL'), env('PULSO_SUPABASE_ANON_KEY'), { auth: { persistSession: false, autoRefreshToken: false } });
+  const { error: authError } = await supabase.auth.signInWithPassword({ email: env('PULSO_EMAIL'), password: env('PULSO_PASSWORD') });
+  if (authError) {
+    console.error('No se pudo iniciar sesión con esa cuenta.');
+    return 2;
+  }
+
+  const download = await supabase.storage.from('task-evidence').download(path);
+  const signed = await supabase.storage.from('task-evidence').createSignedUrl(path, 60);
+  const shared = await fetch(env('PULSO_EVIDENCE_URL'));
+
+  const checks = [
+    ['Descargar por la ruta con la sesión ajena', Boolean(download.error)],
+    ['Pedir un enlace firmado nuevo con la sesión ajena', Boolean(signed.error)],
+    ['Abrir el enlace compartido (debe haber caducado si pasaron más de 60 s)', !shared.ok],
+  ];
+  for (const [what, denied] of checks) console.log(`${denied ? 'BLOQUEADO' : 'PERMITIDO'}  ${what}`);
+  const ok = checks[0][1] && checks[1][1];
+  console.log(`\n${ok ? 'CUMPLE' : 'NO CUMPLE'}: la cuenta ajena ${ok ? 'no puede' : 'sí puede'} abrir la evidencia por su cuenta.`);
+  if (!checks[2][1]) console.log('El enlace compartido aún abre: repite pasados 60 s desde que se creó para comprobar que caduca.');
+  await supabase.auth.signOut();
+  return ok ? 0 : 1;
 }
 
-const download = await supabase.storage.from('task-evidence').download(path);
-const signed = await supabase.storage.from('task-evidence').createSignedUrl(path, 60);
-const shared = await fetch(env('PULSO_EVIDENCE_URL'));
-
-const checks = [
-  ['Descargar por la ruta con la sesión ajena', Boolean(download.error)],
-  ['Pedir un enlace firmado nuevo con la sesión ajena', Boolean(signed.error)],
-  ['Abrir el enlace compartido (debe haber caducado si pasaron más de 60 s)', !shared.ok],
-];
-for (const [what, denied] of checks) console.log(`${denied ? 'BLOQUEADO' : 'PERMITIDO'}  ${what}`);
-const ok = checks[0][1] && checks[1][1];
-console.log(`\n${ok ? 'CUMPLE' : 'NO CUMPLE'}: la cuenta ajena ${ok ? 'no puede' : 'sí puede'} abrir la evidencia por su cuenta.`);
-if (!checks[2][1]) console.log('El enlace compartido aún abre: repite pasados 60 s desde que se creó para comprobar que caduca.');
-await supabase.auth.signOut();
-process.exit(ok ? 0 : 1);
+process.exitCode = await main();
