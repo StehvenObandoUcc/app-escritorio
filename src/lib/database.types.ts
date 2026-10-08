@@ -912,6 +912,10 @@ export type Database = {
         Args: { p_task: string; p_texts: string[] }
         Returns: undefined
       }
+      set_task_evidence: {
+        Args: { p_evidence: string[]; p_task: string }
+        Returns: undefined
+      }
       set_task_status: {
         Args: { p_status: string; p_task: string }
         Returns: undefined
