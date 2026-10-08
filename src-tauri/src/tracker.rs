@@ -39,6 +39,10 @@ const KEY_ACTIVE_TEAM: &str = "active_team_id";
 const KEY_ACTIVE_USER: &str = "active_user_id";
 const KEY_TEAM_RULES: &str = "team_rules";
 const KEY_SESSION: &str = "session_enc";
+const KEY_AI_BASE_URL: &str = "ai_base_url";
+const KEY_AI_MODEL: &str = "ai_model";
+/// Tipos de uso de una sesión de IA (IA-04).
+pub const AI_USAGES: [&str; 4] = ["code", "writing", "analysis", "other"];
 /// Nombre de proceso de Pulso: su propia ventana no se registra (ADR-0012).
 const OWN_PROCESS: &str = "pulso";
 const KEY_ALLOW_HIDDEN: &str = "team_allow_hidden_apps";
@@ -110,6 +114,8 @@ struct Inner {
   active_team: Option<String>,
   /// `updated_at` de cada entrada entregada por `sync_pending`, para no marcar una editada después.
   entry_versions: HashMap<String, DateTime<Utc>>,
+  /// Etiqueta de IA entregada en el último `sync_pending`, por bloque (F4): solo se marca si no cambió.
+  usage_versions: HashMap<String, Option<String>>,
   /// Política del equipo (ADR-0009): con `false`, la lista de apps ocultas no se aplica.
   allow_hidden: bool,
   /// Avisos de sitio no permitido (ADR-0010).
@@ -395,6 +401,7 @@ impl Tracker {
         stopped: false,
         active_team,
         entry_versions: HashMap::new(),
+        usage_versions: HashMap::new(),
         allow_hidden,
         alert_enabled,
         alert_repeat_minutes,
@@ -545,6 +552,7 @@ impl Tracker {
     let mut g = self.lock()?;
     g.flush(now)?;
     let rows = g.store.blocks_between(bounds.0, bounds.1)?;
+    let usages = g.store.ai_usages_between(bounds.0, bounds.1)?;
     let blocks = rows
       .into_iter()
       .map(|b| {
@@ -553,7 +561,7 @@ impl Tracker {
         (b, title)
       })
       .collect();
-    Ok(views::build_day_view(date, bounds, blocks))
+    Ok(views::build_day_view(date, bounds, blocks, &usages))
   }
 
   pub fn range_view<Tz: TimeZone>(&self, now: DateTime<Utc>, from: &str, to: &str, tz: &Tz) -> Result<RangeView> {
@@ -659,6 +667,7 @@ impl Tracker {
     g.active_team = team_id.map(String::from);
     g.store.set_user(user_id.map(String::from));
     g.entry_versions.clear();
+    g.usage_versions.clear();
     Ok(())
   }
 
@@ -677,16 +686,24 @@ impl Tracker {
     let blocks = g.store.pending_blocks(&team, now - SYNC_STABLE_AFTER, limit)?;
     let entries = g.store.pending_entries(&team, limit)?;
     let closures = g.store.pending_closures(&team, limit)?;
+    let ai_usages = g.store.pending_ai_usages(&team, limit)?;
     g.entry_versions = entries.iter().map(|e| (e.id.clone(), e.updated_at)).collect();
+    g.usage_versions = ai_usages.iter().map(|u| (u.id.clone(), u.ai_usage_type.clone())).collect();
     Ok(SyncBatch {
       blocks,
       entries,
       closures,
+      ai_usages,
     })
   }
 
-  /// Marca como subidos los ids que Supabase aceptó. `kind`: "blocks", "entries" o "closures".
+  /// Marca como subidos los ids que Supabase aceptó. `kind`: "blocks", "entries", "closures" o "aiUsages".
   pub fn sync_mark_synced(&self, now: DateTime<Utc>, kind: &str, ids: &[String]) -> Result<()> {
+    if kind == "aiUsages" {
+      let g = self.lock()?;
+      g.store.mark_ai_usages_synced(ids, &g.usage_versions)?;
+      return Ok(());
+    }
     let kind = SyncKind::parse(kind).ok_or_else(|| format!("Tipo de registro desconocido: «{kind}»."))?;
     let g = self.lock()?;
     g.store.mark_synced(kind, ids, &g.entry_versions, now)?;
@@ -715,6 +732,37 @@ impl Tracker {
     g.alert_enabled = policy.alert_not_allowed;
     g.alert_repeat_minutes = policy.alert_repeat_minutes;
     Ok(())
+  }
+
+  // ---- IA (F4) ----
+
+  /// Etiqueta un bloque de IA propio con su tipo de uso (IA-04). `None` quita la etiqueta.
+  pub fn block_set_ai_usage(&self, now: DateTime<Utc>, id: &str, usage: Option<&str>) -> Result<()> {
+    if usage.is_some_and(|u| !AI_USAGES.contains(&u)) {
+      return Err("Tipo de uso de IA desconocido.".into());
+    }
+    let mut g = self.lock()?;
+    // El bloque abierto vive en memoria: se guarda antes para poder etiquetarlo.
+    g.flush(now)?;
+    g.store.set_block_ai_usage(id, usage)
+  }
+
+  /// URL base y modelo de la IA con clave propia; `has_key` lo pone quien llama (la clave vive en el almacén seguro).
+  pub fn ai_config_get(&self) -> Result<(Option<String>, Option<String>)> {
+    let g = self.lock()?;
+    Ok((g.store.setting_get(KEY_AI_BASE_URL)?, g.store.setting_get(KEY_AI_MODEL)?))
+  }
+
+  pub fn ai_config_set(&self, base_url: &str, model: &str) -> Result<()> {
+    let g = self.lock()?;
+    g.store.setting_set(KEY_AI_BASE_URL, base_url)?;
+    g.store.setting_set(KEY_AI_MODEL, model)
+  }
+
+  pub fn ai_config_clear(&self) -> Result<()> {
+    let g = self.lock()?;
+    g.store.setting_delete(KEY_AI_BASE_URL)?;
+    g.store.setting_delete(KEY_AI_MODEL)
   }
 
   // ---- Sesión de Supabase (F2, PS-08) ----
