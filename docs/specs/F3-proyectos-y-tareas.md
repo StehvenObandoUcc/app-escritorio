@@ -154,7 +154,11 @@ Criterios nuevos:
 | AC-19 a AC-29 | `supabase/tests/trabajo_v2.test.ts` y `src/pages/proyectos/Proyectos.test.tsx` |
 | AC-30 a AC-33 | `src/lib/tasks.test.ts` y `src/pages/proyectos/Proyectos.test.tsx` |
 | AC-34, AC-35 | `src/app/locale.test.tsx`, `src/i18n/server-messages.test.ts` y `npm run check:i18n` |
-| Prueba real con dos cuentas | **Pendiente**: requiere aplicar `20261008000002` en `pulso-dev` |
+| AC-36 a AC-41 | `supabase/tests/completar_y_borrar.test.ts` y `src/pages/proyectos/Proyectos.test.tsx` |
+| AC-42, AC-43 | `src/lib/forms.test.ts`, `src/pages/acceso/AccesoPage.test.tsx` y pruebas de cada formulario |
+| AC-44, AC-45 | `src/pages/proyectos/Proyectos.test.tsx` y `src/lib/tasks.test.ts` |
+| AC-46 a AC-48 | `applyStoredTheme` en `src/main.tsx`; prueba de Rust `only_https_links_with_a_host_are_opened`; CSP en `tauri.conf.json` (build sin scripts en línea) |
+| Prueba real con dos cuentas | **Pendiente**: requiere aplicar `20261008000003` en `pulso-dev` |
 
 ## Cómo se comprueba
 Puerta G3 de `docs/PLAN.md` más estos pasos con dos cuentas reales:
