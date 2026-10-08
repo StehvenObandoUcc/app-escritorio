@@ -25,5 +25,7 @@ decisión de `docs/ARQUITECTURA.md` §3 o cambiar una celda de `docs/ROLES.md`.
 | [0017](./0017-opener-y-csp.md) | Abrir enlaces con tauri-plugin-opener y CSP activa | Aceptado |
 | [0018](./0018-evidencia-por-campo.md) | Evidencia por campo del formulario de entrega | Aceptado |
 | [0019](./0019-teclado-y-flujo-por-pasos.md) | Teclado en toda la app y flujo de la tarea por pasos | Aceptado |
+| [0020](./0020-evidencia-por-tarea.md) | Evidencia requerida por tarea, de un catálogo empresarial | Aceptado |
+| [0021](./0021-flechas-en-toda-la-app.md) | Flechas en toda la app (navegación espacial) | Aceptado |
 
 Plantilla: copia cualquiera de los anteriores. Numeración consecutiva de cuatro dígitos.
