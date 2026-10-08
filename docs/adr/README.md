@@ -23,5 +23,7 @@ decisión de `docs/ARQUITECTURA.md` §3 o cambiar una celda de `docs/ROLES.md`.
 | [0015](./0015-idiomas-sin-librerias.md) | Español e inglés sin librerías | Aceptado |
 | [0016](./0016-completar-tomar-y-borrar.md) | Completar, tomar y borrar trabajo | Aceptado |
 | [0017](./0017-opener-y-csp.md) | Abrir enlaces con tauri-plugin-opener y CSP activa | Aceptado |
+| [0018](./0018-evidencia-por-campo.md) | Evidencia por campo del formulario de entrega | Aceptado |
+| [0019](./0019-teclado-y-flujo-por-pasos.md) | Teclado en toda la app y flujo de la tarea por pasos | Aceptado |
 
 Plantilla: copia cualquiera de los anteriores. Numeración consecutiva de cuatro dígitos.
