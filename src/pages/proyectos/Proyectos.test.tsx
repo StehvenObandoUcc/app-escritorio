@@ -22,6 +22,7 @@ const base: TaskInput = {
   dueDate: null,
   labels: [],
   estimateMinutes: null,
+  evidence: [],
 };
 
 /** Ana (owner), Beto (member, colaborador del proyecto) y Caro (member, fuera del proyecto). */
@@ -115,10 +116,10 @@ describe('Proyectos (F3)', () => {
     await userEvent.keyboard('{ArrowRight}');
     expect(screen.getByRole('tab', { name: 'Lista' })).toHaveFocus();
     expect(screen.getByRole('tab', { name: 'Lista' })).toHaveAttribute('aria-selected', 'true');
-    await userEvent.keyboard('{ArrowLeft}');
+    // Fuera de las pestañas, las flechas mueven el foco por la pantalla (en jsdom, en orden del documento).
     screen.getByRole('button', { name: 'Portada' }).focus();
     await userEvent.keyboard('{ArrowDown}');
-    expect(screen.getByRole('button', { name: 'Contrato' })).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'Portada' })).not.toHaveFocus();
   }, LONG);
 
   it('archivar pide confirmación; borrar exige escribir el nombre (AC-33, AC-39)', async () => {
@@ -221,6 +222,44 @@ describe('Pantalla de tarea (F3 v3)', () => {
     await userEvent.click(within(review).getByRole('button', { name: 'Pedir cambios' }));
     expect(await screen.findByText('Cambios pedidos: la tarea vuelve a En curso')).toBeInTheDocument();
     expect((await taskOf(cloud, team, portada))!.status).toBe('doing');
+  }, LONG);
+
+  it('al crear la tarea se elige la evidencia y la entrega la exige con sus formatos (AC-53, AC-54)', async () => {
+    const { cloud, project, team, beto } = await setup('ana');
+    const first = openProject(cloud, project);
+    await userEvent.click(await screen.findByRole('button', { name: 'Nueva tarea' }));
+    const form = screen.getByRole('region', { name: 'Nueva tarea' });
+    await userEvent.type(within(form).getByLabelText('Título *'), 'Cierre de mes');
+    await waitFor(() => expect(within(form).getByLabelText('Responsable')).toHaveTextContent('Beto'));
+    await userEvent.selectOptions(within(form).getByLabelText('Responsable'), 'Beto');
+    const evidence = within(form).getByRole('group', { name: 'Evidencia requerida' });
+    await userEvent.click(within(evidence).getByLabelText('Hoja de cálculo (Excel o CSV)'));
+    await userEvent.click(within(evidence).getByLabelText('Pull request o commit'));
+    await userEvent.click(within(form).getByRole('button', { name: 'Crear tarea' }));
+    expect(await screen.findByText('Tarea creada')).toBeInTheDocument();
+    const created = (await cloud.teamWork(team)).tasks.find((x) => x.title === 'Cierre de mes')!;
+    expect([...created.evidence].sort()).toEqual(['code', 'spreadsheet']);
+    expect(created.assigneeId).toBe(beto);
+    first.unmount();
+
+    await cloud.signIn('beto@pulso.test', 'secreto-123');
+    openTask(cloud, project, created.id, createMockBridge(), '?accion=enviar');
+    const delivery = await screen.findByRole('form', { name: 'Formulario de entrega' });
+    await userEvent.type(within(delivery).getByLabelText('Qué se hizo *'), 'Conciliación lista');
+    await userEvent.upload(within(delivery).getByLabelText('Hoja de cálculo (Excel o CSV) *'), new File(['x'], 'cierre.pdf', { type: 'application/pdf' }), { applyAccept: false });
+    await userEvent.click(within(delivery).getByRole('button', { name: 'Enviar a revisión' }));
+    expect(within(delivery).getByLabelText('Hoja de cálculo (Excel o CSV) *')).toHaveAccessibleDescription(expect.stringContaining('no admite ese tipo'));
+    expect(within(delivery).getByLabelText('Pull request o commit *')).toBeInTheDocument();
+    await userEvent.upload(
+      within(delivery).getByLabelText('Hoja de cálculo (Excel o CSV) *'),
+      new File(['x'], 'cierre.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+    );
+    await userEvent.type(within(delivery).getByLabelText('Pull request o commit *'), 'https://github.com/pulso/pull/7');
+    await userEvent.click(within(delivery).getByRole('button', { name: 'Enviar a revisión' }));
+    expect(await screen.findByText('Tarea enviada a revisión')).toBeInTheDocument();
+    const sent = (await cloud.teamWork(team)).tasks.find((x) => x.id === created.id)!;
+    expect(sent.pendingReview!.answers.ev_code).toBe('https://github.com/pulso/pull/7');
+    expect(sent.pendingReview!.attachments.map((a) => a.name)).toEqual(['cierre.xlsx']);
   }, LONG);
 
   it('una subtarea se crea con el mismo formulario completo (C6, AC-19)', async () => {

@@ -42,6 +42,7 @@ export const task = (over: Partial<Task>): Task => ({
   collaborators: [],
   criteria: [],
   pendingReview: null,
+  evidence: [],
   ...over,
 });
 

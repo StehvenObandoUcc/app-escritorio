@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ChartColumn, FolderKanban, Keyboard, ListChecks, Settings, Sun, Users } from 'lucide-react';
+import { ChartColumn, FolderKanban, ListChecks, Settings, Sun, Users } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router';
 import { bridge } from '@/bridge';
@@ -17,7 +17,7 @@ import { ProyectoPage } from '@/pages/proyectos/ProyectoPage';
 import { TareaPage } from '@/pages/proyectos/TareaPage';
 import { ProyectosPage } from '@/pages/proyectos/ProyectosPage';
 import { MisTareasPage } from '@/pages/tareas/MisTareasPage';
-import { Button, Select } from '@/ui/atoms';
+import { Select } from '@/ui/atoms';
 import { KeyboardHelp, SyncStatus, ThemeToggle } from '@/ui/molecules';
 import { AlertBanner, AppNav, type NavItem } from '@/ui/organisms';
 import { AppShell } from '@/ui/templates';
@@ -39,8 +39,8 @@ const cloud = createCloud(bridge);
 
 const ROUTES = ['/mi-dia', '/tareas', '/proyectos', '/equipo', '/reportes', '/ajustes'];
 
-/** Pie de la navegación: equipo activo (D1), sincronización, tema y ayuda de teclado. */
-function NavFooter({ onHelp }: { onHelp: () => void }) {
+/** Pie de la navegación: equipo activo (D1), sincronización y tema. */
+function NavFooter() {
   const { theme, cycle } = useTheme();
   const { sync, teams, activeTeam, selectTeam } = useSession();
   return (
@@ -59,9 +59,6 @@ function NavFooter({ onHelp }: { onHelp: () => void }) {
       )}
       <SyncStatus phase={sync.phase} message={sync.message} lastSyncedAt={sync.lastSyncedAt} compact />
       <ThemeToggle theme={theme} onCycle={cycle} />
-      <Button variant="ghost" size="sm" onClick={onHelp} title={t('keyboard.title')} icon={<Keyboard size={16} aria-hidden="true" />}>
-        <span className="md:sr-only lg:not-sr-only">{t('keyboard.open')}</span>
-      </Button>
     </div>
   );
 }
@@ -87,7 +84,7 @@ function Gate() {
   }
   if (user === null) return <AccesoPage />;
   return (
-    <AppShell nav={<AppNav items={nav()} footer={<NavFooter onHelp={openHelp} />} />}>
+    <AppShell nav={<AppNav items={nav()} footer={<NavFooter />} />}>
       <AlertBanner alerts={alerts} onDismiss={dismiss} />
       <KeyboardHelp open={help} onClose={() => setHelp(false)} />
       <Routes>

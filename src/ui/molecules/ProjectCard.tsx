@@ -1,4 +1,3 @@
-import { NAV_ITEM } from '@/lib/keyboard';
 import type { Project } from '@/cloud/contract';
 import { t } from '@/i18n';
 import { doneRatio, PROJECT_ROLE_LABEL } from '@/lib/tasks';
@@ -8,7 +7,7 @@ import { Badge, ProgressBar } from '@/ui/atoms';
 export function ProjectCard({ project, overdue, href }: { project: Project; overdue: number; href: string }) {
   const done = t('projects.progress.done', { done: project.tasksDone, n: project.tasksTotal });
   return (
-    <a href={href} {...{ [NAV_ITEM]: '' }} className="flex min-w-0 flex-col gap-3 rounded-lg border border-line bg-surface p-4 transition-colors hover:border-line-strong">
+    <a href={href} className="flex min-w-0 flex-col gap-3 rounded-lg border border-line bg-surface p-4 transition-colors hover:border-line-strong">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="min-w-0 truncate font-display text-lg font-semibold text-fg">{project.name}</p>
         <Badge>{PROJECT_ROLE_LABEL[project.myRole]}</Badge>

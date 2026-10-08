@@ -1,3 +1,4 @@
+import { deliveryFields } from '@/lib/evidence';
 import { ExternalLink, FileText, History, Image as ImageIcon } from 'lucide-react';
 import { useState } from 'react';
 import type { Project, Task, TaskHistory } from '@/cloud/contract';
@@ -37,7 +38,7 @@ export function TaskReview({
   const [busy, setBusy] = useState(false);
   const r = task.pendingReview;
   if (!r) return null;
-  const fieldOf = (key: string) => project.reviewTemplate.find((f) => f.key === key);
+  const fieldOf = (key: string) => deliveryFields(project.reviewTemplate, task.evidence).find((f) => f.key === key);
   const attachment = new Map(r.attachments.map((a) => [a.id, a]));
   const fileButton = (a: (typeof r.attachments)[number]) => (
     <Button key={a.id} size="sm" variant="ghost" icon={a.contentType.startsWith('image/') ? <ImageIcon size={14} aria-hidden="true" /> : <FileText size={14} aria-hidden="true" />} onClick={() => onOpenEvidence(a.path)}>

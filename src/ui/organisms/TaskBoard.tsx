@@ -1,6 +1,5 @@
 import { TASK_STATUSES } from '@/cloud/contract';
 import { t } from '@/i18n';
-import { arrowNav, NAV_COLUMN, NAV_ITEM } from '@/lib/keyboard';
 import { STATUS_LABEL } from '@/lib/tasks';
 import { Heading } from '@/ui/atoms';
 import { TaskMeta } from '@/ui/molecules';
@@ -14,11 +13,11 @@ import { TaskStatusCell, type TaskViewProps } from './TaskList';
 export function TaskBoard(props: TaskViewProps) {
   const cards = props.tree.flatMap(({ task, children }) => [{ task, parent: null as string | null }, ...children.map((c) => ({ task: c, parent: task.title }))]);
   return (
-    <div onKeyDown={arrowNav} className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {TASK_STATUSES.map((status) => {
         const column = cards.filter((c) => c.task.status === status);
         return (
-          <section key={status} {...{ [NAV_COLUMN]: '' }} aria-label={STATUS_LABEL[status]} className="flex min-w-0 flex-col gap-2 rounded-lg bg-sunken p-3">
+          <section key={status} aria-label={STATUS_LABEL[status]} className="flex min-w-0 flex-col gap-2 rounded-lg bg-sunken p-3">
             <Heading level={3}>
               {STATUS_LABEL[status]} <span className="text-fg-muted tabular-nums">{column.length}</span>
             </Heading>
@@ -28,7 +27,6 @@ export function TaskBoard(props: TaskViewProps) {
                   {parent && <p className="truncate text-xs text-fg-muted">{t('tasks.subtaskOf', { title: parent })}</p>}
                   <button
                     type="button"
-                    {...{ [NAV_ITEM]: '' }}
                     onClick={() => props.onOpen(task)}
                     className="truncate rounded-xs text-left font-medium text-fg hover:underline"
                   >

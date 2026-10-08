@@ -2,6 +2,7 @@ import { useCallback, useId, useState } from 'react';
 import { z } from 'zod';
 import type { ReviewField, ReviewSubmission, Task } from '@/cloud/contract';
 import { t } from '@/i18n';
+import { deliveryFields, formatsOf, type DeliveryField } from '@/lib/evidence';
 import { fileProblem, isHttpUrl } from '@/lib/forms';
 import { EVIDENCE_TYPES, LIMITS } from '@/lib/limits';
 import { useForm } from '@/lib/useForm';
@@ -10,9 +11,10 @@ import { Button, Input, Select, type SelectOption } from '@/ui/atoms';
 const textarea = 'w-full rounded-md border bg-surface px-3 py-2 text-base text-fg';
 const IMAGE_TYPES = EVIDENCE_TYPES.filter((type) => type.startsWith('image/'));
 const isUpload = (f: ReviewField) => f.kind === 'image' || f.kind === 'file';
+const acceptOf = (f: DeliveryField) => f.accept ?? (f.kind === 'image' ? IMAGE_TYPES : EVIDENCE_TYPES);
 
 /** Esquema del formulario de entrega del proyecto: cada campo según su tipo, más los criterios (AC-24, AC-50). */
-function deliverySchema(template: ReviewField[], criteria: Task['criteria']) {
+function deliverySchema(template: DeliveryField[], criteria: Task['criteria']) {
   const fields: Record<string, z.ZodType> = {};
   for (const f of template) {
     const required = t('review.errorRequired', { field: f.label });
@@ -21,6 +23,7 @@ function deliverySchema(template: ReviewField[], criteria: Task['criteria']) {
         .array(z.instanceof(File))
         .refine((files) => !f.required || files.length > 0, required)
         .refine((files) => f.kind !== 'image' || files.every((x) => x.type.startsWith('image/')), t('review.errorImage', { field: f.label }))
+        .refine((files) => files.every((x) => acceptOf(f).includes(x.type)), t('review.errorType', { field: f.label }))
         .refine((files) => fileProblem(files) === null, { error: (issue) => fileProblem(issue.input as File[]) ?? '' });
     } else {
       fields[f.key] = z
@@ -47,7 +50,8 @@ export function ReviewForm({
   onCancel,
 }: {
   mode: 'submit' | 'complete';
-  task: Pick<Task, 'criteria'>;
+  task: Pick<Task, 'criteria' | 'evidence'>;
+  /** Formulario del proyecto; se le suma un campo obligatorio por cada evidencia de la tarea (ADR-0020). */
   template: ReviewField[];
   /** Otras personas del proyecto que pueden revisar (solo en modo `submit`). */
   reviewers: SelectOption[];
@@ -55,14 +59,15 @@ export function ReviewForm({
   onCancel: () => void;
 }) {
   const id = useId();
+  const fields = deliveryFields(template, task.evidence);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [files, setFiles] = useState<Record<string, File[]>>({});
   const [met, setMet] = useState<string[]>([]);
   const [reviewer, setReviewer] = useState('');
-  const schema = useCallback(() => deliverySchema(template, task.criteria), [template, task.criteria]);
+  const schema = useCallback(() => deliverySchema(deliveryFields(template, task.evidence), task.criteria), [template, task.evidence, task.criteria]);
   const { ref, errors: err, formError, busy, submit, onKeyDown } = useForm(schema, onCancel);
   const answer = (key: string, value: string) => setAnswers((a) => ({ ...a, [key]: value }));
-  const values = { ...Object.fromEntries(template.map((f) => [f.key, isUpload(f) ? (files[f.key] ?? []) : (answers[f.key] ?? '')])), criteria: met };
+  const values = { ...Object.fromEntries(fields.map((f) => [f.key, isUpload(f) ? (files[f.key] ?? []) : (answers[f.key] ?? '')])), criteria: met };
 
   return (
     <form
@@ -73,8 +78,8 @@ export function ReviewForm({
           values,
           () =>
             onSubmit({
-              answers: Object.fromEntries(template.filter((f) => !isUpload(f)).map((f) => [f.key, (answers[f.key] ?? '').trim()])),
-              files: Object.fromEntries(template.filter(isUpload).map((f) => [f.key, files[f.key] ?? []])),
+              answers: Object.fromEntries(fields.filter((f) => !isUpload(f)).map((f) => [f.key, (answers[f.key] ?? '').trim()])),
+              files: Object.fromEntries(fields.filter(isUpload).map((f) => [f.key, files[f.key] ?? []])),
               reviewerId: reviewer || null,
               criteriaMet: met,
             }),
@@ -86,7 +91,7 @@ export function ReviewForm({
       aria-label={mode === 'submit' ? t('review.formLabel') : t('review.completeLabel')}
     >
       {mode === 'complete' && <p className="text-sm text-fg-muted">{t('review.completeHint')}</p>}
-      {template.map((f, i) => {
+      {fields.map((f, i) => {
         const fieldId = `${id}-${f.key}`;
         const label = f.required ? `${f.label} *` : f.label;
         const error = err[f.key];
@@ -114,7 +119,7 @@ export function ReviewForm({
                 name={f.key}
                 type="file"
                 multiple
-                accept={(f.kind === 'image' ? IMAGE_TYPES : EVIDENCE_TYPES).join(',')}
+                accept={acceptOf(f).join(',')}
                 aria-invalid={Boolean(error) || undefined}
                 aria-describedby={`${fieldId}-help`}
                 onChange={(e) => setFiles((x) => ({ ...x, [f.key]: [...(e.target.files ?? [])] }))}
@@ -123,7 +128,7 @@ export function ReviewForm({
               {chosen.length > 0 && <p className="text-sm text-fg">{chosen.map((x) => x.name).join(', ')}</p>}
               {help ?? (
                 <p id={`${fieldId}-help`} className="text-sm text-fg-muted">
-                  {f.kind === 'image' ? t('review.imageHint') : t('review.fileHint')}
+                  {f.accept ? t('review.acceptHint', { types: formatsOf(f.accept) }) : f.kind === 'image' ? t('review.imageHint') : t('review.fileHint')}
                 </p>
               )}
             </div>

@@ -1,9 +1,9 @@
+import { evidenceLabel } from '@/lib/evidence';
 import { CheckCircle2, Circle, Plus } from 'lucide-react';
 import { useState } from 'react';
 import type { Task } from '@/cloud/contract';
 import { t } from '@/i18n';
 import { fieldErrors, forms } from '@/lib/forms';
-import { arrowNav, NAV_ITEM } from '@/lib/keyboard';
 import { LIMITS } from '@/lib/limits';
 import { STATUS_LABEL } from '@/lib/tasks';
 import { Badge, Button, Heading } from '@/ui/atoms';
@@ -58,6 +58,21 @@ export function TaskDetails({
           <div className="flex flex-wrap gap-1">
             {task.labels.map((l) => (
               <Badge key={l}>{l}</Badge>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section aria-label={t('evidence.title')} className="flex flex-col gap-2">
+        <Heading level={2}>{t('evidence.title')}</Heading>
+        {task.evidence.length === 0 ? (
+          <p className="text-sm text-fg-muted">{t('evidence.none')}</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {task.evidence.map((key) => (
+              <Badge key={key} tone="accent">
+                {evidenceLabel(key)}
+              </Badge>
             ))}
           </div>
         )}
@@ -133,12 +148,11 @@ export function TaskDetails({
           {subtasks.length === 0 ? (
             <p className="text-sm text-fg-muted">{t('tasks.details.noSubtasks')}</p>
           ) : (
-            <ul onKeyDown={arrowNav} className="flex flex-col divide-y divide-line">
+            <ul className="flex flex-col divide-y divide-line">
               {subtasks.map((s) => (
                 <li key={s.id} className="flex flex-wrap items-center gap-2 py-2 text-sm">
                   <button
                     type="button"
-                    {...{ [NAV_ITEM]: '' }}
                     onClick={() => onOpenTask(s.id)}
                     className={`min-w-0 flex-1 truncate rounded-xs text-left hover:underline ${s.status === 'done' ? 'text-fg-muted line-through' : 'text-fg'}`}
                   >

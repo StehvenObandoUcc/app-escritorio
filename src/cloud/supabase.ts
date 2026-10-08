@@ -442,8 +442,8 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
     setReviewTemplate: async (projectId, fields) => {
       await rpc('set_review_template', { p_project: projectId, p_template: fields });
     },
-    createTask: async (projectId, input, extras = {}) =>
-      z.uuid().parse(
+    createTask: async (projectId, input, extras = {}) => {
+      const id = z.uuid().parse(
         await rpc('create_task', {
           p_project: projectId,
           ...taskArgs(input),
@@ -451,9 +451,13 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
           p_criteria: extras.criteria ?? [],
           p_collaborators: extras.collaborators ?? [],
         }),
-      ),
+      );
+      if (input.evidence.length) await rpc('set_task_evidence', { p_task: id, p_evidence: input.evidence });
+      return id;
+    },
     updateTask: async (taskId, input) => {
       await rpc('update_task', { p_task: taskId, ...taskArgs(input) });
+      await rpc('set_task_evidence', { p_task: taskId, p_evidence: input.evidence });
     },
     setTaskStatus: async (taskId, status) => {
       await rpc('set_task_status', { p_task: taskId, p_status: status });

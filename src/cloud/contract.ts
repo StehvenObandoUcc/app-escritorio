@@ -178,6 +178,8 @@ export const TaskSchema = z.object({
   assigneeId: z.uuid().nullable(),
   assigneeCanManage: z.boolean(),
   status: TaskStatusSchema,
+  /** Evidencia que exige la tarea (claves del catálogo de src/lib/evidence.ts, ADR-0020). */
+  evidence: z.array(z.string()).default([]),
   /** AAAA-MM-DD */
   dueDate: z.iso.date().nullable(),
   labels: z.array(z.string()),
@@ -204,7 +206,7 @@ export type TeamWork = z.infer<typeof TeamWorkSchema>;
 /** Campos que se escriben al crear o editar una tarea. */
 export type TaskInput = Pick<
   Task,
-  'title' | 'description' | 'type' | 'assigneeId' | 'assigneeCanManage' | 'dueDate' | 'labels' | 'estimateMinutes'
+  'title' | 'description' | 'type' | 'assigneeId' | 'assigneeCanManage' | 'dueDate' | 'labels' | 'estimateMinutes' | 'evidence'
 > & { status: ManualStatus | TaskStatus };
 
 /** Lo que solo se indica al crear: tarea madre, criterios y apoyos. */

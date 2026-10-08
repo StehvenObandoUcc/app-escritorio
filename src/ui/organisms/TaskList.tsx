@@ -1,7 +1,6 @@
 import { CornerDownRight } from 'lucide-react';
 import type { Task } from '@/cloud/contract';
 import { t } from '@/i18n';
-import { arrowNav, NAV_ITEM } from '@/lib/keyboard';
 import { STATUS_LABEL, type Step } from '@/lib/tasks';
 import { Badge } from '@/ui/atoms';
 import { TaskMeta } from '@/ui/molecules';
@@ -38,7 +37,6 @@ function Row({ task, sub, props }: { task: Task; sub: boolean; props: TaskViewPr
       <div className="min-w-0 flex-1">
         <button
           type="button"
-          {...{ [NAV_ITEM]: '' }}
           onClick={() => props.onOpen(task)}
           className={`max-w-full truncate rounded-xs text-left font-medium hover:underline ${task.status === 'done' ? 'text-fg-muted line-through' : 'text-fg'}`}
         >
@@ -54,7 +52,7 @@ function Row({ task, sub, props }: { task: Task; sub: boolean; props: TaskViewPr
 /** Lista de tareas (PT-05) con sus subtareas debajo. Flechas arriba y abajo para recorrerla, Enter para abrir. */
 export function TaskList(props: TaskViewProps) {
   return (
-    <ul aria-label={t('tasks.listLabel')} onKeyDown={arrowNav} className="flex flex-col divide-y divide-line">
+    <ul aria-label={t('tasks.listLabel')} className="flex flex-col divide-y divide-line">
       {props.tree.flatMap(({ task, children }) => [
         <Row key={task.id} task={task} sub={false} props={props} />,
         ...children.map((c) => <Row key={c.id} task={c} sub props={props} />),
