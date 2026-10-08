@@ -1,6 +1,7 @@
 import { useId, useState } from 'react';
 import { TASK_TYPES, type NewTaskExtras, type TaskInput } from '@/cloud/contract';
 import { t } from '@/i18n';
+import { EVIDENCE_KEYS, evidenceLabel } from '@/lib/evidence';
 import { forms } from '@/lib/forms';
 import { LIMITS } from '@/lib/limits';
 import { TYPE_LABEL } from '@/lib/tasks';
@@ -19,6 +20,7 @@ export const EMPTY_TASK: TaskInput = {
   dueDate: null,
   labels: [],
   estimateMinutes: null,
+  evidence: [],
 };
 
 const textarea = 'w-full rounded-md border bg-surface px-3 py-2 text-base text-fg';
@@ -148,6 +150,25 @@ export function TaskForm({
           <EstimateInput minutes={v.estimateMinutes} error={err.estimateMinutes} onChange={(m) => set('estimateMinutes', m)} />
         </div>
       </div>
+      {(manage || isNew) && (
+        <fieldset className="flex flex-col gap-2">
+          <legend className="text-sm font-medium text-fg">{t('evidence.title')}</legend>
+          <p className="text-sm text-fg-muted">{t('evidence.hint')}</p>
+          <div className="grid gap-x-4 gap-y-2 md:grid-cols-2">
+            {EVIDENCE_KEYS.map((key) => (
+              <label key={key} className="flex items-center gap-2 text-sm text-fg">
+                <input
+                  type="checkbox"
+                  name={`evidence-${key}`}
+                  checked={v.evidence.includes(key)}
+                  onChange={(e) => set('evidence', e.target.checked ? [...v.evidence, key] : v.evidence.filter((x) => x !== key))}
+                />
+                {evidenceLabel(key)}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
       <FormField
         name="labels"
         label={t('tasks.form.labels')}

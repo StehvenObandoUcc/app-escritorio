@@ -1,4 +1,3 @@
-import { arrowNav } from '@/lib/keyboard';
 import { Plus } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
@@ -89,7 +88,7 @@ export function ProyectosPage() {
           description={show === 'archived' ? t('projects.noArchivedHint') : canCreate ? t('projects.emptyManager') : t('projects.emptyMember')}
         />
       ) : (
-        <div onKeyDown={arrowNav} className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {projects.map((p) => (
             <ProjectCard key={p.id} project={p} overdue={overdueOf(p.id)} href={`#/proyectos/${p.id}`} />
           ))}

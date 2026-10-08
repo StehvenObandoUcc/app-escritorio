@@ -69,6 +69,42 @@ describe('teclado en toda la app (ADR-0019)', () => {
     expect(onHelp).toHaveBeenCalled();
   });
 
+  it('las flechas van al elemento más cercano en esa dirección (navegación espacial)', async () => {
+    render(
+      <div>
+        <button>A</button>
+        <button>B</button>
+        <button>C</button>
+        <button>D</button>
+      </div>,
+    );
+    // Cuadrícula de 2×2: A B / C D
+    const place = (name: string, left: number, top: number) =>
+      vi.spyOn(screen.getByRole('button', { name }), 'getBoundingClientRect').mockReturnValue({ left, top, width: 80, height: 30, right: left + 80, bottom: top + 30, x: left, y: top, toJSON: () => ({}) });
+    place('A', 0, 0);
+    place('B', 200, 0);
+    place('C', 0, 100);
+    place('D', 200, 100);
+    function Keys() {
+      useAppKeyboard(ROUTES, () => {});
+      return null;
+    }
+    render(
+      <MemoryRouter>
+        <Keys />
+      </MemoryRouter>,
+    );
+    screen.getByRole('button', { name: 'A' }).focus();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(screen.getByRole('button', { name: 'B' })).toHaveFocus();
+    await userEvent.keyboard('{ArrowDown}');
+    expect(screen.getByRole('button', { name: 'D' })).toHaveFocus();
+    await userEvent.keyboard('{ArrowLeft}');
+    expect(screen.getByRole('button', { name: 'C' })).toHaveFocus();
+    await userEvent.keyboard('{ArrowUp}');
+    expect(screen.getByRole('button', { name: 'A' })).toHaveFocus();
+  });
+
   it('las flechas recorren el menú de navegación', async () => {
     setup();
     screen.getByRole('link', { name: 'Mi día' }).focus();

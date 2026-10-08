@@ -2,7 +2,6 @@ import { Activity, type LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { NavLink } from 'react-router';
 import { t } from '@/i18n';
-import { arrowNav, NAV_ITEM } from '@/lib/keyboard';
 import { cx } from '@/lib/cx';
 
 export interface NavItem {
@@ -35,12 +34,11 @@ export function AppNav({ items, footer }: { items: NavItem[]; footer?: ReactNode
         </span>
       </div>
 
-      <ul onKeyDown={arrowNav} className="flex flex-1 justify-around gap-1 md:flex-none md:flex-col md:justify-start">
+      <ul className="flex flex-1 justify-around gap-1 md:flex-none md:flex-col md:justify-start">
         {items.map(({ to, label, icon: Icon }, i) => (
           <li key={to} className="flex-1 md:flex-none">
             <NavLink
               to={to}
-              {...{ [NAV_ITEM]: '' }}
               title={`${label} (Alt+${i + 1})`}
               className={({ isActive }) =>
                 cx(

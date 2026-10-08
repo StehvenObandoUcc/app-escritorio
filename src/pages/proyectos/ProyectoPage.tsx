@@ -1,4 +1,3 @@
-import { arrowNav, NAV_ITEM } from '@/lib/keyboard';
 import { useQuery } from '@tanstack/react-query';
 import { Archive, ArchiveRestore, ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
@@ -192,10 +191,10 @@ function ProjectView({ ctx, project, back }: { ctx: Ctx; project: Project; back:
           {reviews.length === 0 ? (
             <p className="text-fg-muted">{t('review.none')}</p>
           ) : (
-            <ul onKeyDown={arrowNav} className="flex flex-col divide-y divide-line">
+            <ul className="flex flex-col divide-y divide-line">
               {reviews.map((x) => (
                 <li key={x.id} className="flex flex-wrap items-center gap-3 py-3">
-                  <a href={`#${taskPath(project.id, x.id)}`} {...{ [NAV_ITEM]: '' }} className="min-w-0 flex-1 truncate rounded-xs font-medium text-fg hover:underline">
+                  <a href={`#${taskPath(project.id, x.id)}`} className="min-w-0 flex-1 truncate rounded-xs font-medium text-fg hover:underline">
                     {x.title}
                   </a>
                   <span className="text-sm text-fg-muted">{t('review.submittedByShort', { name: nameOf(x.pendingReview?.submittedBy ?? null) ?? t('common.exMember') })}</span>

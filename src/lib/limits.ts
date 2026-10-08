@@ -17,7 +17,7 @@ export const LIMITS = {
   answer: { length: 5000 },
   links: { count: 10, length: 2000 },
   reviewComment: { max: 2000 },
-  evidence: { bytes: 10 * 1024 * 1024, files: 10 },
+  evidence: { bytes: 50 * 1024 * 1024, files: 10 },
   domain: { max: 253 },
 } as const;
 
@@ -31,10 +31,19 @@ export const EVIDENCE_TYPES = [
   'text/plain',
   'text/csv',
   'text/markdown',
+  'text/xml',
+  'application/xml',
+  'application/msword',
+  'application/vnd.ms-excel',
+  'application/vnd.ms-powerpoint',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'video/mp4',
+  'video/webm',
+  'video/quicktime',
   'application/zip',
+  'application/x-zip-compressed',
 ] as const;
 
 /** Zona horaria de respaldo si el sistema no informa ninguna. */

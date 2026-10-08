@@ -3,15 +3,11 @@ import { t, type TKey } from '@/i18n';
 import { Button, Heading } from '@/ui/atoms';
 
 const SHORTCUTS: [string, TKey][] = [
-  ['Tab / Shift+Tab', 'keyboard.tab'],
+  ['← ↑ → ↓', 'keyboard.arrows'],
   ['Enter', 'keyboard.enter'],
-  ['Ctrl+Enter', 'keyboard.ctrlEnter'],
   ['Esc', 'keyboard.esc'],
-  ['↑ ↓', 'keyboard.arrows'],
-  ['← →', 'keyboard.arrowsSides'],
-  ['Home / End', 'keyboard.homeEnd'],
+  ['Ctrl+Enter', 'keyboard.ctrlEnter'],
   ['Alt+1 … Alt+6', 'keyboard.sections'],
-  ['?', 'keyboard.help'],
 ];
 
 /** Ayuda de atajos de teclado (ADR-0019). `<dialog>` nativo: Esc la cierra y el foco queda dentro. */

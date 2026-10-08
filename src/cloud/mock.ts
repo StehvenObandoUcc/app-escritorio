@@ -6,6 +6,7 @@
  */
 import type { SyncBlock, SyncClosure, SyncEntry, TeamRule } from '@/bridge/contract';
 import { CONSENT_VERSION } from '@/lib/consent';
+import { deliveryFields } from '@/lib/evidence';
 import {
   CloudError,
   DEFAULT_WORKDAY,
@@ -216,13 +217,14 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
   const findTask = (taskId: string) => tasks.find((x) => x.id === taskId) ?? fail('No permitido');
   /** Igual que assert_delivery (ADR-0018): obligatorios, enlaces, criterios y tipo de los archivos de cada campo. */
   const assertDelivery = (t: MockTask, answers: Record<string, string>, files: Record<string, File[]>, criteriaMet: string[]) => {
-    for (const f of templateOf(t.projectId)) {
+    for (const f of deliveryFields(templateOf(t.projectId), t.evidence)) {
       const v = (answers[f.key] ?? '').trim();
       const fieldFiles = files[f.key] ?? [];
       const empty = f.kind === 'image' || f.kind === 'file' ? fieldFiles.length === 0 : v === '' || (f.kind === 'checklist' && v !== 'true');
       if (f.required && empty) fail(`Falta completar «${f.label}» en el formulario de entrega`, 'invalid');
       if (f.kind === 'url' && v !== '' && !URL_RE.test(v)) fail(`«${f.label}» debe ser un enlace que empiece por http:// o https://`, 'invalid');
       if (f.kind === 'image' && fieldFiles.some((x) => !x.type.startsWith('image/'))) fail(`«${f.label}» solo admite imágenes`, 'invalid');
+      if (f.accept && fieldFiles.some((x) => !f.accept!.includes(x.type))) fail(`«${f.label}» no admite ese tipo de archivo`, 'invalid');
     }
     if (t.criteria.some((c) => !criteriaMet.includes(c.id))) fail('Marca todos los criterios de aceptación antes de enviar a revisión', 'invalid');
   };

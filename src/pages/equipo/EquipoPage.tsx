@@ -1,4 +1,3 @@
-import { arrowNav, NAV_ITEM } from '@/lib/keyboard';
 import { errorMessage, formatDate as formatIntlDate, t } from '@/i18n';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ShieldCheck, UserPlus } from 'lucide-react';
@@ -152,7 +151,7 @@ function MyInvitations() {
           {errorMessage(query.error)}
         </p>
       )}
-      <ul onKeyDown={arrowNav} className="flex flex-col divide-y divide-line">
+      <ul className="flex flex-col divide-y divide-line">
         {list.map((inv) => (
           <li key={inv.id} className="flex flex-wrap items-center gap-3 py-3">
             <div className="min-w-0 flex-1">
@@ -161,7 +160,7 @@ function MyInvitations() {
                 {inv.invitedByName ? t('team.invitedBy', { name: inv.invitedByName }) : t('team.invited')} {t('team.asRole', { role: ROLE_LABEL[inv.role], date: formatDate(inv.expiresAt) })}
               </p>
             </div>
-            <Button variant="primary" size="sm" {...{ [NAV_ITEM]: '' }} onClick={() => setOpen(inv)}>
+            <Button variant="primary" size="sm" onClick={() => setOpen(inv)}>
               {t('team.viewRespond')}
             </Button>
           </li>
