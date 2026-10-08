@@ -87,6 +87,8 @@ export const SERVER_MESSAGES: Record<string, string> = {
   'Una regla de dominio solo lleva el dominio, sin rutas, por ejemplo youtube.com.': 'A domain rule only has the domain, without paths, for example youtube.com.',
   'Una regla solo puede asignar productivo, neutro, distracción o IA.': 'A rule can only assign productive, neutral, distraction or AI.',
   'Ya hay un temporizador en marcha. Deténlo antes de iniciar otro.': 'A timer is already running. Stop it before starting another.',
+  'Solo se abren enlaces https://.': 'Only https:// links are opened.',
+  'El enlace no es válido.': 'The link is not valid.',
 };
 
 /** Mensajes con partes variables (`%` en SQL, `{…}` en Rust). `$1` es la parte capturada. */
@@ -103,4 +105,5 @@ export const SERVER_PATTERNS: [RegExp, string][] = [
   [/^La pausa debe durar entre 1 y (\d+) minutos\.$/, 'The pause must last between 1 and $1 minutes.'],
   [/^Puedes ocultar hasta (\d+) apps\.$/, 'You can hide up to $1 apps.'],
   [/^Tipo de registro desconocido: «(.+)»\.$/, 'Unknown record type: “$1”.'],
+  [/^No se pudo abrir el enlace: (.+)$/, 'The link could not be opened: $1'],
 ];

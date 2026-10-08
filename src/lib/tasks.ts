@@ -108,9 +108,26 @@ export const canManageProject = (p: Pick<Project, 'myRole'>) => p.myRole === 'ma
 
 type Proj = Pick<Project, 'myRole' | 'archivedAt'>;
 
-/** Fila 19 v2: entre «Por hacer» y «En curso» la mueven quien gestiona, el responsable o un apoyo. Una hecha solo la reabre quien gestiona. */
+/**
+ * Fila 19 v3: el selector de estado lo usan quien gestiona, el responsable o un apoyo (AC-45). Elegir En revisión
+ * o Hecha abre el formulario de entrega; una tarea en revisión o hecha solo la mueve quien gestiona.
+ */
 export const canChangeStatus = (p: Proj, t: Pick<Task, 'assigneeId' | 'collaborators' | 'status'>, me: string) =>
-  !p.archivedAt && t.status !== 'review' && (canManageProject(p) || (t.status !== 'done' && isWorker(t, me)));
+  !p.archivedAt && (canManageProject(p) || (t.status !== 'review' && t.status !== 'done' && isWorker(t, me)));
+
+/** Fila 32: quien gestiona completa directamente con el formulario. */
+export const canComplete = (p: Proj, t: Pick<Task, 'status'>) => !p.archivedAt && canManageProject(p) && t.status !== 'done';
+
+/** Fila 31: cualquiera del proyecto toma una tarea sin responsable que no está en revisión ni hecha. */
+export const canTake = (p: Proj, t: Pick<Task, 'assigneeId' | 'status'>, isProjectMember: boolean) =>
+  !p.archivedAt && isProjectMember && t.assigneeId === null && (t.status === 'todo' || t.status === 'doing');
+
+/** Qué hace el selector de estado al elegir un estado (AC-45). */
+export function statusAction(p: Proj, t: Pick<Task, 'assigneeId' | 'collaborators' | 'status'>, me: string, next: Task['status']) {
+  if (next === 'todo' || next === 'doing') return 'set' as const;
+  if (next === 'review') return canSubmit(p, t, me) ? ('submit' as const) : ('forbidden' as const);
+  return canComplete(p, t) ? ('complete' as const) : canSubmit(p, t, me) ? ('submit' as const) : ('forbidden' as const);
+}
 
 /** Fila 27: envía a revisión el responsable o un apoyo. */
 export const canSubmit = (p: Proj, t: Pick<Task, 'assigneeId' | 'collaborators' | 'status'>, me: string) =>

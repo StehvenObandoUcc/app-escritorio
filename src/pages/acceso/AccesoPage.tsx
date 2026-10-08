@@ -1,34 +1,32 @@
 import { errorMessage, t } from '@/i18n';
 import { ArrowLeft, Mail } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { useCallback, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { useSession } from '@/app/session';
 import { CloudError } from '@/cloud/contract';
 import { MOCK_CODE } from '@/cloud/mock';
-import { cx } from '@/lib/cx';
+import { fieldErrors, forms } from '@/lib/forms';
+import { LIMITS } from '@/lib/limits';
+import { useForm } from '@/lib/useForm';
 import { useTheme } from '@/lib/theme';
 import { Badge, Button } from '@/ui/atoms';
-import { FormField, PasswordField, ThemeToggle } from '@/ui/molecules';
+import { FormField, PasswordField, SegmentedControl, ThemeToggle } from '@/ui/molecules';
 import { AuthLayout } from '@/ui/templates';
 
 type Mode = 'entrar' | 'registro' | 'verificar' | 'recuperar' | 'nueva-clave';
 
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-/** CU-01 pide 6 dígitos; se aceptan hasta 10 por si el proyecto de Supabase usa otra longitud. */
-const CODE = /^\d{6,10}$/;
-const MIN_PASSWORD = 8;
-
-const MODE_KEY: Record<Mode, 'signIn' | 'signUp' | 'verify' | 'recover' | 'newPassword'> = {
+const MODE_KEY = {
   entrar: 'signIn',
   registro: 'signUp',
   verificar: 'verify',
   recuperar: 'recover',
   'nueva-clave': 'newPassword',
-};
+} as const satisfies Record<Mode, keyof typeof forms>;
 
 /**
  * Pantalla de acceso (CU-01 a CU-03). Se muestra en lugar de la app mientras no haya sesión:
  * registro con código de verificación, inicio de sesión y recuperación de contraseña.
+ * Con el teclado: Enter pasa al siguiente campo vacío y envía en el último (C5, AC-43).
  */
 export function AccesoPage() {
   const { cloud } = useSession();
@@ -39,52 +37,31 @@ export function AccesoPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
-  const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const schema = useCallback(() => forms[MODE_KEY[mode]](), [mode]);
+  const { ref, errors, setErrors, formError, setFormError, busy, submit: send, onKeyDown } = useForm(schema);
 
   const go = (next: Mode) => {
     setMode(next);
-    setError(null);
+    setErrors({});
+    setFormError(null);
     setNotice(null);
     setCode('');
   };
 
-  const attempt = async (check: () => string | null, action: () => Promise<void>) => {
-    const problem = check();
-    if (problem) {
-      setError(problem);
-      return;
-    }
-    setError(null);
-    setNotice(null);
-    setBusy(true);
-    try {
-      await action();
-    } catch (cause) {
-      setError(errorMessage(cause));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const emailProblem = () => (EMAIL.test(email.trim()) ? null : t('access.errors.email'));
-  const passwordProblem = () =>
-    password.length >= MIN_PASSWORD ? null : t('access.errors.passwordLength', { n: MIN_PASSWORD });
-  const codeProblem = () => (CODE.test(code.trim()) ? null : t('access.errors.code'));
-
   const submit = (e: FormEvent) => {
-    e.preventDefault();
+    setNotice(null);
     const mail = email.trim();
-    if (mode === 'entrar') {
-      void attempt(
-        () => emailProblem() ?? (password ? null : t('access.errors.password')),
-        async () => {
+    void send(
+      { name, email, password, code },
+      async () => {
+        if (mode === 'entrar') {
           try {
             await cloud.signIn(mail, password);
             navigate('/mi-dia');
           } catch (cause) {
             if (cause instanceof CloudError && cause.message === t('cloud.auth.emailNotConfirmed')) {
+              // Si no se puede reenviar, la persona igual puede pedir otro código desde la pantalla siguiente.
               await cloud.resendSignUpCode(mail).catch(() => {});
               go('verificar');
               setNotice(t('access.notices.notVerified'));
@@ -92,15 +69,7 @@ export function AccesoPage() {
             }
             throw cause;
           }
-        },
-      );
-    } else if (mode === 'registro') {
-      void attempt(
-        () =>
-          (name.trim().length >= 1 && name.trim().length <= 80 ? null : t('access.errors.name')) ??
-          emailProblem() ??
-          passwordProblem(),
-        async () => {
+        } else if (mode === 'registro') {
           try {
             await cloud.signUp(mail, password, name.trim());
           } catch (cause) {
@@ -115,31 +84,22 @@ export function AccesoPage() {
             navigate('/equipo');
             return;
           }
-          // Si el proyecto de Supabase aún exige confirmar el correo, se pide el código.
           go('verificar');
           setNotice(t('access.notices.codeSent', { email: mail }));
-        },
-      );
-    } else if (mode === 'verificar') {
-      void attempt(codeProblem, async () => {
-        await cloud.verifySignUp(mail, code.trim());
-        navigate('/equipo');
-      });
-    } else if (mode === 'recuperar') {
-      void attempt(emailProblem, async () => {
-        await cloud.requestPasswordReset(mail);
-        go('nueva-clave');
-        setNotice(t('access.notices.resetSent', { email: mail }));
-      });
-    } else {
-      void attempt(
-        () => codeProblem() ?? passwordProblem(),
-        async () => {
+        } else if (mode === 'verificar') {
+          await cloud.verifySignUp(mail, code.trim());
+          navigate('/equipo');
+        } else if (mode === 'recuperar') {
+          await cloud.requestPasswordReset(mail);
+          go('nueva-clave');
+          setNotice(t('access.notices.resetSent', { email: mail }));
+        } else {
           await cloud.resetPassword(mail, code.trim(), password);
           navigate('/mi-dia');
-        },
-      );
-    }
+        }
+      },
+      e,
+    );
   };
 
   const title = t(`access.modes.${MODE_KEY[mode]}.title`);
@@ -163,23 +123,15 @@ export function AccesoPage() {
       }
     >
       {isTab && (
-        <div role="tablist" aria-label={t('access.tabs')} className="grid grid-cols-2 gap-1 rounded-lg bg-sunken p-1">
-          {(['entrar', 'registro'] as const).map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              role="tab"
-              aria-selected={mode === tab}
-              onClick={() => go(tab)}
-              className={cx(
-                'h-control rounded-md text-sm font-medium transition-colors',
-                mode === tab ? 'border border-line bg-surface text-fg' : 'text-fg-muted hover:text-fg',
-              )}
-            >
-              {tab === 'entrar' ? t('access.modes.signIn.submit') : t('access.modes.signUp.submit')}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          label={t('access.tabs')}
+          value={mode}
+          onChange={go}
+          options={[
+            { value: 'entrar', label: t('access.modes.signIn.submit') },
+            { value: 'registro', label: t('access.modes.signUp.submit') },
+          ]}
+        />
       )}
 
       {needsCode && (
@@ -198,16 +150,18 @@ export function AccesoPage() {
         </div>
       )}
 
-      <form onSubmit={submit} className="flex flex-col gap-4" noValidate aria-label={title}>
+      <form ref={ref} onSubmit={submit} onKeyDown={onKeyDown} className="flex flex-col gap-4" noValidate aria-label={title}>
         {mode === 'registro' && (
-          <FormField label={t('access.fields.name')} autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} hint={t('access.fields.nameHint')} />
+          <FormField name="name" autoFocus label={t('access.fields.name')} autoComplete="name" maxLength={LIMITS.displayName.max} value={name} error={errors.name} onChange={(e) => setName(e.target.value)} hint={t('access.fields.nameHint')} />
         )}
         {mode !== 'verificar' && (
-          <FormField label={t('access.fields.email')} type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <FormField name="email" autoFocus={mode !== 'registro'} label={t('access.fields.email')} type="email" autoComplete="email" maxLength={LIMITS.email.max} value={email} error={errors.email} onChange={(e) => setEmail(e.target.value)} />
         )}
         {needsCode && (
           <FormField
+            name="code"
             label={t('access.fields.code')}
+            error={errors.code}
             inputMode="numeric"
             autoComplete="one-time-code"
             maxLength={10}
@@ -220,16 +174,19 @@ export function AccesoPage() {
         {(mode === 'entrar' || mode === 'registro' || mode === 'nueva-clave') && (
           <PasswordField
             key={mode}
+            name="password"
+            error={errors.password}
+            maxLength={LIMITS.password.max}
             label={mode === 'nueva-clave' ? t('access.fields.newPassword') : t('access.fields.password')}
             autoComplete={mode === 'entrar' ? 'current-password' : 'new-password'}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            hint={mode === 'entrar' ? undefined : t('access.fields.passwordHint', { n: MIN_PASSWORD })}
+            hint={mode === 'entrar' ? undefined : t('access.fields.passwordHint', { n: LIMITS.password.min })}
           />
         )}
-        {error && (
+        {formError && (
           <p role="alert" className="rounded-md bg-danger-soft p-3 text-sm text-danger">
-            {error}
+            {formError}
           </p>
         )}
         {notice && (
@@ -253,12 +210,15 @@ export function AccesoPage() {
             variant="ghost"
             size="sm"
             disabled={busy}
-            onClick={() =>
-              void attempt(emailProblem, async () => {
-                await cloud.resendSignUpCode(email.trim());
-                setNotice(t('access.notices.codeResent'));
-              })
-            }
+            onClick={() => {
+              // Reenviar solo necesita el correo, no el código del formulario.
+              const check = fieldErrors(forms.recover(), { email });
+              if (check.errors) return setFormError(check.errors.email ?? null);
+              void cloud.resendSignUpCode(check.data.email).then(
+                () => setNotice(t('access.notices.codeResent')),
+                (cause: unknown) => setFormError(errorMessage(cause)),
+              );
+            }}
           >
             {t('access.resend')}
           </Button>

@@ -8,7 +8,8 @@
  *   sigue asignándose al último equipo conocido y se sube al volver la red.
  * - El equipo elegido se recuerda en este equipo (localStorage): es una preferencia, no un dato sensible.
  */
-import { t } from '@/i18n';
+import { FALLBACK_TIMEZONE } from '@/lib/limits';
+import { errorMessage, t } from '@/i18n';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { Bridge } from '@/bridge/contract';
@@ -22,9 +23,9 @@ export const RULES_REFRESH_MS = 5 * 60_000;
 
 const systemTimezone = () => {
   try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Bogota';
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || FALLBACK_TIMEZONE;
   } catch {
-    return 'America/Bogota';
+    return FALLBACK_TIMEZONE;
   }
 };
 
@@ -149,15 +150,20 @@ export function SessionProvider({
   );
   const profile = profileQuery.data ?? null;
 
+  // Si el núcleo no recibe el equipo, la política o las reglas, nada se registra bien: se dice en el
+  // indicador de sincronización en lugar de callarlo.
+  const [coreError, setCoreError] = useState<string | null>(null);
+  const reportCore = useCallback((cause: unknown) => setCoreError(t('sync.coreError', { error: errorMessage(cause) })), []);
+
   // Equipo activo en Rust y política del equipo (apps ocultas y avisos, ADR-0009/0010).
   useEffect(() => {
     if (user === undefined) return;
     if (user === null) {
-      void bridge.activeTeamSet(null, null).catch(() => {});
+      void bridge.activeTeamSet(null, null).catch(reportCore);
       return;
     }
     if (!teamsQuery.isSuccess) return; // sin red: se conserva el último equipo conocido
-    void bridge.activeTeamSet(uploading?.id ?? null, user.id).catch(() => {});
+    void bridge.activeTeamSet(uploading?.id ?? null, user.id).then(() => setCoreError(null), reportCore);
     // La política se aplica aunque no haya consentimiento: ocultar o avisar es local.
     void bridge
       .teamPolicySet({
@@ -165,8 +171,8 @@ export function SessionProvider({
         alertNotAllowed: activeTeam?.alertNotAllowed ?? true,
         alertRepeatMinutes: activeTeam?.alertRepeatMinutes ?? 10,
       })
-      .catch(() => {});
-  }, [bridge, user, teamsQuery.isSuccess, uploading?.id, activeTeam?.allowHiddenApps, activeTeam?.alertNotAllowed, activeTeam?.alertRepeatMinutes]);
+      .catch(reportCore);
+  }, [bridge, user, teamsQuery.isSuccess, uploading?.id, activeTeam?.allowHiddenApps, activeTeam?.alertNotAllowed, activeTeam?.alertRepeatMinutes, reportCore]);
 
   // Reglas del equipo para el clasificador: se vuelven a leer cada 5 min y al enfocar la ventana, y se
   // envían a Rust cada vez que cambian. Antes solo se enviaban al arrancar y una regla nueva no llegaba.
@@ -178,8 +184,8 @@ export function SessionProvider({
     refetchOnWindowFocus: true,
   });
   useEffect(() => {
-    if (rulesQuery.data) void bridge.rulesSet(rulesQuery.data).catch(() => {});
-  }, [bridge, rulesQuery.data]);
+    if (rulesQuery.data) void bridge.rulesSet(rulesQuery.data).catch(reportCore);
+  }, [bridge, rulesQuery.data, reportCore]);
 
   // Contexto del motor de sincronización.
   useEffect(() => {
@@ -201,10 +207,12 @@ export function SessionProvider({
   const engineState = useSyncExternalStore(engine.subscribe, engine.getState);
   const sync = useMemo<SyncState>(
     () =>
-      isViewer
-        ? { ...engineState, phase: 'off', message: t('sync.viewer') }
-        : engineState,
-    [engineState, isViewer],
+      coreError
+        ? { ...engineState, phase: 'error', message: coreError }
+        : isViewer
+          ? { ...engineState, phase: 'off', message: t('sync.viewer') }
+          : engineState,
+    [engineState, isViewer, coreError],
   );
 
   const selectTeam = useCallback((teamId: string) => {

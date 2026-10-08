@@ -46,7 +46,7 @@ export function MisTareasPage() {
     <ul aria-label={label} className="flex flex-col divide-y divide-line">
       {tasks.map((x) => (
         <li key={x.id} className="flex flex-col gap-1 py-3">
-          <a href={`#/proyectos/${x.projectId}?tarea=${x.id}`} className="truncate font-medium text-fg hover:underline">
+          <a href={`#/proyectos/${x.projectId}/tareas/${x.id}`} className="truncate font-medium text-fg hover:underline">
             {x.title}
           </a>
           <p className="text-sm text-fg-muted">{projectName.get(x.projectId)}</p>

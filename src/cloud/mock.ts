@@ -213,6 +213,15 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
       .filter((e) => e.taskId === taskId && !e.deletedAt)
       .reduce((sum, e) => sum + Math.round(((e.endedAt ? Date.parse(e.endedAt) : now().getTime()) - Date.parse(e.startedAt)) / 1000), 0);
   const findTask = (taskId: string) => tasks.find((x) => x.id === taskId) ?? fail('No permitido');
+  const assertDelivery = (t: MockTask, answers: Record<string, string>, links: string[], criteriaMet: string[]) => {
+    for (const f of templateOf(t.projectId)) {
+      const v = (answers[f.key] ?? '').trim();
+      if (f.required && (v === '' || (f.kind === 'checklist' && v !== 'true'))) fail(`Falta completar «${f.label}» en el formulario de entrega`, 'invalid');
+      if (f.kind === 'url' && v !== '' && !URL_RE.test(v)) fail(`«${f.label}» debe ser un enlace que empiece por http:// o https://`, 'invalid');
+    }
+    if (links.length > 10 || links.some((l) => !URL_RE.test(l))) fail('Hasta 10 enlaces de evidencia, cada uno empezando por http:// o https://', 'invalid');
+    if (t.criteria.some((c) => !criteriaMet.includes(c.id))) fail('Marca todos los criterios de aceptación antes de enviar a revisión', 'invalid');
+  };
   /** D-8 v2: al salir del equipo o pasar a viewer, deja proyectos, tareas, apoyos y revisiones pedidas. */
   const leaveWork = (teamId: string, userId: string) => {
     const ids = new Set(projects.filter((p) => p.teamId === teamId).map((p) => p.id));
@@ -580,6 +589,7 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
       if (!canManageProject(projectId, me().id)) fail('No permitido');
       if (fields.length < 1 || fields.length > 15) fail('El formulario de entrega debe tener entre 1 y 15 campos', 'invalid');
       if (new Set(fields.map((f) => f.key)).size !== fields.length) fail('Dos campos del formulario no pueden tener la misma clave', 'invalid');
+      if (!fields.some((f) => f.key === 'summary' && f.kind === 'text' && f.required)) fail('El campo «Qué se hizo» debe existir y ser texto obligatorio', 'invalid');
       const p = projects.find((x) => x.id === projectId);
       if (p) p.template = fields;
     },
@@ -668,19 +678,66 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
       t.criteria = texts.map((text) => text.trim()).filter(Boolean).map((text) => ({ id: crypto.randomUUID(), text, met: false }));
       log(taskId, 'criteria_changed', { count: texts.length });
     },
+    takeTask: async (taskId) => {
+      const a = me();
+      const t = findTask(taskId);
+      if (!projectRole(t.projectId, a.id) || !projectMembers.some((m) => m.projectId === t.projectId && m.userId === a.id)) fail('No permitido');
+      assertOpen(t.projectId);
+      if (t.assigneeId) fail('La tarea ya tiene responsable', 'invalid');
+      if (!['todo', 'doing'].includes(t.status)) fail('La tarea ya está en revisión o hecha', 'invalid');
+      t.assigneeId = a.id;
+      t.collaborators = t.collaborators.filter((c) => c !== a.id);
+      log(taskId, 'assignee_changed', { from: null, to: a.id, taken: true });
+    },
+    completeTask: async (task, _teamId, sub) => {
+      const a = me();
+      const t = findTask(task.id);
+      if (!canManageProject(t.projectId, a.id)) fail('No permitido');
+      assertOpen(t.projectId);
+      if (t.status === 'done') fail('La tarea ya está hecha', 'invalid');
+      assertDelivery(t, sub.answers, sub.links, sub.criteriaMet);
+      const at = now().toISOString();
+      const pending = reviews.find((r) => r.taskId === t.id && r.status === 'pending');
+      const attachments = sub.files.map((f) => ({ id: crypto.randomUUID(), path: `mock/${t.id}/${f.name}`, name: f.name, size: f.size }));
+      let id: string;
+      if (pending) {
+        Object.assign(pending, { status: 'approved', decidedBy: a.id, decidedAt: at, answers: sub.answers, links: sub.links, attachments: [...pending.attachments, ...attachments] });
+        id = pending.id;
+      } else {
+        id = crypto.randomUUID();
+        reviews.push({ id, taskId: t.id, submittedBy: a.id, reviewerId: null, answers: sub.answers, links: sub.links, createdAt: at, attachments, status: 'approved', decidedBy: a.id, comment: null, decidedAt: at });
+        log(t.id, 'review_submitted', { review: id, direct: true });
+      }
+      t.criteria = t.criteria.map((c) => ({ ...c, met: true }));
+      Object.assign(t, { status: 'done', startedAt: t.startedAt ?? at, completedAt: at, updatedAt: at });
+      log(t.id, 'review_approved', { review: id, direct: true });
+      return id;
+    },
+    deleteTask: async (taskId) => {
+      const t = findTask(taskId);
+      if (!canManageProject(t.projectId, me().id)) fail('No permitido');
+      assertOpen(t.projectId);
+      const gone = new Set([taskId, ...tasks.filter((x) => x.parentId === taskId).map((x) => x.id)]);
+      for (let i = tasks.length - 1; i >= 0; i--) if (gone.has(tasks[i]!.id)) tasks.splice(i, 1);
+      for (const e of uploaded.entries) if (e.taskId && gone.has(e.taskId)) e.taskId = null;
+    },
+    deleteProject: async (projectId, confirmName) => {
+      const p = projects.find((x) => x.id === projectId);
+      if (!p || !canManage(p.teamId, me().id)) fail('No permitido');
+      if (confirmName.trim() !== p!.name) fail('Escribe el nombre exacto del proyecto para borrarlo', 'invalid');
+      const gone = new Set(tasks.filter((x) => x.projectId === projectId).map((x) => x.id));
+      for (let i = tasks.length - 1; i >= 0; i--) if (gone.has(tasks[i]!.id)) tasks.splice(i, 1);
+      for (const e of uploaded.entries) if (e.taskId && gone.has(e.taskId)) e.taskId = null;
+      for (let i = projectMembers.length - 1; i >= 0; i--) if (projectMembers[i]!.projectId === projectId) projectMembers.splice(i, 1);
+      projects.splice(projects.indexOf(p!), 1);
+    },
     submitForReview: async (task, _teamId, sub) => {
       const a = me();
       const t = findTask(task.id);
       if (!isWorker(t, a.id) || !projectRole(t.projectId, a.id)) fail('No permitido: envía a revisión el responsable o un apoyo de la tarea');
       assertOpen(t.projectId);
       if (!['todo', 'doing'].includes(t.status)) fail('La tarea ya está en revisión o hecha', 'invalid');
-      for (const f of templateOf(t.projectId)) {
-        const v = (sub.answers[f.key] ?? '').trim();
-        if (f.required && (v === '' || (f.kind === 'checklist' && v !== 'true'))) fail(`Falta completar «${f.label}» en el formulario de entrega`, 'invalid');
-        if (f.kind === 'url' && v !== '' && !URL_RE.test(v)) fail(`«${f.label}» debe ser un enlace que empiece por http:// o https://`, 'invalid');
-      }
-      if (sub.links.length > 10 || sub.links.some((l) => !URL_RE.test(l))) fail('Hasta 10 enlaces de evidencia, cada uno empezando por http:// o https://', 'invalid');
-      if (t.criteria.some((c) => !sub.criteriaMet.includes(c.id))) fail('Marca todos los criterios de aceptación antes de enviar a revisión', 'invalid');
+      assertDelivery(t, sub.answers, sub.links, sub.criteriaMet);
       if (sub.reviewerId && (sub.reviewerId === a.id || !projectMembers.some((m) => m.projectId === t.projectId && m.userId === sub.reviewerId))) {
         fail('El revisor debe ser otra persona del proyecto', 'invalid');
       }

@@ -3,7 +3,10 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { useSession } from '@/app/session';
 import { errorMessage, formatDate, t } from '@/i18n';
+import { forms } from '@/lib/forms';
+import { LIMITS } from '@/lib/limits';
 import { canCreateProject, isOverdue } from '@/lib/tasks';
+import { useForm } from '@/lib/useForm';
 import { localDate } from '@/lib/time';
 import { Badge, Button, Surface } from '@/ui/atoms';
 import { EmptyState, FormField, ProjectCard, SegmentedControl } from '@/ui/molecules';
@@ -112,23 +115,23 @@ export function OfflineNote({ savedAt }: { savedAt: string }) {
 
 function NewProject({ onCreate, onCancel }: { onCreate: (name: string) => Promise<void>; onCancel: () => void }) {
   const [name, setName] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (name.trim().length < 2) return setError(t('projects.nameTooShort'));
-    try {
-      await onCreate(name.trim());
-    } catch (cause) {
-      setError(errorMessage(cause));
-    }
-  };
+  const { ref, errors, formError, busy, submit: send, onKeyDown } = useForm(forms.project, onCancel);
+  const submit = (e: FormEvent) => void send({ name }, (data) => onCreate(data.name), e);
   return (
     <Surface as="section" aria-label={t('projects.new')}>
-      <form onSubmit={submit} className="flex flex-wrap items-end gap-3" noValidate>
+      <form ref={ref} onSubmit={submit} onKeyDown={onKeyDown} className="flex flex-wrap items-end gap-3" noValidate>
         <div className="min-w-48 flex-1">
-          <FormField label={t('projects.name')} value={name} maxLength={80} error={error ?? undefined} onChange={(e) => setName(e.target.value)} />
+          <FormField
+            name="name"
+            autoFocus
+            label={t('projects.name')}
+            value={name}
+            maxLength={LIMITS.projectName.max}
+            error={errors.name ?? formError ?? undefined}
+            onChange={(e) => setName(e.target.value)}
+          />
         </div>
-        <Button type="submit" variant="primary">
+        <Button type="submit" variant="primary" disabled={busy}>
           {t('projects.create')}
         </Button>
         <Button variant="ghost" onClick={onCancel}>

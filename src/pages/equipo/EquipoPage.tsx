@@ -4,19 +4,19 @@ import { ShieldCheck, UserPlus } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { useSession } from '@/app/session';
+import { useAction } from '@/app/useAction';
 import type { MyInvitation, MyTeam } from '@/cloud/contract';
 import { CONSENT_VERSION } from '@/lib/consent';
+import { fieldErrors, forms } from '@/lib/forms';
+import { LIMITS } from '@/lib/limits';
+import { useForm } from '@/lib/useForm';
 import { canSeeMembers, invitableRoles, ROLE_LABEL, type Role } from '@/lib/permissions';
 import { Badge, Button, Heading, Select, Surface } from '@/ui/atoms';
-import { EmptyState, FormField, SegmentedControl, SyncStatus } from '@/ui/molecules';
+import { ConfirmDialog, EmptyState, FormField, SegmentedControl, SyncStatus } from '@/ui/molecules';
 import { ConsentPanel, MemberList } from '@/ui/organisms';
 import { PageLayout } from '@/ui/templates';
 import { SitiosYPoliticas } from './SitiosYPoliticas';
 
-const describe = errorMessage;
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-/** Código de invitación (ADR-0008): XXXX-XXXX; el guion es opcional al escribirlo. */
-const CODE = /^[A-Z2-9]{4}-?[A-Z2-9]{4}$/;
 const withDash = (c: string) => (c.includes('-') ? c : `${c.slice(0, 4)}-${c.slice(4)}`);
 
 /** Copia al portapapeles; si no se puede, no pasa nada (el código sigue a la vista). */
@@ -29,26 +29,6 @@ const copy = async (text: string) => {
   }
 };
 const formatDate = (iso: string) => formatIntlDate(iso, { day: 'numeric', month: 'long' });
-
-/** Ejecuta una acción con estado de «ocupado» y error legible. */
-function useAction() {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const run = async (action: () => Promise<void>) => {
-    setBusy(true);
-    setError(null);
-    try {
-      await action();
-      return true;
-    } catch (cause) {
-      setError(describe(cause));
-      return false;
-    } finally {
-      setBusy(false);
-    }
-  };
-  return { busy, error, setError, run };
-}
 
 /** Equipo: invitaciones recibidas, crear equipo, consentimiento, miembros e invitaciones (F2). */
 export function EquipoPage() {
@@ -121,13 +101,14 @@ function MyInvitations() {
         busy={action.busy}
         error={action.error}
         onAccept={() => {
-          const clean = code.trim().toUpperCase();
-          if (!CODE.test(clean)) {
-            action.setError(t('team.codeError'));
+          const check = fieldErrors(forms.invitationCode(), { code });
+          if (check.errors) {
+            action.setError(check.errors.code ?? null);
+            document.querySelector<HTMLInputElement>('input[name="invitationCode"]')?.focus();
             return;
           }
           void action.run(async () => {
-            const teamId = await cloud.acceptInvitation(open.id, withDash(clean), CONSENT_VERSION);
+            const teamId = await cloud.acceptInvitation(open.id, withDash(check.data.code), CONSENT_VERSION);
             selectTeam(teamId);
             setCode('');
             await done();
@@ -148,7 +129,9 @@ function MyInvitations() {
         }
       >
         <FormField
+          name="invitationCode"
           label={t('team.code')}
+          autoFocus
           value={code}
           onChange={(e) => setCode(e.target.value.toUpperCase())}
           maxLength={9}
@@ -165,7 +148,7 @@ function MyInvitations() {
       <Heading level={2}>{t('team.forYou')}</Heading>
       {query.error && (
         <p role="alert" className="text-sm text-danger">
-          {describe(query.error)}
+          {errorMessage(query.error)}
         </p>
       )}
       <ul className="flex flex-col divide-y divide-line">
@@ -190,32 +173,29 @@ function MyInvitations() {
 function CreateTeam({ first = false, onDone }: { first?: boolean; onDone?: () => void }) {
   const { cloud, refresh, selectTeam } = useSession();
   const [name, setName] = useState('');
-  const action = useAction();
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    const clean = name.trim();
-    if (clean.length < 2 || clean.length > 60) {
-      action.setError(t('team.nameError'));
-      return;
-    }
-    void action.run(async () => {
-      const id = await cloud.createTeam(clean);
-      selectTeam(id);
-      await refresh();
-      setName('');
-      onDone?.();
-    });
-  };
+  const { ref, errors, formError, busy, submit: send, onKeyDown } = useForm(forms.team, onDone);
+  const submit = (e: FormEvent) =>
+    void send(
+      { name },
+      async (data) => {
+        const id = await cloud.createTeam(data.name);
+        selectTeam(id);
+        await refresh();
+        setName('');
+        onDone?.();
+      },
+      e,
+    );
   return (
     <Surface as="section" aria-label={t('team.create')}>
-      <form onSubmit={submit} className="flex max-w-prose flex-col gap-4" noValidate>
+      <form ref={ref} onSubmit={submit} onKeyDown={onKeyDown} className="flex max-w-prose flex-col gap-4" noValidate>
         <div>
           <Heading level={2}>{first ? t('team.createFirst') : t('team.createAnother')}</Heading>
           <p className="mt-1 text-sm text-fg-muted">{t('team.createHint')}</p>
         </div>
-        <FormField label={t('team.name')} value={name} onChange={(e) => setName(e.target.value)} error={action.error ?? undefined} />
+        <FormField name="name" autoFocus={!first} label={t('team.name')} maxLength={LIMITS.teamName.max} value={name} onChange={(e) => setName(e.target.value)} error={errors.name ?? formError ?? undefined} />
         <div className="flex flex-wrap gap-2">
-          <Button type="submit" variant="primary" disabled={action.busy}>
+          <Button type="submit" variant="primary" disabled={busy}>
             {t('team.create')}
           </Button>
           {onDone && (
@@ -342,7 +322,7 @@ function Members({ team }: { team: MyTeam }) {
         </p>
       ) : query.error ? (
         <p role="alert" className="text-sm text-danger">
-          {t('team.membersError', { error: describe(query.error) })}
+          {t('team.membersError', { error: errorMessage(query.error) })}
         </p>
       ) : (
         <MemberList
@@ -357,25 +337,23 @@ function Members({ team }: { team: MyTeam }) {
           onRemove={(userId, name) => setRemoving({ userId, name })}
         />
       )}
-      {removing && (
-        <div role="alertdialog" aria-label={t('team.confirmRemove')} className="flex flex-col gap-2 rounded-md bg-danger-soft p-3">
-          <p className="text-fg">
-            {t('team.removeQuestion', { name: removing.name })}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="danger" disabled={action.busy} onClick={() => void action.run(async () => {
-              await cloud.removeMember(team.id, removing.userId);
-              setRemoving(null);
-              await reload();
-            })}>
-              {t('team.remove')}
-            </Button>
-            <Button variant="ghost" onClick={() => setRemoving(null)}>
-              {t('common.cancel')}
-            </Button>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={removing !== null}
+        title={t('team.confirmRemove')}
+        message={removing ? t('team.removeQuestion', { name: removing.name }) : ''}
+        confirmLabel={t('team.remove')}
+        danger
+        busy={action.busy}
+        onCancel={() => setRemoving(null)}
+        onConfirm={() =>
+          void action.run(async () => {
+            if (!removing) return;
+            await cloud.removeMember(team.id, removing.userId);
+            setRemoving(null);
+            await reload();
+          })
+        }
+      />
       {team.role === 'owner' && owners > 1 && (
         <div>
           <Button variant="ghost" disabled={action.busy} onClick={() => void action.run(async () => {
@@ -409,28 +387,28 @@ function Invitations({ team }: { team: MyTeam }) {
   const [created, setCreated] = useState<{ email: string; code: string } | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const action = useAction();
+  const { ref, errors, formError, busy, submit: send, onKeyDown } = useForm(forms.invite);
   const query = useQuery({ queryKey: ['invitations', team.id], queryFn: () => cloud.teamInvitations(team.id) });
   const reload = () => queryClient.invalidateQueries({ queryKey: ['invitations', team.id] });
 
   const submit = (e: FormEvent) => {
-    e.preventDefault();
     setCreated(null);
-    const mail = email.trim().toLowerCase();
-    if (!EMAIL.test(mail)) {
-      action.setError(t('access.errors.email'));
-      return;
-    }
-    void action.run(async () => {
-      const { code } = await cloud.invite(team.id, mail, role);
-      setEmail('');
-      setCreated({ email: mail, code });
-      await reload();
-    });
+    void send(
+      { email },
+      async (data) => {
+        const mail = data.email.toLowerCase();
+        const { code } = await cloud.invite(team.id, mail, role);
+        setEmail('');
+        setCreated({ email: mail, code });
+        await reload();
+      },
+      e,
+    );
   };
 
   return (
     <Surface as="section" aria-label={t('team.invite')} className="flex flex-col gap-4">
-      <form onSubmit={submit} className="flex flex-col gap-3" noValidate>
+      <form ref={ref} onSubmit={submit} onKeyDown={onKeyDown} className="flex flex-col gap-3" noValidate>
         <div>
           <Heading level={2}>{t('team.invite')}</Heading>
           <p className="mt-1 text-sm text-fg-muted">
@@ -439,7 +417,7 @@ function Invitations({ team }: { team: MyTeam }) {
         </div>
         <div className="flex flex-wrap items-end gap-2">
           <div className="min-w-0 flex-1">
-            <FormField label={t('access.fields.email')} type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <FormField name="email" label={t('access.fields.email')} type="email" maxLength={LIMITS.email.max} value={email} error={errors.email} onChange={(e) => setEmail(e.target.value)} />
           </div>
           <Select
             aria-label={t('team.role')}
@@ -447,13 +425,13 @@ function Invitations({ team }: { team: MyTeam }) {
             onChange={(e) => setRole(e.target.value as Role)}
             options={roles.map((r) => ({ value: r, label: ROLE_LABEL[r] }))}
           />
-          <Button type="submit" variant="primary" icon={<UserPlus size={16} aria-hidden="true" />} disabled={action.busy}>
+          <Button type="submit" variant="primary" icon={<UserPlus size={16} aria-hidden="true" />} disabled={busy}>
             {t('team.inviteButton')}
           </Button>
         </div>
-        {action.error && (
+        {(formError ?? action.error) && (
           <p role="alert" className="text-sm text-danger">
-            {action.error}
+            {formError ?? action.error}
           </p>
         )}
         {created && (
@@ -509,24 +487,26 @@ function LeaveTeam({ team }: { team: MyTeam }) {
       <p className="text-fg-muted">
         {t('team.leaveHint', { team: team.name })}
       </p>
-      {confirming ? (
-        <div className="flex flex-wrap gap-2">
-          <Button variant="danger" disabled={action.busy} onClick={() => void action.run(async () => {
+      <div>
+        <Button onClick={() => setConfirming(true)}>{t('team.leave')}</Button>
+      </div>
+      <ConfirmDialog
+        open={confirming}
+        title={t('team.leave')}
+        message={t('team.leaveHint', { team: team.name })}
+        confirmLabel={t('team.leaveConfirm', { team: team.name })}
+        danger
+        busy={action.busy}
+        error={action.error}
+        onCancel={() => setConfirming(false)}
+        onConfirm={() =>
+          void action.run(async () => {
             await cloud.leaveTeam(team.id);
             setConfirming(false);
             await refresh();
-          })}>
-            {t('team.leaveConfirm', { team: team.name })}
-          </Button>
-          <Button variant="ghost" onClick={() => setConfirming(false)}>
-            {t('common.cancel')}
-          </Button>
-        </div>
-      ) : (
-        <div>
-          <Button onClick={() => setConfirming(true)}>{t('team.leave')}</Button>
-        </div>
-      )}
+          })
+        }
+      />
       {action.error && (
         <p role="alert" className="text-sm text-danger">
           {action.error}

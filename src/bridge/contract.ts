@@ -252,4 +252,6 @@ export interface Bridge {
   tasksCachePut(json: string): Promise<void>;
   /** `null` si no hay copia (o no hay equipo o cuenta activos). La interfaz valida el contenido. */
   tasksCacheGet(): Promise<string | null>;
+  /** Abre un enlace `https://` en el navegador del sistema (ADR-0017). Rust rechaza cualquier otro esquema. */
+  openExternal(url: string): Promise<void>;
 }

@@ -244,6 +244,11 @@ export function createMockBridge(now: () => Date = () => new Date()): Bridge {
       const key = cacheKey();
       if (key) tasksCache.set(key, json);
     },
+    // En el navegador de desarrollo basta con una pestaña nueva; la app real usa el plugin opener (ADR-0017).
+    openExternal: async (url) => {
+      if (!/^https:\/\//.test(url)) throw new Error('Solo se abren enlaces https://.');
+      window.open(url, '_blank', 'noopener,noreferrer');
+    },
     tasksCacheGet: async () => {
       const key = cacheKey();
       return (key && tasksCache.get(key)) ?? null;

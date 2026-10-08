@@ -230,9 +230,6 @@ export const HistorySchema = z.object({
 });
 export type TaskHistory = z.infer<typeof HistorySchema>;
 
-/** Tamaño máximo de un archivo de evidencia (igual que el bucket `task-evidence`). */
-export const MAX_EVIDENCE_BYTES = 10 * 1024 * 1024;
-
 /** Tiempo por persona en un proyecto (fila 13 «P»). `userId` null = exmiembro. */
 export const ProjectTimeSchema = z.object({ userId: z.uuid().nullable(), seconds: z.number() });
 export type ProjectTime = z.infer<typeof ProjectTimeSchema>;
@@ -320,6 +317,14 @@ export interface Cloud {
   setTaskStatus(taskId: string, status: ManualStatus): Promise<void>;
   setTaskCollaborators(taskId: string, userIds: string[]): Promise<void>;
   setTaskCriteria(taskId: string, texts: string[]): Promise<void>;
+  /** Fila 31: asignarse una tarea sin responsable. */
+  takeTask(taskId: string): Promise<void>;
+  /** Fila 32: quien gestiona completa directamente con el formulario de entrega y la evidencia. */
+  completeTask(task: Pick<Task, 'id' | 'projectId'>, teamId: string, submission: Omit<ReviewSubmission, 'reviewerId'>): Promise<string>;
+  /** Fila 34: borra la tarea y sus subtareas; el tiempo se conserva sin tarea. */
+  deleteTask(taskId: string): Promise<void>;
+  /** Fila 33: owner y admin, escribiendo el nombre exacto. */
+  deleteProject(projectId: string, confirmName: string): Promise<void>;
   /** Envía a revisión y sube los archivos de evidencia. Devuelve el id de la revisión. */
   submitForReview(task: Pick<Task, 'id' | 'projectId'>, teamId: string, submission: ReviewSubmission): Promise<string>;
   reviewTask(reviewId: string, approve: boolean, comment: string | null): Promise<void>;
