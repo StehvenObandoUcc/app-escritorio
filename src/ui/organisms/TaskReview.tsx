@@ -2,7 +2,7 @@ import { deliveryFields } from '@/lib/evidence';
 import { ExternalLink, FileText, History, Image as ImageIcon } from 'lucide-react';
 import { useState } from 'react';
 import type { Project, Task, TaskHistory } from '@/cloud/contract';
-import { formatDate, t, type TKey } from '@/i18n';
+import { errorMessage, formatDate, t, type TKey } from '@/i18n';
 import { fieldErrors, forms } from '@/lib/forms';
 import { LIMITS } from '@/lib/limits';
 import { canReview, STATUS_LABEL } from '@/lib/tasks';
@@ -56,7 +56,7 @@ export function TaskReview({
     try {
       await onDecide(approve, result.data.comment || null);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setError(errorMessage(cause));
     } finally {
       setBusy(false);
     }

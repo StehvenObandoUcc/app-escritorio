@@ -1,7 +1,7 @@
 import { Play, Square } from 'lucide-react';
 import { useState } from 'react';
 import type { Project, Task } from '@/cloud/contract';
-import { formatDate, t } from '@/i18n';
+import { errorMessage, formatDate, t } from '@/i18n';
 import { canManagePeople, formatMinutes, timeRatio, TYPE_LABEL } from '@/lib/tasks';
 import { Badge, Button, Heading, ProgressBar, type SelectOption } from '@/ui/atoms';
 
@@ -71,7 +71,7 @@ export function TaskSidebar(p: TaskSidebarProps) {
                     onClick={() =>
                       void p.onCollaborators(picked).then(
                         () => setEditingPeople(false),
-                        (cause: unknown) => setPeopleError(cause instanceof Error ? cause.message : String(cause)),
+                        (cause: unknown) => setPeopleError(errorMessage(cause)),
                       )
                     }
                   >

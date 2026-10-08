@@ -80,7 +80,6 @@ export function useOptionalSession(): SessionValue | null {
   return useContext(SessionContext);
 }
 
-const describe = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause));
 
 export function SessionProvider({
   cloud,
@@ -234,7 +233,7 @@ export function SessionProvider({
     profile,
     teams,
     teamsLoading: teamsQuery.isPending && userId !== null,
-    teamsError: teamsQuery.error ? describe(teamsQuery.error) : null,
+    teamsError: teamsQuery.error ? errorMessage(teamsQuery.error) : null,
     activeTeam,
     selectTeam,
     refresh,
