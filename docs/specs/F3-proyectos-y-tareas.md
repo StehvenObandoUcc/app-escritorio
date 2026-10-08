@@ -150,6 +150,9 @@ Versión 4 (ADR-0018 y ADR-0019):
 - AC-50 Un campo de imagen o archivo obligatorio exige archivos del tipo correcto, subidos por quien envía.
 - AC-51 Enter avanza entre campos en cualquier formulario; Alt+1…6 abre cada sección; «?» muestra los atajos; las flechas recorren menú y listas.
 - AC-52 Editar, crear una subtarea, enviar o completar ocupan la pantalla entera.
+- AC-53 Al crear o editar una tarea se elige del catálogo la evidencia que exige (quien gestiona o quien la creó).
+- AC-54 Al entregar, cada evidencia elegida es obligatoria y solo admite sus formatos.
+- AC-51 v5 Las flechas mueven el foco al elemento más cercano en esa dirección en cualquier pantalla (ADR-0021).
 
 ## Estado de cada criterio (7 oct)
 
@@ -168,7 +171,8 @@ Versión 4 (ADR-0018 y ADR-0019):
 | AC-45 v4, AC-52 | `src/lib/tasks.test.ts` (`nextSteps`) y `src/pages/proyectos/Proyectos.test.tsx` |
 | AC-49, AC-50 | `supabase/tests/evidencia_por_campo.test.ts` y `Proyectos.test.tsx` |
 | AC-51 | `src/app/keyboard.test.tsx` |
-| Prueba real con dos cuentas | **Pendiente**: requiere aplicar `20261008000003` y `20261008000004` en `pulso-dev` |
+| AC-53, AC-54 | `supabase/tests/evidencia_por_tarea.test.ts`, `src/lib/evidence.test.ts` y `Proyectos.test.tsx` |
+| Prueba real con dos cuentas | **Pendiente**: requiere aplicar `20261008000003`, `20261008000004` y `20261008000005` en `pulso-dev` |
 
 ## Cómo se comprueba
 Puerta G3 de `docs/PLAN.md` más estos pasos con dos cuentas reales:
