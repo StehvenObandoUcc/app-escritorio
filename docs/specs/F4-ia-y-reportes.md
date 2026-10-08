@@ -64,7 +64,7 @@ Los estados de las tareas (`tasks_in_review`, `tasks_overdue`) son los del momen
 - `ai_config_set(base_url, model, key?)` · `ai_config_get() → { baseUrl, model, hasKey }` · `ai_config_clear()`.
 - `ai_chat(messages) → string`.
 - `block_set_ai_usage(id, usage | null)` (nuevo, ADR-0022). Un bloque sin subir lleva `ai_usage_type` en `sync_pending`; uno ya subido aparece en una lista aparte de etiquetas pendientes (también `null`).
-- Solo si V1 falla: `export_save(file_name, content)` → ruta en `Documentos\Pulso`.
+- ~~`export_save`~~: no hace falta (V1 pasó).
 
 **Datos** (migración `20261011000001_ia_y_reportes.sql`):
 - `report_runs`: `id`, `team_id`, `scope` (`personal` · `project` · `team`), `subject_id`, `period` (`today` · `yesterday` · `this_week` · `last_week`), `period_from`, `period_to`, `facts`, `facts_hash`, `narrative`, `mode` (`free` · `own_key` · `manual`), `validation` (`ok` · `retried` · `fallback`), `validated_by` (`server` · `client`), `prompt_version`, `language`, `data_until` (lo calcula `save_report`, D-18), `created_by`, `created_at`. RLS de lectura según D-14; sin escritura directa.
@@ -141,6 +141,13 @@ Orden: primero V1, porque decide si hace falta `export_save`.
 - Asistente conversacional (RI-12), tareas desde texto (RI-11), clave compartida por el equipo (RI-13) y plan de ChatGPT (RI-14).
 - Tableros con gráficos (F5) y la regla de si la IA cuenta como productiva (IA-05, F5).
 - Programar reportes automáticos o enviarlos por correo.
+
+## Resultado de V1 (8 oct)
+Probado en la app real (`tauri dev`, WebView2 en Windows 11) con dos botones temporales en `/reportes`, pulsados por UI Automation:
+- **Descarga desde la página:** un `<a download>` con un `Blob` guarda el archivo directamente en `Descargas` (`pulso-v1.md`, 5 bytes), sin preguntar.
+- **`window.print()`:** abre el diálogo de impresión de WebView2 con la impresora «Microsoft Print to PDF», que sirve para guardar el PDF.
+
+Conclusión: D-15 se queda como está y **no se crea `export_save`**. La pantalla dirá que el archivo quedó en *Descargas*.
 
 ## Cómo se comprueba
 Puerta G4 de `docs/PLAN.md` más:
