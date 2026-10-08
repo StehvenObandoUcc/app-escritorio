@@ -122,9 +122,11 @@ Funcionalidades: PT-01 a PT-09, SY-04.
 | C · Interfaz | Proyectos, lista con filtros, tablero, detalle de tarea, avance |
 
 **Puerta G3**
-- [ ] Pruebas: un `contributor` no edita la tarea de otra persona; un `lead` sí.
-- [ ] Un temporizador sobre una tarea suma a su tiempo y al avance del proyecto.
-- [ ] Sin red, la lista de tareas sigue visible.
+- [x] Pruebas: un `contributor` no edita la tarea de otra persona; un `lead` sí.
+- [x] Un temporizador sobre una tarea suma a su tiempo y al avance del proyecto.
+- [x] Sin red, la lista de tareas sigue visible.
+- [x] (v2) Una tarea solo llega a *Hecha* aprobando su revisión, y queda en el historial.
+- [x] (v2) Toda la app se usa en inglés.
 
 ### F4 · IA y reportes (dom 11 – mar 13)
 
@@ -239,7 +241,9 @@ Lo de arriba es el plan original y sigue vigente. Esta sección añade lo acorda
 | F0 · Fundaciones | Hecha | G0 incompleta: faltan los informes S-2 (detección de IA por título) y S-4 (DeepSeek) |
 | **F1 · Sensor y *Mi día*** | **Hecha. Spec aprobada el 5 oct** | **G1 pasa** (evidencia en `docs/spikes/F1-medicion-app-real.md`) |
 | **F2 · Cuentas, equipos y sincronización** | **Hecha. Spec aprobada el 7 oct** (ADR-0007 a ADR-0013) | **G2 pasa** (pruebas reales del 6 y 7 oct, estado en la spec) |
-| F3 a F6 | Por empezar | — |
+| **F3 · Proyectos y tareas** | **Hecha. Spec aprobada el 8 oct** (ADR-0014 a ADR-0021) | **G3 pasa** (prueba real del usuario el 8 oct) |
+| F4 · IA y reportes | Spec en borrador (`docs/specs/F4-ia-y-reportes.md`, ADR-0022) | — |
+| F5 y F6 | Por empezar | — |
 
 Funcionalidades antes de la entrega (`docs/FUNCIONALIDADES.md`): **86**.
 
@@ -277,6 +281,6 @@ previsto, sin margen: F2 empieza el martes 6.
 | Puerta G2 | Pendiente (jueves 8): dos cuentas reales, 30 min sin red, viewer y persona de otro equipo |
 
 Decisiones abiertas:
-- **A-4** · *Olvidé mi contraseña* necesita que Supabase envíe correos: hoy responde 504. Hay que revisar o configurar el SMTP del proyecto. El registro ya no depende del correo (ADR-0008).
+- **A-4** · Resuelta el 7 oct: el correo de recuperación llega con el SMTP de Gmail (puerto 465).
 - **Pasa a F5** (con TA-11, pedido el 6 oct): reglas de productividad del equipo y editar la lista de apps sin teclado. La lista fija ya está en F2 (TA-15, ADR-0013).
 - **A-5** · Enviar por correo el código de invitación, además de mostrarlo para compartirlo (pedido el 6 oct). Depende de A-4 y necesita una Edge Function o el SMTP del proyecto; se retoma después de G2.

@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { Plus, Search } from 'lucide-react';
 import { useId, useMemo, useState } from 'react';
 import { Button, Input } from '@/ui/atoms';
@@ -11,12 +12,12 @@ export interface AppCandidate {
   group: 'recent' | 'open' | 'installed';
 }
 
-const GROUPS: { key: AppCandidate['group'] | 'hidden'; title: string }[] = [
-  { key: 'hidden', title: 'Ocultas ahora' },
-  { key: 'recent', title: 'Usadas hace poco' },
-  { key: 'open', title: 'Abiertas ahora' },
-  { key: 'installed', title: 'Instaladas' },
-];
+const GROUPS: { key: AppCandidate['group'] | 'hidden'; readonly title: string }[] = (['hidden', 'recent', 'open', 'installed'] as const).map((key) => ({
+  key,
+  get title() {
+    return t(`hiddenApps.groups.${key}`);
+  },
+}));
 
 /**
  * Elegir qué apps no registrar (AC-20) marcando casillas, sin saber el nombre del proceso.
@@ -53,7 +54,7 @@ export function HiddenAppsPicker({
     // Las ocultas van primero y no se repiten en los demás grupos: así se ve de un vistazo qué está oculto.
     const hiddenOnes = candidates.filter((c) => selected.includes(c.process));
     const rest = candidates.filter((c) => !selected.includes(c.process));
-    const sort = (list: AppCandidate[]) => [...list].sort((a, b) => a.label.localeCompare(b.label, 'es'));
+    const sort = (list: AppCandidate[]) => [...list].sort((a, b) => a.label.localeCompare(b.label));
     return GROUPS.map((g) => ({
       ...g,
       items: (g.key === 'hidden' ? hiddenOnes : sort(rest.filter((c) => c.group === g.key))).filter(match),
@@ -62,20 +63,20 @@ export function HiddenAppsPicker({
 
   return (
     <fieldset className="flex flex-col gap-3 disabled:opacity-50" disabled={disabled}>
-      <legend className="text-sm font-medium text-fg">Apps ocultas</legend>
+      <legend className="text-sm font-medium text-fg">{t('hiddenApps.legend')}</legend>
       <p className="text-sm text-fg-muted">
-        Marca las apps que no quieres registrar. Pulso las guarda como «App oculta», sin nombre ni título, desde que las marcas.
+        {t('hiddenApps.hint')}
       </p>
       <div className="relative">
         <label htmlFor={searchId} className="sr-only">
-          Buscar app
+          {t('hiddenApps.search')}
         </label>
         <Search size={16} aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-fg-muted" />
-        <Input id={searchId} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar app" className="pl-9" />
+        <Input id={searchId} value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('hiddenApps.search')} className="pl-9" />
       </div>
       {groups.length === 0 ? (
         <p className="text-sm text-fg-muted">
-          {query ? `Ninguna app coincide con «${query}». Puedes añadirla abajo.` : 'Aún no hay apps para elegir. Puedes añadir una abajo.'}
+          {query ? t('hiddenApps.noMatch', { query }) : t('hiddenApps.none')}
         </p>
       ) : (
         <div className="flex max-h-96 flex-col gap-4 overflow-y-auto pr-1">
@@ -107,12 +108,12 @@ export function HiddenAppsPicker({
       <div className="flex flex-wrap items-end gap-2">
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <label htmlFor={inputId} className="text-sm font-medium text-fg">
-            Añadir otra app
+            {t('hiddenApps.addOther')}
           </label>
           <Input
             id={inputId}
             value={other}
-            placeholder="Nombre del programa, por ejemplo keepass"
+            placeholder={t('hiddenApps.addPlaceholder')}
             onChange={(e) => setOther(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
@@ -123,7 +124,7 @@ export function HiddenAppsPicker({
           />
         </div>
         <Button onClick={add} disabled={!other.trim()} icon={<Plus size={16} aria-hidden="true" />}>
-          Añadir
+          {t('hiddenApps.add')}
         </Button>
       </div>
     </fieldset>

@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import type { Segment, TimelineRow } from '@/lib/activity';
@@ -8,7 +9,7 @@ import { Badge, CategoryMark } from '@/ui/atoms';
 
 function SegmentRow({ segment, nested = false }: { segment: Segment; nested?: boolean }) {
   const titles = segment.titles.map((t) => cleanTitle(t, segment.appName)).filter((t): t is string => Boolean(t));
-  const extra = titles.length > 1 ? ` y ${titles.length - 1} más` : '';
+  const extra = titles.length > 1 ? ` ${t('activity.andMore', { n: titles.length - 1 })}` : '';
   return (
     <div className={nested ? 'flex flex-wrap items-start gap-x-4 gap-y-1 py-2 pl-6' : 'flex flex-wrap items-start gap-x-4 gap-y-1 px-4 py-3 md:px-5'}>
       <span className="w-24 shrink-0 text-sm text-fg-muted tabular-nums">
@@ -54,7 +55,7 @@ function QuickRow({ row }: { row: Extract<TimelineRow, { kind: 'quick' }> }) {
           <Icon size={16} aria-hidden="true" className="mt-1 shrink-0 text-fg-muted" />
           <span className="min-w-0">
             <span className="block font-medium text-fg">
-              {apps.length > 1 ? `Cambios rápidos entre ${apps.length} apps` : 'Cambios rápidos'}
+              {apps.length > 1 ? t('activity.quickBetween', { n: apps.length }) : t('activity.quick')}
             </span>
             <span className="block truncate text-sm text-fg-muted">{apps.join(', ')}</span>
           </span>
@@ -78,7 +79,7 @@ function QuickRow({ row }: { row: Extract<TimelineRow, { kind: 'quick' }> }) {
  */
 export function ActivityTimeline({ rows }: { rows: TimelineRow[] }) {
   return (
-    <ol aria-label="Línea de tiempo" className="divide-y divide-line">
+    <ol aria-label={t('activity.timeline')} className="divide-y divide-line">
       {rows.map((row) => (
         <li key={row.kind === 'quick' ? `q-${row.startedAt}` : row.segment.blockIds[0]}>
           {row.kind === 'quick' ? <QuickRow row={row} /> : <SegmentRow segment={row.segment} />}

@@ -1,4 +1,7 @@
+import { t } from '@/i18n';
 import { useState, type FormEvent } from 'react';
+import { forms } from '@/lib/forms';
+import { useForm } from '@/lib/useForm';
 import { Button } from '@/ui/atoms';
 import { FormField } from './FormField';
 
@@ -19,49 +22,40 @@ export interface TimeEntryFormProps {
   clearOnSuccess?: boolean;
 }
 
-/** Registro manual de tiempo: día, inicio y fin. */
+/** Registro manual de tiempo: día, inicio y fin. Validación por campo y teclado (AC-42, AC-43). */
 export function TimeEntryForm({ initial, submitLabel, onSubmit, onCancel, clearOnSuccess }: TimeEntryFormProps) {
   const [values, setValues] = useState(initial);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const { ref, errors, formError, busy, submit: send, onKeyDown } = useForm(forms.timeEntry, onCancel);
 
   const change = (field: keyof TimeEntryValues) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setValues((v) => ({ ...v, [field]: e.target.value }));
 
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!values.date || !values.start || !values.end) {
-      setError('Completa el día, el inicio y el fin.');
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    try {
-      await onSubmit(values);
-      if (clearOnSuccess) setValues((v) => ({ ...v, start: '', end: '' }));
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
-    } finally {
-      setBusy(false);
-    }
-  };
+  const submit = (e: FormEvent) =>
+    void send(
+      values,
+      async () => {
+        await onSubmit(values);
+        if (clearOnSuccess) setValues((v) => ({ ...v, start: '', end: '' }));
+      },
+      e,
+    );
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-3" noValidate>
+    <form ref={ref} onSubmit={submit} onKeyDown={onKeyDown} className="flex flex-col gap-3" noValidate>
       <div className="flex flex-wrap items-start gap-3">
         <div className="min-w-40 flex-1">
-          <FormField label="Día" type="date" value={values.date} onChange={change('date')} />
+          <FormField name="date" label={t('entries.day')} type="date" value={values.date} error={errors.date} onChange={change('date')} />
         </div>
         <div className="min-w-32 flex-1">
-          <FormField label="Inicio" type="time" value={values.start} onChange={change('start')} />
+          <FormField name="start" label={t('entries.start')} type="time" value={values.start} error={errors.start} onChange={change('start')} />
         </div>
         <div className="min-w-32 flex-1">
-          <FormField label="Fin" type="time" value={values.end} onChange={change('end')} />
+          <FormField name="end" label={t('entries.end')} type="time" value={values.end} error={errors.end} onChange={change('end')} />
         </div>
       </div>
-      {error && (
+      {formError && (
         <p role="alert" className="text-sm text-danger">
-          {error}
+          {formError}
         </p>
       )}
       <div className="flex flex-wrap gap-2">
@@ -70,7 +64,7 @@ export function TimeEntryForm({ initial, submitLabel, onSubmit, onCancel, clearO
         </Button>
         {onCancel && (
           <Button size="sm" variant="ghost" onClick={onCancel} disabled={busy}>
-            Cancelar
+            {t('common.cancel')}
           </Button>
         )}
       </div>

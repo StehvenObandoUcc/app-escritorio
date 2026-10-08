@@ -1,4 +1,5 @@
 /** Utilidades de tiempo. Sin dependencias: fáciles de probar. */
+import { formatDate } from '@/i18n';
 
 /** 3725 → "1 h 02 min" · 540 → "9 min" · 0 → "0 min" */
 export function formatDuration(totalSeconds: number): string {
@@ -41,13 +42,9 @@ export function localDate(d: Date = new Date()): string {
   return `${y}-${m}-${day}`;
 }
 
-/** "2026-10-01" → "jueves, 1 de octubre" */
+/** "2026-10-01" → "jueves, 1 de octubre" (o «Thursday, October 1» en inglés) */
 export function formatLongDate(date: string): string {
-  return new Intl.DateTimeFormat('es-CO', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  }).format(new Date(`${date}T12:00:00`));
+  return formatDate(date, { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
 /** Fecha "2026-10-01" y hora local "09:30" → instante ISO (UTC). Lanza RangeError si no son válidas. */

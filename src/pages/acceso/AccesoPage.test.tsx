@@ -46,20 +46,36 @@ describe('Acceso (CU-01 a CU-03)', () => {
     expect((await cloud.currentUser())?.email).toBe('caro@pulso.test');
   }, LONG);
 
-  it('valida el formulario antes de enviar y explica cada problema', async () => {
+  it('valida el formulario antes de enviar: error junto al campo y foco en el primero (AC-42)', async () => {
     renderWithSession(<AccesoPage />);
     await userEvent.click(await screen.findByRole('tab', { name: 'Crear cuenta' }));
     await userEvent.click(screen.getByRole('button', { name: 'Crear cuenta' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Escribe tu nombre');
-    await userEvent.type(screen.getByLabelText('Nombre visible'), 'Caro');
+    const name = screen.getByLabelText('Nombre visible');
+    expect(name).toHaveAttribute('aria-invalid', 'true');
+    expect(name).toHaveFocus();
+    expect(name).toHaveAccessibleDescription('Escribe entre 1 y 80 caracteres.');
+    await userEvent.type(name, 'Caro');
     await userEvent.type(screen.getByLabelText('Correo'), 'no-es-correo');
     await userEvent.click(screen.getByRole('button', { name: 'Crear cuenta' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('correo válido');
+    expect(screen.getByLabelText('Correo')).toHaveAccessibleDescription(expect.stringContaining('correo válido'));
+    expect(screen.getByLabelText('Correo')).toHaveFocus();
     await userEvent.clear(screen.getByLabelText('Correo'));
     await userEvent.type(screen.getByLabelText('Correo'), 'caro@pulso.test');
     await userEvent.type(screen.getByLabelText('Contraseña'), 'corta');
     await userEvent.click(screen.getByRole('button', { name: 'Crear cuenta' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('al menos 8');
+    expect(screen.getByLabelText('Contraseña')).toHaveAccessibleDescription(expect.stringContaining('al menos 8'));
+  }, LONG);
+
+  it('Enter en el correo pasa a la contraseña y Enter en la contraseña entra (C5, AC-43)', async () => {
+    const cloud = createMockCloud();
+    cloud.debug.addAccount('ana@pulso.test', 'secreto-123', 'Ana');
+    renderWithSession(<AccesoPage />, { cloud, path: '/' });
+    const email = await screen.findByLabelText('Correo');
+    await userEvent.type(email, 'ana@pulso.test{Enter}');
+    expect(screen.getByLabelText('Contraseña')).toHaveFocus();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    await userEvent.keyboard('secreto-123{Enter}');
+    await waitFor(() => expect(screen.getByTestId('ruta')).toHaveTextContent('/mi-dia'));
   }, LONG);
 
   it('si el servidor no responde al registrarse, explica qué pasó y qué hacer (HTTP 504)', async () => {

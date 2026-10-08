@@ -1,4 +1,5 @@
 import { ShieldAlert, X } from 'lucide-react';
+import { t } from '@/i18n';
 import { formatHour } from '@/lib/time';
 import { Button } from '@/ui/atoms';
 
@@ -24,13 +25,11 @@ export function AlertBanner({ alerts, onDismiss }: { alerts: BannerAlert[]; onDi
         >
           <ShieldAlert size={20} aria-hidden="true" className="mt-1 shrink-0 text-danger" />
           <div className="min-w-0 flex-1">
-            <p className="font-medium text-fg">Sitio no permitido: {a.domain}</p>
-            <p className="text-sm text-fg-muted">
-              Entraste a las {formatHour(a.at)}. Tu equipo lo marcó como no permitido: Pulso no lo bloquea y el tiempo cuenta como distracción.
-            </p>
+            <p className="font-medium text-fg">{t('alerts.title', { domain: a.domain })}</p>
+            <p className="text-sm text-fg-muted">{t('alerts.body', { time: formatHour(a.at) })}</p>
           </div>
           <Button size="sm" variant="ghost" onClick={() => onDismiss(a.domain)} icon={<X size={16} aria-hidden="true" />}>
-            Entendido
+            {t('alerts.ok')}
           </Button>
         </div>
       ))}

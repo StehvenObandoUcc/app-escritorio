@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import type { ActivityBlock } from '@/bridge/contract';
 import { CATEGORY_STYLE } from '@/lib/categories';
 import { cleanTitle, displayAppName } from '@/lib/apps';
@@ -9,7 +10,7 @@ const seconds = (b: ActivityBlock) => (Date.parse(b.endedAt) - Date.parse(b.star
 /** Detalle del día, bloque por bloque, tal como lo guardó el sensor. Es la versión en texto de la franja de pulso. */
 export function ActivityList({ blocks }: { blocks: ActivityBlock[] }) {
   return (
-    <ol aria-label="Bloques de actividad" className="divide-y divide-line">
+    <ol aria-label={t('activity.blocks')} className="divide-y divide-line">
       {blocks.map((block) => (
         <li key={block.id} className="flex flex-wrap items-start gap-x-4 gap-y-1 px-4 py-3 md:px-5">
           <span className="w-24 shrink-0 text-sm text-fg-muted tabular-nums">

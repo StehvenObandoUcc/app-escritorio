@@ -29,7 +29,7 @@ npm run verify:rust   # clippy + pruebas de Rust (cuando toques src-tauri)
 - **R7. Diseño.** Ningún color, tamaño o radio escrito a mano fuera de `src/ui/tokens/`. Respeta las capas de atomic design. `npm run check:tokens` y ESLint lo verifican.
 - **R8. Privacidad.** Los títulos de ventana nunca salen del equipo: ningún payload de red los incluye.
 - **R9. Ambigüedad.** Si la spec es ambigua o contradice la arquitectura, pregunta. No elijas por tu cuenta.
-- **R10. Idioma.** Código (nombres, tipos) en inglés. Textos de la interfaz, comentarios y documentos en español.
+- **R10. Idioma.** Código (nombres, tipos) en inglés. Comentarios y documentos en español. Los textos de la interfaz van en `src/i18n/es.ts` y `en.ts` y se usan con `t('clave')` (ADR-0015); `npm run check:i18n` lo verifica.
 
 ## Qué significa "terminado"
 

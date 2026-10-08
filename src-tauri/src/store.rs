@@ -175,6 +175,10 @@ impl Store {
       "ALTER TABLE activity_blocks_local ADD COLUMN user_id TEXT NULL;
        ALTER TABLE time_entries_local ADD COLUMN user_id TEXT NULL;
        ALTER TABLE app_closures_local ADD COLUMN user_id TEXT NULL;",
+      // F3: copia de las tareas para verlas sin conexión, por cuenta y equipo (PT-09).
+      "CREATE TABLE tasks_cache (
+         user_id TEXT NOT NULL, team_id TEXT NOT NULL, json TEXT NOT NULL, updated_at TEXT NOT NULL,
+         PRIMARY KEY (user_id, team_id));",
     ];
     let current: i64 = self.conn.pragma_query_value(None, "user_version", |r| r.get(0)).map_err(db)?;
     for (i, sql) in MIGRATIONS.iter().enumerate().skip(current as usize) {
@@ -506,6 +510,31 @@ impl Store {
     self
       .conn
       .query_row("SELECT value FROM kv_settings WHERE key = ?1", [key], |r| r.get(0))
+      .optional()
+      .map_err(db)
+  }
+
+  // ---- Copia local de tareas (F3) ----
+
+  /// Sin cuenta no se guarda nada: la copia de una cuenta nunca se muestra con otra (ADR-0013).
+  pub fn tasks_cache_put(&self, now: DateTime<Utc>, team_id: &str, json: &str) -> Result<()> {
+    let Some(user) = &self.user else { return Ok(()) };
+    self
+      .conn
+      .execute(
+        "INSERT INTO tasks_cache (user_id, team_id, json, updated_at) VALUES (?1, ?2, ?3, ?4)
+         ON CONFLICT(user_id, team_id) DO UPDATE SET json = excluded.json, updated_at = excluded.updated_at",
+        params![user, team_id, json, fmt(now)],
+      )
+      .map_err(db)?;
+    Ok(())
+  }
+
+  pub fn tasks_cache_get(&self, team_id: &str) -> Result<Option<String>> {
+    let Some(user) = &self.user else { return Ok(None) };
+    self
+      .conn
+      .query_row("SELECT json FROM tasks_cache WHERE user_id = ?1 AND team_id = ?2", params![user, team_id], |r| r.get(0))
       .optional()
       .map_err(db)
   }

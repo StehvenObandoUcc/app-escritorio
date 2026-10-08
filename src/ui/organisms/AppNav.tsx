@@ -1,6 +1,7 @@
 import { Activity, type LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { NavLink } from 'react-router';
+import { t } from '@/i18n';
 import { cx } from '@/lib/cx';
 
 export interface NavItem {
@@ -18,7 +19,7 @@ export interface NavItem {
 export function AppNav({ items, footer }: { items: NavItem[]; footer?: ReactNode }) {
   return (
     <nav
-      aria-label="Principal"
+      aria-label={t('nav.main')}
       className={cx(
         'flex shrink-0 border-line bg-surface',
         'border-t px-2 py-1',
@@ -34,11 +35,11 @@ export function AppNav({ items, footer }: { items: NavItem[]; footer?: ReactNode
       </div>
 
       <ul className="flex flex-1 justify-around gap-1 md:flex-none md:flex-col md:justify-start">
-        {items.map(({ to, label, icon: Icon }) => (
+        {items.map(({ to, label, icon: Icon }, i) => (
           <li key={to} className="flex-1 md:flex-none">
             <NavLink
               to={to}
-              title={label}
+              title={`${label} (Alt+${i + 1})`}
               className={({ isActive }) =>
                 cx(
                   'flex min-h-touch flex-col items-center justify-center gap-1 rounded-md px-2 text-xs font-medium transition-colors',

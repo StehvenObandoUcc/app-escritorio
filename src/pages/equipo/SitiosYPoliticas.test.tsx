@@ -35,6 +35,7 @@ describe('Sitios y políticas (ADR-0009)', () => {
   it('el admin marca un sitio como no permitido y lo puede quitar', async () => {
     const { cloud, team } = await teamWith('admin');
     renderWithSession(<EquipoPage />, { path: '/equipo', cloud });
+    await userEvent.click(await screen.findByRole('tab', { name: 'Sitios y políticas' }));
     const section = await screen.findByRole('region', { name: 'Sitios y políticas' });
     await userEvent.type(within(section).getByLabelText('Sitio'), 'https://www.youtube.com/watch?v=secreto');
     await userEvent.click(within(section).getByRole('button', { name: 'Marcar como no permitido' }));
@@ -51,6 +52,7 @@ describe('Sitios y políticas (ADR-0009)', () => {
     const bridge = createMockBridge();
     const policy = vi.spyOn(bridge, 'teamPolicySet');
     renderWithSession(<EquipoPage />, { path: '/equipo', cloud, bridge });
+    await userEvent.click(await screen.findByRole('tab', { name: 'Sitios y políticas' }));
     const toggle = await screen.findByRole('checkbox', { name: /Permitir que cada persona oculte apps/ });
     expect(toggle).toBeChecked();
     await userEvent.click(toggle);
@@ -63,6 +65,7 @@ describe('Sitios y políticas (ADR-0009)', () => {
     const bridge = createMockBridge();
     const rules = vi.spyOn(bridge, 'rulesSet');
     renderWithSession(<EquipoPage />, { path: '/equipo', cloud, bridge });
+    await userEvent.click(await screen.findByRole('tab', { name: 'Sitios y políticas' }));
     const section = await screen.findByRole('region', { name: 'Sitios y políticas' });
     await userEvent.type(within(section).getByLabelText('Sitio'), 'youtube.com');
     await userEvent.click(within(section).getByRole('button', { name: 'Marcar como no permitido' }));
@@ -76,6 +79,7 @@ describe('Sitios y políticas (ADR-0009)', () => {
     const bridge = createMockBridge();
     const policy = vi.spyOn(bridge, 'teamPolicySet');
     renderWithSession(<EquipoPage />, { path: '/equipo', cloud, bridge });
+    await userEvent.click(await screen.findByRole('tab', { name: 'Sitios y políticas' }));
     const repeat = await screen.findByLabelText('Repetir el aviso');
     expect(repeat).toHaveValue('10');
     await userEvent.selectOptions(repeat, '2');

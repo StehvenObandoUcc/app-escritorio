@@ -1,3 +1,5 @@
+import { t } from '@/i18n';
+
 /**
  * Nombres legibles de apps a partir del nombre de proceso que guarda el sensor.
  * Solo cambia lo que se ve: los datos guardados y subidos conservan el nombre de proceso.
@@ -10,10 +12,14 @@ const NAMES: Record<string, string> = {
   opera: 'Opera',
   code: 'VS Code',
   cursor: 'Cursor',
-  explorer: 'Explorador de archivos',
+  get explorer() {
+    return t('apps.explorer');
+  },
   windowsterminal: 'Terminal',
   powershell: 'PowerShell',
-  cmd: 'Símbolo del sistema',
+  get cmd() {
+    return t('apps.cmd');
+  },
   winword: 'Word',
   excel: 'Excel',
   powerpnt: 'PowerPoint',
@@ -28,8 +34,12 @@ const NAMES: Record<string, string> = {
   figma: 'Figma',
   notion: 'Notion',
   spotify: 'Spotify',
-  searchhost: 'Búsqueda de Windows',
-  snippingtool: 'Recortes',
+  get searchhost() {
+    return t('apps.searchhost');
+  },
+  get snippingtool() {
+    return t('apps.snippingtool');
+  },
   'docker desktop': 'Docker Desktop',
   pulso: 'Pulso',
   ollama: 'Ollama',
