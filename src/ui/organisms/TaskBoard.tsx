@@ -4,12 +4,12 @@ import { arrowNav, NAV_COLUMN, NAV_ITEM } from '@/lib/keyboard';
 import { STATUS_LABEL } from '@/lib/tasks';
 import { Heading } from '@/ui/atoms';
 import { TaskMeta } from '@/ui/molecules';
-import { TaskStatusControl, type TaskViewProps } from './TaskList';
+import { TaskStatusCell, type TaskViewProps } from './TaskList';
 
 /**
- * Tablero de cuatro columnas (PT-06, ADR-0014): Por hacer, En curso, En revisión y Hecha. Una tarea se mueve
- * con su selector; elegir En revisión o Hecha abre el formulario de entrega. Con el teclado: flechas arriba y
- * abajo dentro de una columna, izquierda y derecha entre columnas, Enter abre la tarea (AC-44).
+ * Tablero de cuatro columnas (PT-06, ADR-0014): Por hacer, En curso, En revisión y Hecha. Cada tarjeta muestra
+ * el siguiente paso de quien mira (Empezar, Enviar a revisión, Completar, Revisar…), que la mueve de columna.
+ * Con el teclado: flechas arriba y abajo dentro de una columna, izquierda y derecha entre columnas, Enter abre.
  */
 export function TaskBoard(props: TaskViewProps) {
   const cards = props.tree.flatMap(({ task, children }) => [{ task, parent: null as string | null }, ...children.map((c) => ({ task: c, parent: task.title }))]);
@@ -35,7 +35,7 @@ export function TaskBoard(props: TaskViewProps) {
                     {task.title}
                   </button>
                   <TaskMeta task={task} assigneeName={props.nameOf(task.assigneeId)} today={props.today} />
-                  <TaskStatusControl task={task} editable={props.canChangeStatus(task)} onChange={(s) => props.onStatusChange(task, s)} />
+                  <TaskStatusCell task={task} props={props} showStatus={false} />
                 </li>
               ))}
             </ul>

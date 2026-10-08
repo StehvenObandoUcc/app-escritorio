@@ -92,15 +92,19 @@ describe('Proyectos (F3)', () => {
     expect(work.members[project]!.map((m) => m.userId)).toContain(caro);
   }, LONG);
 
-  it('tablero de cuatro columnas; elegir «Hecha» lleva a completar la tarea (AC-10, AC-45)', async () => {
-    const { cloud, project, libre } = await setup('ana');
+  it('tablero de cuatro columnas con el siguiente paso de cada tarea (AC-10, AC-45 v4)', async () => {
+    const { cloud, project, team, contrato, portada } = await setup('ana');
     openProject(cloud, project);
     const todo = await screen.findByRole('region', { name: 'Por hacer' });
     expect(screen.getByRole('region', { name: 'En revisión' })).toBeInTheDocument();
-    await userEvent.selectOptions(within(todo).getByLabelText('Estado de Portada'), 'doing');
-    await waitFor(() => expect(screen.getByRole('region', { name: 'En curso' })).toHaveTextContent('Portada'));
-    await userEvent.selectOptions(within(screen.getByRole('region', { name: 'Por hacer' })).getByLabelText('Estado de Libre'), 'done');
-    await waitFor(() => expect(screen.getByTestId('ruta')).toHaveTextContent(`/proyectos/${project}/tareas/${libre}?accion=completar`));
+    expect(within(todo).queryByRole('combobox')).not.toBeInTheDocument();
+    const card = (title: string) => within(screen.getByRole('button', { name: title }).closest('li')!);
+    expect(card('Libre').getByRole('button', { name: 'Tomar tarea' })).toBeInTheDocument();
+    await userEvent.click(card('Contrato').getByRole('button', { name: 'Empezar' }));
+    await waitFor(() => expect(screen.getByRole('region', { name: 'En curso' })).toHaveTextContent('Contrato'));
+    expect((await taskOf(cloud, team, contrato))!.status).toBe('doing');
+    await userEvent.click(card('Portada').getByRole('button', { name: 'Completar tarea' }));
+    await waitFor(() => expect(screen.getByTestId('ruta')).toHaveTextContent(`/proyectos/${project}/tareas/${portada}?accion=completar`));
   }, LONG);
 
   it('pestañas y tablero se recorren con las flechas (AC-44)', async () => {
@@ -174,30 +178,35 @@ describe('Pantalla de tarea (F3 v3)', () => {
     expect((await taskOf(cloud, team, libre))!.status).toBe('done');
   }, LONG);
 
-  it('un colaborador toma una tarea sin responsable y la envía a revisión (C1, AC-37, AC-24)', async () => {
+  it('un colaborador toma una tarea sin responsable y la envía con texto, enlace e imagen (C1, AC-37, AC-50)', async () => {
     const { cloud, project, team, libre, beto } = await setup('beto');
     openTask(cloud, project, libre);
-    expect(screen.queryByRole('button', { name: 'Completar tarea' })).not.toBeInTheDocument();
-    await userEvent.click(await screen.findByRole('button', { name: 'Tomar tarea' }));
+    const flow = await screen.findByRole('region', { name: 'Avance de la tarea' });
+    expect(within(flow).queryByRole('button', { name: 'Completar tarea' })).not.toBeInTheDocument();
+    await userEvent.click(within(flow).getByRole('button', { name: 'Tomar tarea' }));
     expect(await screen.findByText('Ahora eres responsable de la tarea')).toBeInTheDocument();
     expect((await taskOf(cloud, team, libre))!.assigneeId).toBe(beto);
-    await userEvent.click(screen.getByRole('button', { name: 'Enviar a revisión' }));
+    await userEvent.click(within(screen.getByRole('region', { name: 'Avance de la tarea' })).getByRole('button', { name: 'Enviar a revisión' }));
     const form = screen.getByRole('form', { name: 'Formulario de entrega' });
     await userEvent.type(within(form).getByLabelText('Qué se hizo *'), 'Hecho con texto, no con un enlace');
-    await userEvent.type(within(form).getByLabelText('Enlaces de evidencia'), 'ftp://no-vale');
+    await userEvent.type(within(form).getByLabelText('Enlace de evidencia'), 'ftp://no-vale');
+    await userEvent.upload(within(form).getByLabelText('Capturas'), new File(['png'], 'pantalla.png', { type: 'image/png' }));
     await userEvent.click(within(form).getByRole('button', { name: 'Enviar a revisión' }));
-    expect(within(form).getByLabelText('Enlaces de evidencia')).toHaveAttribute('aria-invalid', 'true');
-    await userEvent.clear(within(form).getByLabelText('Enlaces de evidencia'));
-    await userEvent.type(within(form).getByLabelText('Enlaces de evidencia'), 'https://figma.com/portada');
+    expect(within(form).getByLabelText('Enlace de evidencia')).toHaveAttribute('aria-invalid', 'true');
+    await userEvent.clear(within(form).getByLabelText('Enlace de evidencia'));
+    await userEvent.type(within(form).getByLabelText('Enlace de evidencia'), 'https://figma.com/portada');
     await userEvent.click(within(form).getByRole('button', { name: 'Enviar a revisión' }));
     expect(await screen.findByText('Tarea enviada a revisión')).toBeInTheDocument();
-    expect((await taskOf(cloud, team, libre))!.status).toBe('review');
+    const sent = (await taskOf(cloud, team, libre))!;
+    expect(sent.status).toBe('review');
+    expect(sent.pendingReview!.attachments.map((x) => [x.name, x.contentType])).toEqual([['pantalla.png', 'image/png']]);
+    expect(sent.pendingReview!.answers.screenshots).toBe(sent.pendingReview!.attachments[0]!.id);
   }, LONG);
 
   it('el owner pide cambios (comentario obligatorio) y los enlaces se abren con el navegador (AC-25, AC-47)', async () => {
     const { cloud, project, team, portada } = await setup('beto');
     const criterion = (await taskOf(cloud, team, portada))!.criteria[0]!.id;
-    await cloud.submitForReview({ id: portada, projectId: project }, team, { answers: { summary: 'Logo nuevo' }, links: ['https://figma.com/portada'], reviewerId: null, criteriaMet: [criterion], files: [] });
+    await cloud.submitForReview({ id: portada, projectId: project }, team, { answers: { summary: 'Logo nuevo', evidence: 'https://figma.com/portada' }, reviewerId: null, criteriaMet: [criterion], files: {} });
     await cloud.signIn('ana@pulso.test', 'secreto-123');
     const bridge = createMockBridge();
     const open = vi.spyOn(bridge, 'openExternal').mockResolvedValue();
@@ -218,7 +227,7 @@ describe('Pantalla de tarea (F3 v3)', () => {
     const { cloud, project, team, contrato } = await setup('ana');
     openTask(cloud, project, contrato);
     await userEvent.click(await screen.findByRole('button', { name: 'Añadir subtarea' }));
-    const form = screen.getByRole('region', { name: 'Añadir subtarea' });
+    const form = screen.getByRole('region', { name: 'Nueva subtarea de «Contrato»' });
     expect(form).toHaveTextContent('Subtarea de Contrato');
     expect(within(form).getByLabelText('Descripción')).toBeInTheDocument();
     expect(within(form).getByLabelText('Cantidad estimada')).toBeInTheDocument();

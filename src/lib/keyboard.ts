@@ -23,14 +23,18 @@ export function arrowNav(e: KeyboardEvent<HTMLElement>) {
   else if (e.key === 'ArrowUp') next = items[i - 1];
   else if (e.key === 'Home') next = items[0];
   else if (e.key === 'End') next = items.at(-1);
-  else if ((e.key === 'ArrowRight' || e.key === 'ArrowLeft') && column) {
-    const columns = [...root.querySelectorAll<HTMLElement>(`[${NAV_COLUMN}]`)];
+  else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
     const step = e.key === 'ArrowRight' ? 1 : -1;
-    for (let c = columns.indexOf(column) + step; c >= 0 && c < columns.length; c += step) {
-      const candidates = [...columns[c]!.querySelectorAll<HTMLElement>(`[${NAV_ITEM}]`)];
-      if (candidates.length) {
-        next = candidates[Math.min(i, candidates.length - 1)];
-        break;
+    if (!column) next = items[i + step];
+    else {
+      // Tablero: salta a la columna vecina con tarjetas, a la misma altura (o a la última si hay menos).
+      const columns = [...root.querySelectorAll<HTMLElement>(`[${NAV_COLUMN}]`)];
+      for (let c = columns.indexOf(column) + step; c >= 0 && c < columns.length; c += step) {
+        const candidates = [...columns[c]!.querySelectorAll<HTMLElement>(`[${NAV_ITEM}]`)];
+        if (candidates.length) {
+          next = candidates[Math.min(i, candidates.length - 1)];
+          break;
+        }
       }
     }
   } else return;

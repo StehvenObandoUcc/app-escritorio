@@ -1,14 +1,14 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Pencil, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useAction } from '@/app/useAction';
-import type { Project, Task, TaskStatus } from '@/cloud/contract';
+import type { Project, Task } from '@/cloud/contract';
 import { errorMessage, t } from '@/i18n';
-import { canManageProject, canSubmit, isWorker, statusAction } from '@/lib/tasks';
+import { canManageProject, nextSteps, type Step } from '@/lib/tasks';
 import { Button, Heading, Surface } from '@/ui/atoms';
 import { ConfirmDialog, EmptyState, TaskForm, Toast } from '@/ui/molecules';
-import { ReviewForm, TaskDetails, TaskHistoryList, TaskReview, TaskSidebar } from '@/ui/organisms';
+import { ReviewForm, TaskDetails, TaskHistoryList, TaskReview, TaskSidebar, TaskWorkflow } from '@/ui/organisms';
 import { PageLayout } from '@/ui/templates';
 import { BackLink, taskPath } from './ProyectoPage';
 import { noTeamState, OfflineNote } from './ProyectosPage';
@@ -17,9 +17,12 @@ import { useProject } from './useProject';
 type Mode = 'view' | 'edit' | 'subtask' | 'submit' | 'complete';
 
 /**
- * Pantalla de una tarea (D-16, C7): `/proyectos/:id/tareas/:tarea`. Columna principal con el detalle (o el
- * formulario completo al editar o crear una subtarea) y columna lateral con estado, personas, tiempo y las
- * acciones. `?accion=enviar|completar` abre directamente el formulario de entrega (AC-45). Esc vuelve.
+ * Pantalla de una tarea (D-16): `/proyectos/:id/tareas/:tarea`.
+ * - Arriba, el flujo (Por hacer → En curso → En revisión → Hecha) con el siguiente paso de quien mira.
+ * - Debajo, el detalle a la izquierda y la información a la derecha.
+ * - Editar, crear una subtarea, enviar o completar ocupan la pantalla entera con un solo formulario: no hay
+ *   otros botones alrededor que confundan. Esc cancela el formulario o vuelve al proyecto.
+ * `?accion=enviar|completar` abre directamente el formulario de entrega.
  */
 export function TareaPage() {
   const { id = '', tarea = '' } = useParams();
@@ -56,6 +59,7 @@ function TaskView({ ctx, project, task, back }: { ctx: Ctx; project: Project; ta
   const { cloud, bridge, me, tasks, offline, nameOf, projectPeople, assignable, activeTeam } = ctx;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const reviewRef = useRef<HTMLDivElement>(null);
   const [params, setParams] = useSearchParams();
   const requested = params.get('accion');
   const [mode, setMode] = useState<Mode>(requested === 'enviar' ? 'submit' : requested === 'completar' ? 'complete' : 'view');
@@ -69,13 +73,20 @@ function TaskView({ ctx, project, task, back }: { ctx: Ctx; project: Project; ta
   const subtasks = tasks.filter((x) => x.parentId === task.id);
   const history = useQuery({ queryKey: ['history', task.id], enabled: historyOpen, queryFn: () => cloud.taskHistory(task.id) });
   const backTo = `/proyectos/${project.id}`;
+  const steps = offline ? { primary: null, secondary: [] } : nextSteps(project, task, me, ctx.isProjectMember);
+  const waitingFor =
+    task.status === 'review'
+      ? (nameOf(task.pendingReview?.reviewerId ?? null) ?? t('review.anyReviewer'))
+      : task.status !== 'done'
+        ? nameOf(task.assigneeId)
+        : null;
 
   // La acción pedida en la URL se consume una vez para que volver atrás no reabra el formulario.
   useEffect(() => {
     if (requested) setParams({}, { replace: true });
   }, [requested, setParams]);
 
-  // Esc vuelve al proyecto cuando no hay un formulario abierto (los formularios cierran con su propio Esc).
+  // Esc vuelve al proyecto cuando no hay un formulario abierto (los formularios cancelan con su propio Esc).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && mode === 'view' && !confirmDelete && !e.defaultPrevented) navigate(backTo);
@@ -84,32 +95,32 @@ function TaskView({ ctx, project, task, back }: { ctx: Ctx; project: Project; ta
     return () => window.removeEventListener('keydown', onKey);
   }, [mode, confirmDelete, navigate, backTo]);
 
-  const act = async (run: () => Promise<unknown>, done?: string, next: Mode = 'view') => {
+  const after = async () => {
+    await ctx.refresh();
+    if (historyOpen) await queryClient.invalidateQueries({ queryKey: ['history', task.id] });
+  };
+  const act = async (run: () => Promise<unknown>, done?: string) => {
     const ok = await action.run(async () => {
       await run();
-      await ctx.refresh();
-      if (historyOpen) await queryClient.invalidateQueries({ queryKey: ['history', task.id] });
+      await after();
     });
-    if (ok) {
-      setMode(next);
-      if (done) setToast(done);
-    }
+    if (ok && done) setToast(done);
     return ok;
   };
   /** Para formularios: el error se muestra dentro del formulario, por eso aquí se relanza. */
   const persist = async (run: () => Promise<unknown>, done: string) => {
     await run();
-    await ctx.refresh();
-    if (historyOpen) await queryClient.invalidateQueries({ queryKey: ['history', task.id] });
+    await after();
     setMode('view');
     setToast(done);
   };
 
-  const changeStatus = (status: TaskStatus) => {
-    const next = statusAction(project, task, me, status);
-    if (next === 'set') void act(() => cloud.setTaskStatus(task.id, status as 'todo' | 'doing'));
-    else if (next === 'forbidden') action.setError(t('tasks.statusForbidden'));
-    else setMode(next);
+  const onStep = (step: Step) => {
+    if (step === 'take') void act(() => cloud.takeTask(task.id), t('tasks.sidebar.taken'));
+    else if (step === 'start') void act(() => cloud.setTaskStatus(task.id, 'doing'), t('tasks.flow.started'));
+    else if (step === 'reopen') void act(() => cloud.setTaskStatus(task.id, 'doing'), t('tasks.flow.reopened'));
+    else if (step === 'review') reviewRef.current?.querySelector<HTMLElement>('textarea, button')?.focus();
+    else setMode(step);
   };
 
   const openLink = (url: string) => void bridge.openExternal(url).catch((cause: unknown) => action.setError(errorMessage(cause)));
@@ -119,78 +130,64 @@ function TaskView({ ctx, project, task, back }: { ctx: Ctx; project: Project; ta
       .then((url) => bridge.openExternal(url))
       .catch((cause: unknown) => action.setError(errorMessage(cause)));
 
-  const main =
-    mode === 'edit' ? (
-      <Surface as="section" aria-label={t('tasks.panel.editTitle')} className="flex flex-col gap-3">
-        <Heading level={2}>{t('tasks.panel.editTitle')}</Heading>
-        <TaskForm
-          initial={task}
-          people={manager ? assignable : projectPeople}
-          manage={manager}
-          isNew={false}
-          parentTitle={parent?.title}
-          submitLabel={t('common.save')}
-          onCancel={() => setMode('view')}
-          onSubmit={(input) => persist(() => cloud.updateTask(task.id, input), t('common.saved'))}
-        />
-      </Surface>
-    ) : mode === 'subtask' ? (
-      <Surface as="section" aria-label={t('tasks.panel.addSubtask')} className="flex flex-col gap-3">
-        <Heading level={2}>{t('tasks.panel.addSubtask')}</Heading>
-        <TaskForm
-          initial={{ ...task, title: '', description: '', labels: [], estimateMinutes: null, dueDate: task.dueDate, assigneeId: null, assigneeCanManage: false, status: 'todo' }}
-          people={assignable}
-          manage={manager}
-          isNew
-          parentTitle={task.title}
-          submitLabel={t('tasks.create')}
-          onCancel={() => setMode('view')}
-          onSubmit={(input, extras) => persist(() => cloud.createTask(project.id, input, { ...extras, parentId: task.id }), t('tasks.created'))}
-        />
-      </Surface>
-    ) : mode === 'submit' || mode === 'complete' ? (
-      <Surface as="section" aria-label={mode === 'submit' ? t('review.title') : t('review.completeLabel')} className="flex flex-col gap-3">
-        <Heading level={2}>{mode === 'submit' ? t('review.title') : t('review.completeLabel')}</Heading>
-        <ReviewForm
-          mode={mode}
-          task={task}
-          template={project.reviewTemplate}
-          reviewers={projectPeople.filter((o) => o.value !== me)}
-          onCancel={() => setMode('view')}
-          onSubmit={(sub) =>
-            persist(
-              () => (mode === 'submit' ? cloud.submitForReview(task, activeTeam!.id, sub) : cloud.completeTask(task, activeTeam!.id, sub)),
-              mode === 'submit' ? t('review.sent') : t('review.completed'),
-            )
-          }
-        />
-      </Surface>
-    ) : (
-      <>
-        <TaskDetails
-          task={task}
-          subtasks={subtasks}
-          isSubtask={Boolean(parent)}
-          canEditCriteria={writable && manager}
-          canAddSubtask={writable && !parent && (manager || ctx.isProjectMember)}
-          nameOf={nameOf}
-          onCriteria={(texts) => persist(() => cloud.setTaskCriteria(task.id, texts), t('common.saved'))}
-          onAddSubtask={() => setMode('subtask')}
-          onOpenTask={(sub) => navigate(taskPath(project.id, sub))}
-        />
-        <TaskReview
-          task={task}
-          project={project}
-          me={me}
-          readOnly={!writable}
-          nameOf={nameOf}
-          onDecide={(approve, comment) => persist(() => cloud.reviewTask(task.pendingReview!.id, approve, comment), approve ? t('review.approved') : t('review.changesRequested'))}
-          onOpenLink={openLink}
-          onOpenEvidence={openEvidence}
-        />
-        <TaskHistoryList history={history.data ?? null} onLoad={() => setHistoryOpen(true)} />
-      </>
+  // Formularios a pantalla completa: un solo propósito, sin la barra lateral ni el flujo alrededor.
+  if (mode !== 'view') {
+    const titles: Record<Exclude<Mode, 'view'>, string> = {
+      edit: t('tasks.page.editing', { title: task.title }),
+      subtask: t('tasks.page.newSubtaskOf', { title: task.title }),
+      submit: t('review.title'),
+      complete: t('review.completeLabel'),
+    };
+    return (
+      <PageLayout title={titles[mode]} subtitle={project.name} actions={back}>
+        <Surface as="section" aria-label={titles[mode]} className="mx-auto w-full max-w-prose">
+          {mode === 'edit' && (
+            <TaskForm
+              initial={task}
+              people={manager ? assignable : projectPeople}
+              manage={manager}
+              isNew={false}
+              parentTitle={parent?.title}
+              submitLabel={t('common.save')}
+              onCancel={() => setMode('view')}
+              onSubmit={(input) => persist(() => cloud.updateTask(task.id, input), t('common.saved'))}
+            />
+          )}
+          {mode === 'subtask' && (
+            <TaskForm
+              initial={{ ...task, title: '', description: '', labels: [], estimateMinutes: null, assigneeId: null, assigneeCanManage: false, status: 'todo' }}
+              people={assignable}
+              manage={manager}
+              isNew
+              parentTitle={task.title}
+              submitLabel={t('tasks.create')}
+              onCancel={() => setMode('view')}
+              onSubmit={(input, extras) => persist(() => cloud.createTask(project.id, input, { ...extras, parentId: task.id }), t('tasks.created'))}
+            />
+          )}
+          {(mode === 'submit' || mode === 'complete') && (
+            <div className="flex flex-col gap-3">
+              <Heading level={2}>{task.title}</Heading>
+              <ReviewForm
+                mode={mode}
+                task={task}
+                template={project.reviewTemplate}
+                reviewers={projectPeople.filter((o) => o.value !== me)}
+                onCancel={() => setMode('view')}
+                onSubmit={(sub) =>
+                  persist(
+                    () => (mode === 'submit' ? cloud.submitForReview(task, activeTeam!.id, sub) : cloud.completeTask(task, activeTeam!.id, sub)),
+                    mode === 'submit' ? t('review.sent') : t('review.completed'),
+                  )
+                }
+              />
+            </div>
+          )}
+        </Surface>
+        <Toast message={toast} onDone={() => setToast(null)} />
+      </PageLayout>
     );
+  }
 
   return (
     <PageLayout
@@ -199,10 +196,15 @@ function TaskView({ ctx, project, task, back }: { ctx: Ctx; project: Project; ta
       actions={
         <div className="flex flex-wrap items-center gap-2">
           {back}
-          {writable && manager && mode === 'view' && (
-            <Button size="sm" icon={<Pencil size={16} aria-hidden="true" />} onClick={() => setMode('edit')}>
-              {t('tasks.panel.edit')}
-            </Button>
+          {writable && manager && (
+            <>
+              <Button size="sm" icon={<Pencil size={16} aria-hidden="true" />} onClick={() => setMode('edit')}>
+                {t('tasks.panel.edit')}
+              </Button>
+              <Button size="sm" variant="danger" icon={<Trash2 size={16} aria-hidden="true" />} onClick={() => setConfirmDelete(true)}>
+                {t('tasks.sidebar.delete')}
+              </Button>
+            </>
           )}
         </div>
       }
@@ -213,27 +215,44 @@ function TaskView({ ctx, project, task, back }: { ctx: Ctx; project: Project; ta
           {action.error}
         </p>
       )}
-      {mode === 'view' && !writable && !offline && <p className="rounded-md bg-sunken p-3 text-sm text-fg">{t('tasks.page.archived')}</p>}
-      {mode === 'view' && writable && !manager && !isWorker(task, me) && !canSubmit(project, task, me) && task.assigneeId !== null && (
-        <p className="text-sm text-fg-muted">{t('tasks.page.readOnlyHint')}</p>
-      )}
+      {!writable && !offline && <p className="rounded-md bg-sunken p-3 text-sm text-fg">{t('tasks.page.archived')}</p>}
+      <TaskWorkflow task={task} steps={steps} waitingFor={waitingFor} onStep={onStep} />
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="flex min-w-0 flex-col gap-6 lg:col-span-2">{main}</div>
+        <div className="flex min-w-0 flex-col gap-6 lg:col-span-2">
+          <div ref={reviewRef}>
+            <TaskReview
+              task={task}
+              project={project}
+              me={me}
+              readOnly={!writable}
+              nameOf={nameOf}
+              onDecide={(approve, comment) => persist(() => cloud.reviewTask(task.pendingReview!.id, approve, comment), approve ? t('review.approved') : t('review.changesRequested'))}
+              onOpenLink={openLink}
+              onOpenEvidence={openEvidence}
+            />
+          </div>
+          <TaskDetails
+            task={task}
+            subtasks={subtasks}
+            isSubtask={Boolean(parent)}
+            canEditCriteria={writable && manager}
+            canAddSubtask={writable && !parent && (manager || ctx.isProjectMember)}
+            nameOf={nameOf}
+            onCriteria={(texts) => persist(() => cloud.setTaskCriteria(task.id, texts), t('common.saved'))}
+            onAddSubtask={() => setMode('subtask')}
+            onOpenTask={(sub) => navigate(taskPath(project.id, sub))}
+          />
+          <TaskHistoryList history={history.data ?? null} onLoad={() => setHistoryOpen(true)} />
+        </div>
         <Surface className="h-fit">
           <TaskSidebar
             task={task}
             project={project}
             me={me}
-            isProjectMember={ctx.isProjectMember}
             nameOf={nameOf}
             people={manager ? assignable : projectPeople}
             readOnly={offline}
             timer={ctx.timerFor(task)}
-            onStatus={changeStatus}
-            onTake={() => void act(() => cloud.takeTask(task.id), t('tasks.sidebar.taken'))}
-            onSubmit={() => setMode('submit')}
-            onComplete={() => setMode('complete')}
-            onDelete={() => setConfirmDelete(true)}
             onCollaborators={(ids) => persist(() => cloud.setTaskCollaborators(task.id, ids), t('common.saved'))}
             onTimer={() => void ctx.toggleTimer(task).catch((cause: unknown) => action.setError(errorMessage(cause)))}
           />

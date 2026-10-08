@@ -25,6 +25,7 @@ import {
   wrongInvitationCode,
   type Cloud,
   type CloudUser,
+  type ReviewSubmission,
   type TaskInput,
 } from './contract';
 
@@ -145,13 +146,22 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
   const auth = client.auth;
   type Fn = keyof Database['public']['Functions'];
   const rpc = <F extends Fn>(fn: F, args?: Database['public']['Functions'][F]['Args']) => run(client.rpc(fn, args));
-  /** La revisión ya existe: los archivos se suben después y quedan ligados a ella. El tamaño lo toma la base de Storage. */
-  const uploadEvidence = async (task: { id: string; projectId: string }, teamId: string, reviewId: string, files: File[]) => {
-    for (const file of files) {
-      const path = `${teamId}/${task.projectId}/${task.id}/${crypto.randomUUID()}-${safeName(file.name)}`;
-      await run(client.storage.from(EVIDENCE_BUCKET).upload(path, file, { contentType: file.type }));
-      await rpc('add_task_attachment', { p_task: task.id, p_path: path, p_name: file.name, p_review: reviewId });
+  /**
+   * ADR-0018: los archivos de cada campo se suben antes de enviar y el campo se responde con sus ids. Al enviar,
+   * la base comprueba que sean de esta tarea, de quien envía y del tipo del campo, y los liga a la revisión.
+   */
+  const deliveryAnswers = async (task: { id: string; projectId: string }, teamId: string, sub: Pick<ReviewSubmission, 'answers' | 'files'>) => {
+    const answers = { ...sub.answers };
+    for (const [key, files] of Object.entries(sub.files)) {
+      const ids: string[] = [];
+      for (const file of files) {
+        const path = `${teamId}/${task.projectId}/${task.id}/${crypto.randomUUID()}-${safeName(file.name)}`;
+        await run(client.storage.from(EVIDENCE_BUCKET).upload(path, file, { contentType: file.type }));
+        ids.push(z.uuid().parse(await rpc('add_task_attachment', { p_task: task.id, p_path: path, p_name: file.name })));
+      }
+      if (ids.length) answers[key] = ids.join(',');
     }
+    return answers;
   };
 
   const requireUser = async () => {
@@ -454,26 +464,19 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
     setTaskCriteria: async (taskId, texts) => {
       await rpc('set_task_criteria', { p_task: taskId, p_texts: texts });
     },
-    submitForReview: async (task, teamId, sub) => {
-      const reviewId = z.uuid().parse(
+    submitForReview: async (task, teamId, sub) =>
+      z.uuid().parse(
         await rpc('submit_for_review', {
           p_task: task.id,
-          p_answers: sub.answers,
-          p_links: sub.links,
+          p_answers: await deliveryAnswers(task, teamId, sub),
           p_reviewer: sub.reviewerId ?? undefined,
           p_criteria_met: sub.criteriaMet,
         }),
-      );
-      await uploadEvidence(task, teamId, reviewId, sub.files);
-      return reviewId;
-    },
-    completeTask: async (task, teamId, sub) => {
-      const reviewId = z.uuid().parse(
-        await rpc('complete_task', { p_task: task.id, p_answers: sub.answers, p_links: sub.links, p_criteria_met: sub.criteriaMet }),
-      );
-      await uploadEvidence(task, teamId, reviewId, sub.files);
-      return reviewId;
-    },
+      ),
+    completeTask: async (task, teamId, sub) =>
+      z.uuid().parse(
+        await rpc('complete_task', { p_task: task.id, p_answers: await deliveryAnswers(task, teamId, sub), p_criteria_met: sub.criteriaMet }),
+      ),
     takeTask: async (taskId) => {
       await rpc('take_task', { p_task: taskId });
     },

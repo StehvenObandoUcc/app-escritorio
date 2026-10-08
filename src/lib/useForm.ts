@@ -8,8 +8,7 @@ import { fieldErrors } from './forms';
  * - valida con un esquema de `forms.ts` y deja un error junto a cada campo (`errors[campo]`);
  * - lleva el foco al primer campo con error (los campos se buscan por su atributo `name`);
  * - no envía dos veces mientras espera;
- * - Enter pasa al siguiente campo y solo envía desde el último; Ctrl+Enter envía desde un área de texto;
- *   Esc llama a `onCancel`.
+ * - Esc llama a `onCancel`. Enter (siguiente campo) y Ctrl+Enter (enviar) funcionan en toda la app.
  */
 export function useForm<S extends z.ZodType>(schema: () => S, onCancel?: () => void) {
   const ref = useRef<HTMLFormElement>(null);
@@ -51,29 +50,12 @@ export function useForm<S extends z.ZodType>(schema: () => S, onCancel?: () => v
     [busy, schema, focusField],
   );
 
+  // Enter y Ctrl+Enter los resuelve la capa de teclado de toda la app (src/app/keyboard.ts); aquí solo Esc.
   const onKeyDown = useCallback(
     (e: KeyboardEvent<HTMLFormElement>) => {
-      const target = e.target as HTMLElement;
       if (e.key === 'Escape' && onCancel) {
         e.preventDefault();
         onCancel();
-        return;
-      }
-      if (e.key !== 'Enter') return;
-      if (target instanceof HTMLTextAreaElement) {
-        if (e.ctrlKey || e.metaKey) {
-          e.preventDefault();
-          ref.current?.requestSubmit();
-        }
-        return;
-      }
-      if (!(target instanceof HTMLInputElement) || target.type === 'checkbox' || target.type === 'file') return;
-      const fields = [...(ref.current?.querySelectorAll<HTMLElement>('input:not([type=hidden]):not([type=checkbox]):not([type=file]):not(:disabled), select:not(:disabled), textarea:not(:disabled)') ?? [])];
-      const next = fields.slice(fields.indexOf(target) + 1).find((f) => !(f as HTMLInputElement).value);
-      // Con campos vacíos por delante, Enter avanza; si todo está lleno, envía (arregla C5).
-      if (next) {
-        e.preventDefault();
-        next.focus();
       }
     },
     [onCancel],

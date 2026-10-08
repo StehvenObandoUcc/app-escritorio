@@ -5,7 +5,7 @@ import { t } from '@/i18n';
 import { LIMITS } from '@/lib/limits';
 import { Button, Input, Select } from '@/ui/atoms';
 
-const KINDS: ReviewField['kind'][] = ['text', 'url', 'checklist'];
+const KINDS: ReviewField['kind'][] = ['text', 'url', 'image', 'file', 'checklist'];
 /** Campo fijo del formulario de entrega (ADR-0016). */
 const SUMMARY_KEY = 'summary';
 

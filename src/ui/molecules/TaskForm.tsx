@@ -3,7 +3,7 @@ import { TASK_TYPES, type NewTaskExtras, type TaskInput } from '@/cloud/contract
 import { t } from '@/i18n';
 import { forms } from '@/lib/forms';
 import { LIMITS } from '@/lib/limits';
-import { STATUS_LABEL, TYPE_LABEL } from '@/lib/tasks';
+import { TYPE_LABEL } from '@/lib/tasks';
 import { useForm } from '@/lib/useForm';
 import { Button, Select, type SelectOption } from '@/ui/atoms';
 import { EstimateInput } from './EstimateInput';
@@ -26,6 +26,7 @@ const textarea = 'w-full rounded-md border bg-surface px-3 py-2 text-base text-f
 /**
  * Crear o editar una tarea o una subtarea (PT-03, ADR-0014): el mismo formulario para las dos (C6).
  * `people`: a quién se puede asignar. `manage`: muestra apoyos, criterios y el permiso del responsable.
+ * El estado no se elige aquí: avanza con los pasos del flujo de la tarea (AC-45 v4).
  * Validación por campo (AC-42); Enter avanza, Ctrl+Enter guarda desde un área de texto y Esc cancela (AC-43).
  */
 export function TaskForm({
@@ -55,8 +56,6 @@ export function TaskForm({
   const [collaborators, setCollaborators] = useState<string[]>([]);
   const { ref, errors: err, formError, busy, submit, onKeyDown } = useForm(forms.task, onCancel);
   const set = <K extends keyof TaskInput>(key: K, value: TaskInput[K]) => setV((prev) => ({ ...prev, [key]: value }));
-  // Una tarea en revisión o hecha conserva su estado: a esos estados se llega con la entrega.
-  const statuses = v.status === 'review' || v.status === 'done' ? [v.status, 'todo', 'doing'] : ['todo', 'doing'];
 
   return (
     <form
@@ -114,15 +113,6 @@ export function TaskForm({
         <label className="flex min-w-40 flex-1 flex-col gap-1 text-sm font-medium text-fg">
           {t('tasks.form.assignee')}
           <Select name="assigneeId" value={v.assigneeId ?? ''} onChange={(e) => set('assigneeId', e.target.value || null)} options={[{ value: '', label: t('tasks.noAssignee') }, ...people]} />
-        </label>
-        <label className="flex min-w-32 flex-1 flex-col gap-1 text-sm font-medium text-fg">
-          {t('tasks.form.status')}
-          <Select
-            name="status"
-            value={v.status}
-            onChange={(e) => set('status', e.target.value as TaskInput['status'])}
-            options={statuses.map((s) => ({ value: s, label: STATUS_LABEL[s as TaskInput['status']] }))}
-          />
         </label>
       </div>
       {manage && (

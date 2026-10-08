@@ -756,25 +756,25 @@ export type Database = {
         Returns: string
       }
       add_task_attachment: {
-        Args: { p_name: string; p_path: string; p_review?: string; p_task: string }
-        Returns: string
-      }
-      complete_task: {
         Args: {
-          p_answers: Json
-          p_criteria_met?: string[]
-          p_links?: string[]
+          p_name: string
+          p_path: string
+          p_review?: string
           p_task: string
         }
         Returns: string
       }
-      delete_project: {
-        Args: { p_confirm_name: string; p_project: string }
-        Returns: undefined
-      }
-      delete_task: { Args: { p_task: string }; Returns: undefined }
       assert_assignee: {
         Args: { p_assignee: string; p_project: string }
+        Returns: undefined
+      }
+      assert_delivery: {
+        Args: {
+          p_answers: Json
+          p_criteria_met: string[]
+          p_links: string[]
+          p_task: string
+        }
         Returns: undefined
       }
       assert_project_open: { Args: { p_project: string }; Returns: undefined }
@@ -785,6 +785,15 @@ export type Database = {
       can_see_project: { Args: { p_project: string }; Returns: boolean }
       can_upload_evidence: { Args: { p_path: string }; Returns: boolean }
       clean_labels: { Args: { p_labels: string[] }; Returns: string[] }
+      complete_task: {
+        Args: {
+          p_answers: Json
+          p_criteria_met?: string[]
+          p_links?: string[]
+          p_task: string
+        }
+        Returns: string
+      }
       create_project: {
         Args: { p_name: string; p_team: string }
         Returns: string
@@ -809,6 +818,11 @@ export type Database = {
       }
       create_team: { Args: { p_name: string }; Returns: string }
       decline_invitation: { Args: { p_id: string }; Returns: undefined }
+      delete_project: {
+        Args: { p_confirm_name: string; p_project: string }
+        Returns: undefined
+      }
+      delete_task: { Args: { p_task: string }; Returns: undefined }
       ensure_project_member: {
         Args: { p_project: string; p_user: string }
         Returns: undefined

@@ -13,7 +13,7 @@ import { pathToFileURL } from 'node:url';
 
 const LETTERS = /[a-záéíóúñ]{2,}/;
 /** Nombres propios que no se traducen. */
-const ALLOWED = new Set(['Pulso', 'youtube.com']);
+const ALLOWED = new Set(['Pulso', 'youtube.com', 'https://']);
 const ATTRS = 'label|aria-label|title|placeholder|alt|subtitle|description|hint|submitLabel|acceptLabel|what|error';
 
 export const RULES = [

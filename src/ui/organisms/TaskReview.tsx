@@ -1,4 +1,4 @@
-import { ExternalLink, History } from 'lucide-react';
+import { ExternalLink, FileText, History, Image as ImageIcon } from 'lucide-react';
 import { useState } from 'react';
 import type { Project, Task, TaskHistory } from '@/cloud/contract';
 import { formatDate, t, type TKey } from '@/i18n';
@@ -37,7 +37,14 @@ export function TaskReview({
   const [busy, setBusy] = useState(false);
   const r = task.pendingReview;
   if (!r) return null;
-  const fieldLabel = (key: string) => project.reviewTemplate.find((f) => f.key === key)?.label ?? key;
+  const fieldOf = (key: string) => project.reviewTemplate.find((f) => f.key === key);
+  const attachment = new Map(r.attachments.map((a) => [a.id, a]));
+  const fileButton = (a: (typeof r.attachments)[number]) => (
+    <Button key={a.id} size="sm" variant="ghost" icon={a.contentType.startsWith('image/') ? <ImageIcon size={14} aria-hidden="true" /> : <FileText size={14} aria-hidden="true" />} onClick={() => onOpenEvidence(a.path)}>
+      {a.name}
+    </Button>
+  );
+  const usedIds = new Set(Object.values(r.answers).flatMap((v) => v.split(',')));
   const decide = !readOnly && canReview(project, task, me);
 
   const send = async (approve: boolean) => {
@@ -61,33 +68,44 @@ export function TaskReview({
         {t('review.submittedBy', { name: nameOf(r.submittedBy) ?? t('common.exMember'), date: when(r.createdAt) })}
         {r.reviewerId && ` · ${t('review.requestedReviewer', { name: nameOf(r.reviewerId) ?? t('common.exMember') })}`}
       </p>
-      <dl className="flex flex-col gap-2">
+      <dl className="flex flex-col gap-3">
         {Object.entries(r.answers)
           .filter(([, v]) => v.trim() !== '')
-          .map(([k, v]) => (
-            <div key={k}>
-              <dt className="text-sm font-medium text-fg">{fieldLabel(k)}</dt>
-              <dd className="text-sm whitespace-pre-line text-fg-muted">{v === 'true' ? t('review.yes') : v}</dd>
-            </div>
-          ))}
+          .map(([k, v]) => {
+            const field = fieldOf(k);
+            const kind = field?.kind ?? 'text';
+            return (
+              <div key={k} className="flex flex-col gap-1">
+                <dt className="text-sm font-medium text-fg">{field?.label ?? k}</dt>
+                <dd className="flex flex-wrap gap-2 text-sm whitespace-pre-line text-fg-muted">
+                  {kind === 'image' || kind === 'file'
+                    ? v.split(',').map((idOf) => attachment.get(idOf)).filter((a) => a !== undefined).map(fileButton)
+                    : kind === 'url'
+                      ? (
+                          <Button size="sm" variant="ghost" icon={<ExternalLink size={14} aria-hidden="true" />} onClick={() => onOpenLink(v)}>
+                            <span className="max-w-64 truncate">{v}</span>
+                          </Button>
+                        )
+                      : kind === 'checklist'
+                        ? v === 'true'
+                          ? t('review.yes')
+                          : t('review.no')
+                        : v}
+                </dd>
+              </div>
+            );
+          })}
       </dl>
-      {(r.links.length > 0 || r.attachments.length > 0) && (
-        <ul className="flex flex-wrap gap-2">
+      {/* Enlaces y archivos de entregas anteriores a ADR-0018 (no ligados a un campo). */}
+      {(r.links.length > 0 || r.attachments.some((a) => !usedIds.has(a.id))) && (
+        <div className="flex flex-wrap gap-2">
           {r.links.map((l) => (
-            <li key={l}>
-              <Button size="sm" variant="ghost" icon={<ExternalLink size={14} aria-hidden="true" />} onClick={() => onOpenLink(l)}>
-                <span className="max-w-64 truncate">{l}</span>
-              </Button>
-            </li>
+            <Button key={l} size="sm" variant="ghost" icon={<ExternalLink size={14} aria-hidden="true" />} onClick={() => onOpenLink(l)}>
+              <span className="max-w-64 truncate">{l}</span>
+            </Button>
           ))}
-          {r.attachments.map((a) => (
-            <li key={a.id}>
-              <Button size="sm" variant="ghost" icon={<ExternalLink size={14} aria-hidden="true" />} onClick={() => onOpenEvidence(a.path)}>
-                {a.name}
-              </Button>
-            </li>
-          ))}
-        </ul>
+          {r.attachments.filter((a) => !usedIds.has(a.id)).map(fileButton)}
+        </div>
       )}
       {decide && (
         <div className="flex flex-col gap-2">
