@@ -1,13 +1,14 @@
+import { arrowNav, NAV_ITEM } from '@/lib/keyboard';
 import { useQuery } from '@tanstack/react-query';
 import { Archive, ArchiveRestore, ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { useAction } from '@/app/useAction';
-import type { Project, ProjectMember, Task, TaskStatus } from '@/cloud/contract';
+import type { Project, ProjectMember, Task } from '@/cloud/contract';
 import { errorMessage, t } from '@/i18n';
 import { fieldErrors, forms } from '@/lib/forms';
 import { LIMITS } from '@/lib/limits';
-import { allLabels, canChangeStatus, canManageProject, canReview, NO_FILTER, PROJECT_ROLE_LABEL, statusAction, taskTree, type TaskFilter } from '@/lib/tasks';
+import { allLabels, canManageProject, canReview, nextSteps, NO_FILTER, PROJECT_ROLE_LABEL, taskTree, type Step, type TaskFilter } from '@/lib/tasks';
 import { localDate } from '@/lib/time';
 import { Badge, Button, Heading, Input, Surface } from '@/ui/atoms';
 import { ConfirmDialog, EmptyState, ProjectProgress, SegmentedControl, TaskFilters, TaskForm, Toast } from '@/ui/molecules';
@@ -86,12 +87,12 @@ function ProjectView({ ctx, project, back }: { ctx: Ctx; project: Project; back:
     return ok;
   };
 
-  // AC-45: el selector ofrece los 4 estados; En revisión y Hecha llevan al formulario de entrega.
-  const changeStatus = (task: Task, status: TaskStatus) => {
-    const next = statusAction(project, task, me, status);
-    if (next === 'set') void act(() => cloud.setTaskStatus(task.id, status as 'todo' | 'doing'));
-    else if (next === 'forbidden') action.setError(t('tasks.statusForbidden'));
-    else navigate(taskPath(project.id, task.id, next === 'submit' ? 'enviar' : 'completar'));
+  // AC-45 v4: cada tarjeta muestra el siguiente paso de quien mira; los que piden formulario abren la tarea.
+  const onStep = (task: Task, step: Step) => {
+    if (step === 'take') void act(() => cloud.takeTask(task.id), t('tasks.sidebar.taken'));
+    else if (step === 'start') void act(() => cloud.setTaskStatus(task.id, 'doing'), t('tasks.flow.started'));
+    else if (step === 'reopen') void act(() => cloud.setTaskStatus(task.id, 'doing'), t('tasks.flow.reopened'));
+    else navigate(taskPath(project.id, task.id, step === 'submit' ? 'enviar' : step === 'complete' ? 'completar' : undefined));
   };
 
   const tree = taskTree(tasks, filter, me);
@@ -99,8 +100,8 @@ function ProjectView({ ctx, project, back }: { ctx: Ctx; project: Project; back:
     tree,
     nameOf,
     today,
-    canChangeStatus: (x: Task) => writable && canChangeStatus(project, x, me),
-    onStatusChange: changeStatus,
+    primaryStep: (x: Task) => (writable ? nextSteps(project, x, me, ctx.isProjectMember).primary : null),
+    onStep,
     onOpen: (x: Task) => navigate(taskPath(project.id, x.id)),
   };
   const reviews = tasks.filter((x) => x.pendingReview);
@@ -191,10 +192,10 @@ function ProjectView({ ctx, project, back }: { ctx: Ctx; project: Project; back:
           {reviews.length === 0 ? (
             <p className="text-fg-muted">{t('review.none')}</p>
           ) : (
-            <ul className="flex flex-col divide-y divide-line">
+            <ul onKeyDown={arrowNav} className="flex flex-col divide-y divide-line">
               {reviews.map((x) => (
                 <li key={x.id} className="flex flex-wrap items-center gap-3 py-3">
-                  <a href={`#${taskPath(project.id, x.id)}`} className="min-w-0 flex-1 truncate rounded-xs font-medium text-fg hover:underline">
+                  <a href={`#${taskPath(project.id, x.id)}`} {...{ [NAV_ITEM]: '' }} className="min-w-0 flex-1 truncate rounded-xs font-medium text-fg hover:underline">
                     {x.title}
                   </a>
                   <span className="text-sm text-fg-muted">{t('review.submittedByShort', { name: nameOf(x.pendingReview?.submittedBy ?? null) ?? t('common.exMember') })}</span>

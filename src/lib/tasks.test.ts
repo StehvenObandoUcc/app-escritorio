@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import type { Task } from '@/cloud/contract';
 import {
   bestUnit,
-  canChangeStatus,
   canComplete,
   canManagePeople,
   canReview,
@@ -12,7 +11,7 @@ import {
   isOverdue,
   NO_FILTER,
   parseTasksCache,
-  statusAction,
+  nextSteps,
   taskTree,
   timeRatio,
   toMinutes,
@@ -128,16 +127,7 @@ describe('permisos visibles (filas 19 y 27 a 29)', () => {
   const contributor = { ...open, myRole: 'contributor' as const };
   const lead = { ...open, myRole: 'lead' as const };
 
-  it('estado: responsable o apoyo, nunca en revisión; una hecha solo la reabre quien gestiona', () => {
-    expect(canChangeStatus(contributor, task({ assigneeId: ME }), ME)).toBe(true);
-    expect(canChangeStatus(contributor, task({ collaborators: [ME] }), ME)).toBe(true);
-    expect(canChangeStatus(contributor, task({ assigneeId: OTHER }), ME)).toBe(false);
-    expect(canChangeStatus(lead, task({ status: 'review' }), ME)).toBe(true);
-    expect(canChangeStatus(contributor, task({ assigneeId: ME, status: 'review' }), ME)).toBe(false);
-    expect(canChangeStatus(contributor, task({ assigneeId: ME, status: 'done' }), ME)).toBe(false);
-    expect(canChangeStatus(lead, task({ status: 'done' }), ME)).toBe(true);
-    expect(canChangeStatus({ archivedAt: 'x', myRole: 'manager' }, task({}), ME)).toBe(false);
-  });
+
 
   it('enviar a revisión: responsable o apoyo con la tarea por hacer o en curso', () => {
     expect(canSubmit(contributor, task({ assigneeId: ME, status: 'doing' }), ME)).toBe(true);
@@ -178,14 +168,23 @@ describe('completar, tomar y el selector de estado (AC-36, AC-37, AC-45)', () =>
     expect(canTake(contributor, task({}), false)).toBe(false);
   });
 
-  it('En revisión y Hecha abren el formulario que corresponde', () => {
-    expect(statusAction(contributor, task({ assigneeId: ME }), ME, 'doing')).toBe('set');
-    expect(statusAction(contributor, task({ assigneeId: ME }), ME, 'review')).toBe('submit');
-    expect(statusAction(contributor, task({ assigneeId: ME }), ME, 'done')).toBe('submit');
-    expect(statusAction(lead, task({}), ME, 'done')).toBe('complete');
-    expect(statusAction(lead, task({}), ME, 'review')).toBe('forbidden');
-    expect(statusAction(contributor, task({ assigneeId: OTHER }), ME, 'done')).toBe('forbidden');
+  it('el siguiente paso depende del estado y de quién mira (AC-45 v4)', () => {
+    const steps = (p: Parameters<typeof nextSteps>[0], over: Partial<Task>, member = true) => nextSteps(p, task(over), ME, member);
+    expect(steps(contributor, { assigneeId: ME })).toEqual({ primary: 'start', secondary: ['submit'] });
+    expect(steps(contributor, { assigneeId: ME, status: 'doing' })).toEqual({ primary: 'submit', secondary: [] });
+    expect(steps(contributor, {})).toEqual({ primary: 'take', secondary: [] });
+    expect(steps(contributor, {}, false)).toEqual({ primary: null, secondary: [] });
+    expect(steps(contributor, { assigneeId: OTHER })).toEqual({ primary: null, secondary: [] });
+    expect(steps(lead, { assigneeId: OTHER })).toEqual({ primary: 'complete', secondary: ['start'] });
+    expect(steps(lead, {})).toEqual({ primary: 'take', secondary: ['start', 'complete'] });
+    expect(steps(lead, { assigneeId: ME, status: 'doing' })).toEqual({ primary: 'submit', secondary: ['complete'] });
+    expect(steps(lead, { status: 'review', pendingReview: review({}) })).toEqual({ primary: 'review', secondary: [] });
+    expect(steps(contributor, { status: 'review', pendingReview: review({ reviewerId: ME }) })).toEqual({ primary: 'review', secondary: [] });
+    expect(steps(lead, { status: 'done' })).toEqual({ primary: 'reopen', secondary: [] });
+    expect(steps(contributor, { assigneeId: ME, status: 'done' })).toEqual({ primary: null, secondary: [] });
+    expect(steps({ archivedAt: 'x', myRole: 'manager' }, {})).toEqual({ primary: null, secondary: [] });
   });
+
 });
 
 describe('copia local (PT-09)', () => {

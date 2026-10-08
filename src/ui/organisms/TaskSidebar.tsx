@@ -1,43 +1,26 @@
-import { CheckCircle2, Hand, Play, Send, Square, Trash2 } from 'lucide-react';
+import { Play, Square } from 'lucide-react';
 import { useState } from 'react';
-import type { Project, Task, TaskStatus } from '@/cloud/contract';
+import type { Project, Task } from '@/cloud/contract';
 import { formatDate, t } from '@/i18n';
-import {
-  canChangeStatus,
-  canComplete,
-  canManagePeople,
-  canManageProject,
-  canSubmit,
-  canTake,
-  formatMinutes,
-  timeRatio,
-  TYPE_LABEL,
-} from '@/lib/tasks';
+import { canManagePeople, formatMinutes, timeRatio, TYPE_LABEL } from '@/lib/tasks';
 import { Badge, Button, Heading, ProgressBar, type SelectOption } from '@/ui/atoms';
-import { TaskStatusControl } from './TaskList';
 
 export interface TaskSidebarProps {
   task: Task;
   project: Pick<Project, 'myRole' | 'archivedAt'>;
   me: string;
-  isProjectMember: boolean;
   nameOf: (userId: string | null) => string | null;
   /** A quién se puede añadir como apoyo. */
   people: SelectOption[];
   readOnly: boolean;
   timer: { running: boolean; onThis: boolean };
-  onStatus: (status: TaskStatus) => void;
-  onTake: () => void;
-  onSubmit: () => void;
-  onComplete: () => void;
-  onDelete: () => void;
   onCollaborators: (userIds: string[]) => Promise<void>;
   onTimer: () => void;
 }
 
 /**
- * Columna lateral de la tarea (D-16): acciones siempre visibles arriba (tomar, enviar, completar), estado,
- * personas, fechas, estimación, tiempo y temporizador. Cada acción aparece solo para quien puede hacerla.
+ * Columna lateral de la tarea (D-16): tipo, personas, fechas, tiempo frente a lo estimado y temporizador.
+ * Los pasos del flujo (empezar, enviar, completar, revisar) están en `TaskWorkflow`, arriba de la pantalla.
  */
 export function TaskSidebar(p: TaskSidebarProps) {
   const { task, project, me } = p;
@@ -50,33 +33,7 @@ export function TaskSidebar(p: TaskSidebarProps) {
 
   return (
     <aside aria-label={t('tasks.sidebar.label')} className="flex flex-col gap-4">
-      {writable && (
-        <div className="flex flex-col gap-2">
-          {canTake(project, task, p.isProjectMember) && (
-            <Button variant="primary" icon={<Hand size={16} aria-hidden="true" />} onClick={p.onTake}>
-              {t('tasks.sidebar.take')}
-            </Button>
-          )}
-          {canSubmit(project, task, me) && (
-            <Button variant={canComplete(project, task) ? 'secondary' : 'primary'} icon={<Send size={16} aria-hidden="true" />} onClick={p.onSubmit}>
-              {t('review.open')}
-            </Button>
-          )}
-          {canComplete(project, task) && (
-            <Button variant="primary" icon={<CheckCircle2 size={16} aria-hidden="true" />} onClick={p.onComplete}>
-              {t('review.complete')}
-            </Button>
-          )}
-        </div>
-      )}
-
       <dl className="flex flex-col gap-3 text-sm">
-        <div className="flex flex-col gap-1">
-          <dt className="text-fg-muted">{t('tasks.form.status')}</dt>
-          <dd>
-            <TaskStatusControl task={task} editable={writable && canChangeStatus(project, task, me)} onChange={p.onStatus} />
-          </dd>
-        </div>
         <div className="flex flex-col gap-1">
           <dt className="text-fg-muted">{t('tasks.form.type')}</dt>
           <dd>
@@ -175,13 +132,6 @@ export function TaskSidebar(p: TaskSidebarProps) {
         )}
       </div>
 
-      {writable && canManageProject(project) && (
-        <div className="border-t border-line pt-4">
-          <Button variant="danger" icon={<Trash2 size={16} aria-hidden="true" />} onClick={p.onDelete}>
-            {t('tasks.sidebar.delete')}
-          </Button>
-        </div>
-      )}
     </aside>
   );
 }

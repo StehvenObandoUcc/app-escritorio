@@ -1,3 +1,4 @@
+import { arrowNav, NAV_ITEM } from '@/lib/keyboard';
 import { t } from '@/i18n';
 import { useState } from 'react';
 import type { TimeEntry } from '@/bridge/contract';
@@ -45,7 +46,7 @@ export function TimeEntryList({ entries, onUpdate, onDelete }: TimeEntryListProp
         onCancel={() => setConfirming(null)}
         onConfirm={() => confirming && void remove(confirming)}
       />
-      <ul aria-label={t('entries.label')} className="divide-y divide-line">
+      <ul aria-label={t('entries.label')} onKeyDown={arrowNav} className="divide-y divide-line">
         {entries.map((entry) => {
           const range = `${formatHour(entry.startedAt)}–${entry.endedAt ? formatHour(entry.endedAt) : t('entries.running')}`;
           if (editing === entry.id) {
@@ -73,7 +74,8 @@ export function TimeEntryList({ entries, onUpdate, onDelete }: TimeEntryListProp
               <span className="flex min-w-0 flex-1 basis-48 flex-wrap items-center justify-end gap-2">
                 {entry.endedAt && (
                   <>
-                    <Button size="sm" variant="ghost" aria-label={t('entries.editOf', { range })} onClick={() => setEditing(entry.id)}>
+                    <Button size="sm" variant="ghost" {...{ [NAV_ITEM]: '' }}
+                      aria-label={t('entries.editOf', { range })} onClick={() => setEditing(entry.id)}>
                       {t('entries.edit')}
                     </Button>
                     <Button

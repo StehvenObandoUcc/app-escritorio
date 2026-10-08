@@ -168,7 +168,8 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
   };
   const DEFAULT_TEMPLATE: ReviewField[] = [
     { key: 'summary', label: 'Qué se hizo', kind: 'text', required: true },
-    { key: 'evidence', label: 'Evidencia', kind: 'url', required: false },
+    { key: 'evidence', label: 'Enlace de evidencia', kind: 'url', required: false },
+    { key: 'screenshots', label: 'Capturas', kind: 'image', required: false },
   ];
   const URL_RE = /^https?:\/\/\S+$/;
   const projects: { id: string; teamId: string; name: string; archivedAt: string | null; template: ReviewField[] | null }[] = [];
@@ -213,14 +214,30 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
       .filter((e) => e.taskId === taskId && !e.deletedAt)
       .reduce((sum, e) => sum + Math.round(((e.endedAt ? Date.parse(e.endedAt) : now().getTime()) - Date.parse(e.startedAt)) / 1000), 0);
   const findTask = (taskId: string) => tasks.find((x) => x.id === taskId) ?? fail('No permitido');
-  const assertDelivery = (t: MockTask, answers: Record<string, string>, links: string[], criteriaMet: string[]) => {
+  /** Igual que assert_delivery (ADR-0018): obligatorios, enlaces, criterios y tipo de los archivos de cada campo. */
+  const assertDelivery = (t: MockTask, answers: Record<string, string>, files: Record<string, File[]>, criteriaMet: string[]) => {
     for (const f of templateOf(t.projectId)) {
       const v = (answers[f.key] ?? '').trim();
-      if (f.required && (v === '' || (f.kind === 'checklist' && v !== 'true'))) fail(`Falta completar «${f.label}» en el formulario de entrega`, 'invalid');
+      const fieldFiles = files[f.key] ?? [];
+      const empty = f.kind === 'image' || f.kind === 'file' ? fieldFiles.length === 0 : v === '' || (f.kind === 'checklist' && v !== 'true');
+      if (f.required && empty) fail(`Falta completar «${f.label}» en el formulario de entrega`, 'invalid');
       if (f.kind === 'url' && v !== '' && !URL_RE.test(v)) fail(`«${f.label}» debe ser un enlace que empiece por http:// o https://`, 'invalid');
+      if (f.kind === 'image' && fieldFiles.some((x) => !x.type.startsWith('image/'))) fail(`«${f.label}» solo admite imágenes`, 'invalid');
     }
-    if (links.length > 10 || links.some((l) => !URL_RE.test(l))) fail('Hasta 10 enlaces de evidencia, cada uno empezando por http:// o https://', 'invalid');
     if (t.criteria.some((c) => !criteriaMet.includes(c.id))) fail('Marca todos los criterios de aceptación antes de enviar a revisión', 'invalid');
+  };
+  const mockAttachments = (t: MockTask, files: Record<string, File[]>, answers: Record<string, string>) => {
+    const out: PendingReview['attachments'] = [];
+    const filled = { ...answers };
+    for (const [key, list] of Object.entries(files)) {
+      const ids = list.map((f) => {
+        const id = crypto.randomUUID();
+        out.push({ id, path: `mock/${t.id}/${f.name}`, name: f.name, size: f.size, contentType: f.type || 'application/octet-stream' });
+        return id;
+      });
+      if (ids.length) filled[key] = ids.join(',');
+    }
+    return { attachments: out, answers: filled };
   };
   /** D-8 v2: al salir del equipo o pasar a viewer, deja proyectos, tareas, apoyos y revisiones pedidas. */
   const leaveWork = (teamId: string, userId: string) => {
@@ -695,17 +712,17 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
       if (!canManageProject(t.projectId, a.id)) fail('No permitido');
       assertOpen(t.projectId);
       if (t.status === 'done') fail('La tarea ya está hecha', 'invalid');
-      assertDelivery(t, sub.answers, sub.links, sub.criteriaMet);
+      assertDelivery(t, sub.answers, sub.files, sub.criteriaMet);
       const at = now().toISOString();
       const pending = reviews.find((r) => r.taskId === t.id && r.status === 'pending');
-      const attachments = sub.files.map((f) => ({ id: crypto.randomUUID(), path: `mock/${t.id}/${f.name}`, name: f.name, size: f.size }));
+      const { attachments, answers } = mockAttachments(t, sub.files, sub.answers);
       let id: string;
       if (pending) {
-        Object.assign(pending, { status: 'approved', decidedBy: a.id, decidedAt: at, answers: sub.answers, links: sub.links, attachments: [...pending.attachments, ...attachments] });
+        Object.assign(pending, { status: 'approved', decidedBy: a.id, decidedAt: at, answers, attachments: [...pending.attachments, ...attachments] });
         id = pending.id;
       } else {
         id = crypto.randomUUID();
-        reviews.push({ id, taskId: t.id, submittedBy: a.id, reviewerId: null, answers: sub.answers, links: sub.links, createdAt: at, attachments, status: 'approved', decidedBy: a.id, comment: null, decidedAt: at });
+        reviews.push({ id, taskId: t.id, submittedBy: a.id, reviewerId: null, answers, links: [], createdAt: at, attachments, status: 'approved', decidedBy: a.id, comment: null, decidedAt: at });
         log(t.id, 'review_submitted', { review: id, direct: true });
       }
       t.criteria = t.criteria.map((c) => ({ ...c, met: true }));
@@ -737,21 +754,22 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
       if (!isWorker(t, a.id) || !projectRole(t.projectId, a.id)) fail('No permitido: envía a revisión el responsable o un apoyo de la tarea');
       assertOpen(t.projectId);
       if (!['todo', 'doing'].includes(t.status)) fail('La tarea ya está en revisión o hecha', 'invalid');
-      assertDelivery(t, sub.answers, sub.links, sub.criteriaMet);
+      assertDelivery(t, sub.answers, sub.files, sub.criteriaMet);
       if (sub.reviewerId && (sub.reviewerId === a.id || !projectMembers.some((m) => m.projectId === t.projectId && m.userId === sub.reviewerId))) {
         fail('El revisor debe ser otra persona del proyecto', 'invalid');
       }
       const id = crypto.randomUUID();
       t.criteria = t.criteria.map((c) => ({ ...c, met: true }));
+      const delivered = mockAttachments(t, sub.files, sub.answers);
       reviews.push({
         id,
         taskId: t.id,
         submittedBy: a.id,
         reviewerId: sub.reviewerId,
-        answers: sub.answers,
-        links: sub.links,
+        answers: delivered.answers,
+        links: [],
         createdAt: now().toISOString(),
-        attachments: sub.files.map((f) => ({ id: crypto.randomUUID(), path: `mock/${t.id}/${f.name}`, name: f.name, size: f.size })),
+        attachments: delivered.attachments,
         status: 'pending',
         decidedBy: null,
         comment: null,

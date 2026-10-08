@@ -17,3 +17,4 @@ export * from './ReviewTemplateEditor';
 export * from './TaskSidebar';
 export * from './TaskDetails';
 export * from './TaskReview';
+export * from './TaskWorkflow';

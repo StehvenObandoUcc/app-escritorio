@@ -1,10 +1,11 @@
 import { CornerDownRight } from 'lucide-react';
-import { TASK_STATUSES, type Task, type TaskStatus } from '@/cloud/contract';
+import type { Task } from '@/cloud/contract';
 import { t } from '@/i18n';
 import { arrowNav, NAV_ITEM } from '@/lib/keyboard';
-import { STATUS_LABEL } from '@/lib/tasks';
-import { Badge, Select } from '@/ui/atoms';
+import { STATUS_LABEL, type Step } from '@/lib/tasks';
+import { Badge } from '@/ui/atoms';
 import { TaskMeta } from '@/ui/molecules';
+import { StepButton } from './TaskWorkflow';
 
 export interface TaskViewProps {
   /** Tareas madre con sus subtareas (ya filtradas). */
@@ -12,24 +13,21 @@ export interface TaskViewProps {
   /** Nombre visible del responsable (null = sin responsable). */
   nameOf: (userId: string | null) => string | null;
   today: string;
-  /** Si es false para una tarea, su estado se muestra sin selector. */
-  canChangeStatus: (task: Task) => boolean;
-  /** «En revisión» y «Hecha» no se aplican aquí: la página abre el formulario que corresponde (AC-45). */
-  onStatusChange: (task: Task, status: TaskStatus) => void;
+  /** Siguiente paso de quien mira para cada tarea (null = nada que hacer). */
+  primaryStep: (task: Task) => Step | null;
+  onStep: (task: Task, step: Step) => void;
   onOpen: (task: Task) => void;
 }
 
-/** Selector con los 4 estados si se puede cambiar; si no, una etiqueta. */
-export function TaskStatusControl({ task, editable, onChange }: { task: Task; editable: boolean; onChange: (s: TaskStatus) => void }) {
-  if (!editable) return <Badge tone={task.status === 'done' ? 'accent' : 'neutral'}>{STATUS_LABEL[task.status]}</Badge>;
+/** Estado como etiqueta y, si a quien mira le toca algo, el botón de su siguiente paso (AC-45 v4). */
+export function TaskStatusCell({ task, props, showStatus = true }: { task: Task; props: TaskViewProps; showStatus?: boolean }) {
+  const step = props.primaryStep(task);
+  if (!showStatus && !step) return null;
   return (
-    <Select
-      size="sm"
-      aria-label={t('tasks.statusOf', { title: task.title })}
-      value={task.status}
-      onChange={(e) => onChange(e.target.value as TaskStatus)}
-      options={TASK_STATUSES.map((s) => ({ value: s, label: STATUS_LABEL[s] }))}
-    />
+    <span className="flex flex-wrap items-center gap-2">
+      {showStatus && <Badge tone={task.status === 'done' ? 'accent' : 'neutral'}>{STATUS_LABEL[task.status]}</Badge>}
+      {step && <StepButton step={step} primary={false} compact onStep={(s) => props.onStep(task, s)} />}
+    </span>
   );
 }
 
@@ -48,7 +46,7 @@ function Row({ task, sub, props }: { task: Task; sub: boolean; props: TaskViewPr
         </button>
         <TaskMeta task={task} assigneeName={props.nameOf(task.assigneeId)} today={props.today} />
       </div>
-      <TaskStatusControl task={task} editable={props.canChangeStatus(task)} onChange={(s) => props.onStatusChange(task, s)} />
+      <TaskStatusCell task={task} props={props} />
     </li>
   );
 }

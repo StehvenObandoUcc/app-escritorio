@@ -119,7 +119,8 @@ export type TaskType = z.infer<typeof TaskTypeSchema>;
 export const ReviewFieldSchema = z.object({
   key: z.string().regex(/^[a-z0-9_]{1,30}$/),
   label: z.string().min(1).max(80),
-  kind: z.enum(['text', 'url', 'checklist']),
+  /** text · url (enlace http/https) · checklist · image (imágenes subidas) · file (archivos subidos), ADR-0018 */
+  kind: z.enum(['text', 'url', 'checklist', 'image', 'file']),
   required: z.boolean(),
 });
 export type ReviewField = z.infer<typeof ReviewFieldSchema>;
@@ -146,7 +147,13 @@ export const ProjectMemberSchema = z.object({
 });
 export type ProjectMember = z.infer<typeof ProjectMemberSchema>;
 
-export const AttachmentSchema = z.object({ id: z.uuid(), path: z.string(), name: z.string(), size: z.number() });
+export const AttachmentSchema = z.object({
+  id: z.uuid(),
+  path: z.string(),
+  name: z.string(),
+  size: z.number(),
+  contentType: z.string().default('application/octet-stream'),
+});
 export type Attachment = z.infer<typeof AttachmentSchema>;
 
 export const PendingReviewSchema = z.object({
@@ -207,12 +214,15 @@ export interface NewTaskExtras {
   collaborators?: string[];
 }
 
+/**
+ * Entrega de una tarea (ADR-0018). `answers`: respuesta de cada campo de texto, enlace o casilla.
+ * `files`: archivos de cada campo de imagen o archivo; la nube los sube y responde ese campo con sus ids.
+ */
 export interface ReviewSubmission {
   answers: Record<string, string>;
-  links: string[];
+  files: Record<string, File[]>;
   reviewerId: string | null;
   criteriaMet: string[];
-  files: File[];
 }
 
 export const HistorySchema = z.object({

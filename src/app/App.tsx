@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ChartColumn, FolderKanban, ListChecks, Settings, Sun, Users } from 'lucide-react';
-import { useState } from 'react';
+import { ChartColumn, FolderKanban, Keyboard, ListChecks, Settings, Sun, Users } from 'lucide-react';
+import { useCallback, useState } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router';
 import { bridge } from '@/bridge';
 import { createCloud } from '@/cloud';
@@ -17,11 +17,12 @@ import { ProyectoPage } from '@/pages/proyectos/ProyectoPage';
 import { TareaPage } from '@/pages/proyectos/TareaPage';
 import { ProyectosPage } from '@/pages/proyectos/ProyectosPage';
 import { MisTareasPage } from '@/pages/tareas/MisTareasPage';
-import { Select } from '@/ui/atoms';
-import { SyncStatus, ThemeToggle } from '@/ui/molecules';
+import { Button, Select } from '@/ui/atoms';
+import { KeyboardHelp, SyncStatus, ThemeToggle } from '@/ui/molecules';
 import { AlertBanner, AppNav, type NavItem } from '@/ui/organisms';
 import { AppShell } from '@/ui/templates';
 import { useNotAllowedAlerts } from './alerts';
+import { useAppKeyboard } from './keyboard';
 import { LocaleProvider } from './locale';
 import { SessionProvider, useSession } from './session';
 
@@ -36,8 +37,10 @@ const nav = (): NavItem[] => [
 
 const cloud = createCloud(bridge);
 
-/** Pie de la navegación: equipo activo (D1), sincronización y tema. */
-function NavFooter() {
+const ROUTES = ['/mi-dia', '/tareas', '/proyectos', '/equipo', '/reportes', '/ajustes'];
+
+/** Pie de la navegación: equipo activo (D1), sincronización, tema y ayuda de teclado. */
+function NavFooter({ onHelp }: { onHelp: () => void }) {
   const { theme, cycle } = useTheme();
   const { sync, teams, activeTeam, selectTeam } = useSession();
   return (
@@ -56,6 +59,9 @@ function NavFooter() {
       )}
       <SyncStatus phase={sync.phase} message={sync.message} lastSyncedAt={sync.lastSyncedAt} compact />
       <ThemeToggle theme={theme} onCycle={cycle} />
+      <Button variant="ghost" size="sm" onClick={onHelp} title={t('keyboard.title')} icon={<Keyboard size={16} aria-hidden="true" />}>
+        <span className="md:sr-only lg:not-sr-only">{t('keyboard.open')}</span>
+      </Button>
     </div>
   );
 }
@@ -67,6 +73,9 @@ function NavFooter() {
 function Gate() {
   const { user } = useSession();
   const { alerts, dismiss } = useNotAllowedAlerts(bridge);
+  const [help, setHelp] = useState(false);
+  const openHelp = useCallback(() => setHelp(true), []);
+  useAppKeyboard(ROUTES, openHelp);
   if (user === undefined) {
     return (
       <div className="flex h-dvh items-center justify-center bg-canvas">
@@ -78,8 +87,9 @@ function Gate() {
   }
   if (user === null) return <AccesoPage />;
   return (
-    <AppShell nav={<AppNav items={nav()} footer={<NavFooter />} />}>
+    <AppShell nav={<AppNav items={nav()} footer={<NavFooter onHelp={openHelp} />} />}>
       <AlertBanner alerts={alerts} onDismiss={dismiss} />
+      <KeyboardHelp open={help} onClose={() => setHelp(false)} />
       <Routes>
         <Route path="/" element={<Navigate to="/mi-dia" replace />} />
         <Route path="/mi-dia" element={<MiDiaPage bridge={bridge} />} />

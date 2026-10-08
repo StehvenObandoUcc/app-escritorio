@@ -108,13 +108,6 @@ export const canManageProject = (p: Pick<Project, 'myRole'>) => p.myRole === 'ma
 
 type Proj = Pick<Project, 'myRole' | 'archivedAt'>;
 
-/**
- * Fila 19 v3: el selector de estado lo usan quien gestiona, el responsable o un apoyo (AC-45). Elegir En revisión
- * o Hecha abre el formulario de entrega; una tarea en revisión o hecha solo la mueve quien gestiona.
- */
-export const canChangeStatus = (p: Proj, t: Pick<Task, 'assigneeId' | 'collaborators' | 'status'>, me: string) =>
-  !p.archivedAt && (canManageProject(p) || (t.status !== 'review' && t.status !== 'done' && isWorker(t, me)));
-
 /** Fila 32: quien gestiona completa directamente con el formulario. */
 export const canComplete = (p: Proj, t: Pick<Task, 'status'>) => !p.archivedAt && canManageProject(p) && t.status !== 'done';
 
@@ -122,11 +115,35 @@ export const canComplete = (p: Proj, t: Pick<Task, 'status'>) => !p.archivedAt &
 export const canTake = (p: Proj, t: Pick<Task, 'assigneeId' | 'status'>, isProjectMember: boolean) =>
   !p.archivedAt && isProjectMember && t.assigneeId === null && (t.status === 'todo' || t.status === 'doing');
 
-/** Qué hace el selector de estado al elegir un estado (AC-45). */
-export function statusAction(p: Proj, t: Pick<Task, 'assigneeId' | 'collaborators' | 'status'>, me: string, next: Task['status']) {
-  if (next === 'todo' || next === 'doing') return 'set' as const;
-  if (next === 'review') return canSubmit(p, t, me) ? ('submit' as const) : ('forbidden' as const);
-  return canComplete(p, t) ? ('complete' as const) : canSubmit(p, t, me) ? ('submit' as const) : ('forbidden' as const);
+/** Pasos del flujo de una tarea (AC-45 v4): cada uno lo resuelve la página. */
+export type Step = 'take' | 'start' | 'submit' | 'complete' | 'review' | 'reopen';
+
+/**
+ * Siguiente paso de la tarea para quien la mira (AC-45 v4): un botón principal y, si aplica, otros secundarios.
+ * Sustituye al selector de los 4 estados: así cada quien ve solo lo que le toca hacer, en el orden del flujo
+ * Por hacer → En curso → En revisión → Hecha.
+ */
+export function nextSteps(p: Proj, t: Pick<Task, 'assigneeId' | 'collaborators' | 'status' | 'pendingReview'>, me: string, isProjectMember: boolean): { primary: Step | null; secondary: Step[] } {
+  if (p.archivedAt) return { primary: null, secondary: [] };
+  const manager = canManageProject(p);
+  const worker = isWorker(t, me);
+  const steps: Step[] = [];
+  if (t.status === 'review') {
+    if (canReview(p, t, me)) steps.push('review');
+  } else if (t.status === 'done') {
+    if (manager) steps.push('reopen');
+  } else {
+    if (canTake(p, t, isProjectMember)) steps.push('take');
+    if (t.status === 'todo' && (worker || manager)) steps.push('start');
+    if (worker) steps.push('submit');
+    if (manager) steps.push('complete');
+  }
+  // Para quien gestiona y no trabaja la tarea, completar va antes que empezar.
+  if (manager && !worker && steps[0] === 'start') {
+    steps.splice(steps.indexOf('complete'), 1);
+    steps.unshift('complete');
+  }
+  return { primary: steps[0] ?? null, secondary: steps.slice(1) };
 }
 
 /** Fila 27: envía a revisión el responsable o un apoyo. */

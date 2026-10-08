@@ -39,6 +39,7 @@ import {
   TaskDetails,
   TaskReview,
   TaskSidebar,
+  TaskWorkflow,
   TimeEntryList,
 } from '@/ui/organisms';
 import { AuthLayout, PageLayout } from '@/ui/templates';
@@ -235,6 +236,8 @@ export function GaleriaPage() {
         <TaskBoard {...TASK_VIEW} />
         <TaskForm people={PEOPLE} manage isNew submitLabel="Crear tarea" onSubmit={async () => {}} onCancel={() => {}} />
         <EstimateInput minutes={960} onChange={() => {}} />
+        <TaskWorkflow task={SAMPLE_TASKS[1]!} steps={{ primary: 'review', secondary: [] }} waitingFor={null} onStep={() => {}} />
+        <TaskWorkflow task={{ status: 'doing' }} steps={{ primary: 'submit', secondary: ['complete'] }} waitingFor="Beto Ruiz" onStep={() => {}} />
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="flex flex-col gap-6 lg:col-span-2">
             <TaskDetails
@@ -264,16 +267,10 @@ export function GaleriaPage() {
               task={{ ...SAMPLE_TASKS[0]!, assigneeId: null }}
               project={SAMPLE_PROJECT}
               me={PEOPLE[0]!.value}
-              isProjectMember
               nameOf={TASK_VIEW.nameOf}
               people={PEOPLE}
               readOnly={false}
               timer={{ running: false, onThis: false }}
-              onStatus={() => {}}
-              onTake={() => {}}
-              onSubmit={() => {}}
-              onComplete={() => {}}
-              onDelete={() => {}}
               onCollaborators={async () => {}}
               onTimer={() => {}}
             />
@@ -312,6 +309,8 @@ const SAMPLE_PROJECT: Project = {
     { key: 'summary', label: 'Qué se hizo', kind: 'text', required: true },
     { key: 'evidence', label: 'Evidencia', kind: 'url', required: false },
     { key: 'tests', label: 'Pruebas pasan', kind: 'checklist', required: true },
+    { key: 'report', label: 'Informe', kind: 'file', required: false },
+    { key: 'shots', label: 'Capturas', kind: 'image', required: false },
   ],
   tasksTotal: 4,
   tasksDone: 1,
@@ -371,10 +370,10 @@ const SAMPLE_TASKS: Task[] = [
       id: '00000000-0000-4000-8000-000000000501',
       submittedBy: PEOPLE[1]!.value,
       reviewerId: PEOPLE[0]!.value,
-      answers: { summary: 'Revisé las cláusulas 3 a 7 con el abogado.', tests: 'true' },
+      answers: { summary: 'Revisé las cláusulas 3 a 7 con el abogado.', tests: 'true', report: '00000000-0000-4000-8000-000000000601' },
       links: ['https://docs.ejemplo.com/contrato'],
       createdAt: '2026-10-07T15:00:00Z',
-      attachments: [{ id: '00000000-0000-4000-8000-000000000601', path: 'x/y/z/acta.pdf', name: 'acta.pdf', size: 20480 }],
+      attachments: [{ id: '00000000-0000-4000-8000-000000000601', path: 'x/y/z/acta.pdf', name: 'acta.pdf', size: 20480, contentType: 'application/pdf' }],
     },
   }),
   sampleTask({ title: 'Publicar la versión 1', type: 'improvement', status: 'done', estimateMinutes: 30, loggedSeconds: 2400 }),
@@ -385,8 +384,8 @@ const TASK_VIEW = {
   tree: taskTree(SAMPLE_TASKS, NO_FILTER, PEOPLE[0]!.value),
   nameOf: (id: string | null) => PEOPLE.find((p) => p.value === id)?.label ?? null,
   today: '2026-10-08',
-  canChangeStatus: (t: Task) => t.assigneeId === PEOPLE[0]!.value,
-  onStatusChange: () => {},
+  primaryStep: (t: Task) => (t.status === 'todo' ? ('start' as const) : t.status === 'review' ? ('review' as const) : null),
+  onStep: () => {},
   onOpen: () => {},
 };
 

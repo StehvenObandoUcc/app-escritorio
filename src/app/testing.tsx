@@ -10,9 +10,15 @@ import type { Bridge } from '@/bridge/contract';
 import { createMockBridge } from '@/bridge/mock';
 import { createMockCloud, type MockCloud } from '@/cloud/mock';
 import { SyncEngine } from '@/sync/engine';
+import { useAppKeyboard } from './keyboard';
 import { SessionProvider } from './session';
 
+const NO_ROUTES: string[] = [];
+const noop = () => {};
+
+/** La ruta actual (para comprobar navegaciones) y la capa de teclado de toda la app, como en App.tsx. */
 function Where() {
+  useAppKeyboard(NO_ROUTES, noop);
   return <p data-testid="ruta">{useLocation().pathname + useLocation().search}</p>;
 }
 

@@ -1,3 +1,4 @@
+import { arrowNav, NAV_ITEM } from '@/lib/keyboard';
 import { useSession } from '@/app/session';
 import type { Task } from '@/cloud/contract';
 import { errorMessage, t } from '@/i18n';
@@ -43,10 +44,10 @@ export function MisTareasPage() {
   const today = localDate();
 
   const list = (tasks: Task[], label: string) => (
-    <ul aria-label={label} className="flex flex-col divide-y divide-line">
+    <ul aria-label={label} onKeyDown={arrowNav} className="flex flex-col divide-y divide-line">
       {tasks.map((x) => (
         <li key={x.id} className="flex flex-col gap-1 py-3">
-          <a href={`#/proyectos/${x.projectId}/tareas/${x.id}`} className="truncate font-medium text-fg hover:underline">
+          <a href={`#/proyectos/${x.projectId}/tareas/${x.id}`} {...{ [NAV_ITEM]: '' }} className="truncate rounded-xs font-medium text-fg hover:underline">
             {x.title}
           </a>
           <p className="text-sm text-fg-muted">{projectName.get(x.projectId)}</p>
