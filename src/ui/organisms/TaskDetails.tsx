@@ -2,7 +2,7 @@ import { evidenceLabel } from '@/lib/evidence';
 import { CheckCircle2, Circle, Plus } from 'lucide-react';
 import { useState } from 'react';
 import type { Task } from '@/cloud/contract';
-import { t } from '@/i18n';
+import { errorMessage, t } from '@/i18n';
 import { fieldErrors, forms } from '@/lib/forms';
 import { LIMITS } from '@/lib/limits';
 import { STATUS_LABEL } from '@/lib/tasks';
@@ -46,7 +46,7 @@ export function TaskDetails({
       setEditing(false);
       setError(null);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setError(errorMessage(cause));
     }
   };
 

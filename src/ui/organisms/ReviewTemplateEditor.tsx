@@ -1,7 +1,7 @@
 import { Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import type { ReviewField } from '@/cloud/contract';
-import { t } from '@/i18n';
+import { errorMessage, t } from '@/i18n';
 import { LIMITS } from '@/lib/limits';
 import { Button, Input, Select } from '@/ui/atoms';
 
@@ -88,7 +88,7 @@ export function ReviewTemplateEditor({ fields, onSave }: { fields: ReviewField[]
           disabled={draft.some((f) => !f.label.trim())}
           onClick={() => {
             setError(null);
-            onSave(draft.map((f) => ({ ...f, label: f.label.trim() }))).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : String(cause)));
+            onSave(draft.map((f) => ({ ...f, label: f.label.trim() }))).catch((cause: unknown) => setError(errorMessage(cause)));
           }}
         >
           {t('projects.template.save')}

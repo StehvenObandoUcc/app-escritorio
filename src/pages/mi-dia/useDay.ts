@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Bridge, DayView, SensorStatus, TimeEntry } from '@/bridge/contract';
+import { errorMessage } from '@/i18n';
 
 /** Cada cuánto se actualiza Mi día mientras la ventana está visible (AC-17). */
 export const REFRESH_MS = 30_000;
@@ -9,7 +10,6 @@ type State =
   | { phase: 'error'; message: string }
   | { phase: 'ready'; day: DayView; status: SensorStatus; entries: TimeEntry[] };
 
-const describe = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause));
 
 /** Carga el día, el estado del sensor y las entradas de tiempo; se actualiza cada 30 s y al enfocar la ventana. */
 export function useDay(bridge: Bridge, date: string) {
@@ -25,7 +25,7 @@ export function useDay(bridge: Bridge, date: string) {
         })
         .catch((cause: unknown) => {
           // Un fallo al actualizar no borra lo que ya se estaba mostrando.
-          if (!cancelled) setState((s) => (s.phase === 'ready' ? s : { phase: 'error', message: describe(cause) }));
+          if (!cancelled) setState((s) => (s.phase === 'ready' ? s : { phase: 'error', message: errorMessage(cause) }));
         });
     const refreshIfVisible = () => {
       if (document.visibilityState === 'visible') void refresh();
@@ -53,7 +53,7 @@ export function useDay(bridge: Bridge, date: string) {
         setState((s) => (s.phase === 'ready' ? { ...s, status } : s));
         setVersion((v) => v + 1); // el temporizador crea o cierra una entrada de tiempo
       })
-      .catch((cause: unknown) => setState({ phase: 'error', message: describe(cause) }));
+      .catch((cause: unknown) => setState({ phase: 'error', message: errorMessage(cause) }));
   }, []);
 
   return { state, run, reload };

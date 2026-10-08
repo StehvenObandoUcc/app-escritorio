@@ -1,4 +1,4 @@
-import { t } from '@/i18n';
+import { errorMessage, t } from '@/i18n';
 import { useState } from 'react';
 import type { TimeEntry } from '@/bridge/contract';
 import { formatDuration, formatHour, localDate, localDateTimeToIso } from '@/lib/time';
@@ -29,7 +29,7 @@ export function TimeEntryList({ entries, onUpdate, onDelete }: TimeEntryListProp
       await onDelete(id);
       setConfirming(null);
     } catch (cause) {
-      setDeleteError(cause instanceof Error ? cause.message : String(cause));
+      setDeleteError(errorMessage(cause));
     }
   };
 

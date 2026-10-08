@@ -9,7 +9,7 @@
  * Los cierres de Pulso (A-1) se suben solo si empezaron dentro de la jornada del equipo, en la zona
  * horaria de la persona; los demás se marcan como atendidos y no salen del equipo.
  */
-import { t } from '@/i18n';
+import { errorMessage, t } from '@/i18n';
 import type { Bridge, SyncBatch, SyncKind } from '@/bridge/contract';
 import { CloudError, type Cloud } from '@/cloud/contract';
 import { isWithinWorkday, type WorkdayWindow } from '@/lib/workday';
@@ -170,7 +170,7 @@ export class SyncEngine {
       ? err.kind === 'forbidden'
         ? t('sync.forbidden')
         : err.message
-      : t('sync.failed', { error: cause instanceof Error ? cause.message : String(cause) });
+      : t('sync.failed', { error: errorMessage(cause) });
     this.set({ phase: network ? 'pending' : 'error', message });
     this.cancelRetry = this.setTimer(() => void this.syncNow(), SyncEngine.retryDelay(this.failures));
   }
