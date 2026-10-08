@@ -6,6 +6,8 @@
 export const SERVER_MESSAGES: Record<string, string> = {
   // ---- Base de datos ----
   'A «En revisión» se llega enviando la tarea y a «Hecha» aprobándola': 'A task reaches “In review” by submitting it and “Done” by approving it',
+  'Campo del formulario inválido: cada campo necesita clave, nombre, tipo (texto, enlace, casilla, imagen o archivo) y si es obligatorio':
+    'Invalid form field: each field needs a key, a name, a type (text, link, checkbox, image or file) and whether it is required',
   'Campo del formulario inválido: cada campo necesita clave, nombre, tipo (texto, enlace o casilla) y si es obligatorio':
     'Invalid form field: each field needs a key, a name, a type (text, link or checkbox) and whether it is required',
   'Debes aceptar el consentimiento': 'You must accept the consent',
@@ -97,6 +99,9 @@ export const SERVER_PATTERNS: [RegExp, string][] = [
   [/^«(.+)» debe ser un enlace que empiece por http:\/\/ o https:\/\/$/, '“$1” must be a link starting with http:// or https://'],
   [/^«(.+)» supera los 5000 caracteres$/, '“$1” exceeds 5000 characters'],
   [/^Rol desconocido: (.+)$/, 'Unknown role: $1'],
+  [/^«(.+)» admite como máximo 10 archivos$/, '“$1” accepts at most 10 files'],
+  [/^Un archivo de «(.+)» no es válido: vuelve a subirlo$/, 'A file in “$1” is not valid: upload it again'],
+  [/^«(.+)» solo admite imágenes$/, '“$1” only accepts images'],
   [/^El equipo puede tener hasta (\d+) reglas\.$/, 'The team can have up to $1 rules.'],
   [/^El lote debe tener entre 1 y (\d+) registros\.$/, 'The batch must have between 1 and $1 records.'],
   [/^El rango no puede superar (\d+) días\.$/, 'The range cannot exceed $1 days.'],
