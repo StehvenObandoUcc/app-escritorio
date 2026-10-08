@@ -117,7 +117,7 @@ export class SyncEngine {
         const batch = await this.deps.bridge.syncPending(BATCH_SIZE);
         if (this.context !== ctx) return; // cambió de equipo o de sesión a mitad de camino
         await this.uploadBatch(ctx, batch);
-        const full = [batch.blocks, batch.entries, batch.closures].some((list) => list.length >= BATCH_SIZE);
+        const full = [batch.blocks, batch.entries, batch.closures, batch.aiUsages].some((list) => list.length >= BATCH_SIZE);
         if (!full) break;
       }
       this.failures = 0;
@@ -136,6 +136,10 @@ export class SyncEngine {
     await this.upload('blocks', batch.blocks, (rows) => cloud.upsertBlocks(ctx.userId, rows));
     await this.upload('entries', batch.entries, (rows) => cloud.upsertEntries(ctx.userId, rows));
     await this.upload('closures', inside, (rows) => cloud.upsertClosures(ctx.userId, rows));
+    // Etiquetas de IA de bloques ya subidos (F4 D-13): una llamada por bloque, sin volver a subirlo.
+    await this.upload('aiUsages', batch.aiUsages, async (rows) => {
+      for (const r of rows) await cloud.setBlockAiUsage(r.id, r.aiUsageType);
+    });
   }
 
   /**

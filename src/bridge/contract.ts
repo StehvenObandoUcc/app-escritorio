@@ -22,6 +22,11 @@ export const CATEGORIES = [
 export const CategorySchema = z.enum(CATEGORIES);
 export type Category = z.infer<typeof CategorySchema>;
 
+/** Tipo de uso de una sesión de IA (IA-04). */
+export const AI_USAGES = ['code', 'writing', 'analysis', 'other'] as const;
+export const AiUsageSchema = z.enum(AI_USAGES);
+export type AiUsage = z.infer<typeof AiUsageSchema>;
+
 export const ActivityBlockSchema = z.object({
   id: z.uuid(),
   startedAt: z.iso.datetime({ offset: true }),
@@ -34,6 +39,8 @@ export const ActivityBlockSchema = z.object({
   aiTool: z.string().nullable(),
   /** Dominio del sitio, solo en navegadores (ADR-0009). Nunca la ruta ni la búsqueda. */
   domain: z.string().nullable().default(null),
+  /** Tipo de uso, solo en bloques de IA (F4, IA-04). */
+  aiUsage: AiUsageSchema.nullable().default(null),
 });
 export type ActivityBlock = z.infer<typeof ActivityBlockSchema>;
 
@@ -113,6 +120,8 @@ export const SyncBlockSchema = z.strictObject({
     .string()
     .regex(/^[a-z0-9.-]{1,253}$/)
     .nullable(),
+  /** Etiqueta de IA de un bloque que aún no se subió: viaja con él (F4 D-13). */
+  aiUsageType: AiUsageSchema.nullable(),
 });
 export type SyncBlock = z.infer<typeof SyncBlockSchema>;
 
@@ -137,14 +146,22 @@ export const SyncClosureSchema = z.strictObject({
 });
 export type SyncClosure = z.infer<typeof SyncClosureSchema>;
 
+/** Etiqueta de IA de un bloque ya subido: va aparte con `set_block_ai_usage` (F4 D-13). `null` la quita. */
+export const SyncAiUsageSchema = z.strictObject({
+  id: z.uuid(),
+  aiUsageType: AiUsageSchema.nullable(),
+});
+export type SyncAiUsage = z.infer<typeof SyncAiUsageSchema>;
+
 /** `strictObject`: si Rust añadiera un campo (p. ej. un título), la validación falla. */
 export const SyncBatchSchema = z.strictObject({
   blocks: z.array(SyncBlockSchema),
   entries: z.array(SyncEntrySchema),
   closures: z.array(SyncClosureSchema),
+  aiUsages: z.array(SyncAiUsageSchema),
 });
 export type SyncBatch = z.infer<typeof SyncBatchSchema>;
-export type SyncKind = 'blocks' | 'entries' | 'closures';
+export type SyncKind = 'blocks' | 'entries' | 'closures' | 'aiUsages';
 
 /** Regla de clasificación del equipo, con la forma de `rules/default.json`. */
 export const TeamRuleSchema = z.object({
@@ -191,6 +208,21 @@ export const NotificationsStatusSchema = z.object({
 });
 export type NotificationsStatus = z.infer<typeof NotificationsStatusSchema>;
 export type TeamRule = z.infer<typeof TeamRuleSchema>;
+
+// ---- F4: IA con clave propia ----
+
+/** Configuración de la IA con clave propia. **Nunca** trae la clave (AC-19). */
+export const AiConfigSchema = z.strictObject({
+  baseUrl: z.string().nullable(),
+  model: z.string().nullable(),
+  hasKey: z.boolean(),
+});
+export type AiConfig = z.infer<typeof AiConfigSchema>;
+
+export interface ChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
 
 export interface Bridge {
   /** "mock" = datos de ejemplo; "tauri" = sensor real. La interfaz lo muestra al usuario. */
@@ -254,4 +286,16 @@ export interface Bridge {
   tasksCacheGet(): Promise<string | null>;
   /** Abre un enlace `https://` en el navegador del sistema (ADR-0017). Rust rechaza cualquier otro esquema. */
   openExternal(url: string): Promise<void>;
+
+  // ---- F4 ----
+
+  /** URL, modelo y si hay clave guardada (la clave nunca vuelve de Rust). */
+  aiConfigGet(): Promise<AiConfig>;
+  /** Guarda URL y modelo; la clave solo si se pasa (si no, se conserva la guardada). */
+  aiConfigSet(baseUrl: string, model: string, key?: string): Promise<AiConfig>;
+  aiConfigClear(): Promise<void>;
+  /** Llamada al proveedor de la persona (formato OpenAI). Devuelve el texto de la respuesta. */
+  aiChat(messages: ChatMessage[]): Promise<string>;
+  /** Etiqueta un bloque de IA con su tipo de uso (IA-04); `null` la quita. */
+  blockSetAiUsage(id: string, usage: AiUsage | null): Promise<void>;
 }

@@ -9,7 +9,7 @@
  */
 import { z } from 'zod';
 import { t, translateServerMessage } from '@/i18n';
-import type { SyncBlock, SyncClosure, SyncEntry, TeamRule } from '@/bridge/contract';
+import type { AiUsage, SyncBlock, SyncClosure, SyncEntry, TeamRule } from '@/bridge/contract';
 
 export const TEAM_ROLES = ['owner', 'admin', 'member', 'viewer'] as const;
 export const TeamRoleSchema = z.enum(TEAM_ROLES);
@@ -246,6 +246,76 @@ export type TaskHistory = z.infer<typeof HistorySchema>;
 export const ProjectTimeSchema = z.object({ userId: z.uuid().nullable(), seconds: z.number() });
 export type ProjectTime = z.infer<typeof ProjectTimeSchema>;
 
+// ---- Reportes (F4, docs/specs/F4-ia-y-reportes.md) ----
+
+export const REPORT_SCOPES = ['personal', 'project', 'team'] as const;
+export type ReportScope = (typeof REPORT_SCOPES)[number];
+export const REPORT_PERIODS = ['today', 'yesterday', 'this_week', 'last_week'] as const;
+export type ReportPeriod = (typeof REPORT_PERIODS)[number];
+export const REPORT_MODES = ['free', 'own_key', 'manual'] as const;
+export type ReportMode = (typeof REPORT_MODES)[number];
+export type ReportLanguage = 'es' | 'en';
+
+/** Un hecho calculado por SQL (D-3). Las cifras de la pantalla salen de aquí, nunca del texto de la IA. */
+export const FactSchema = z.object({
+  id: z.string().regex(/^F\d+$/),
+  metric: z.string(),
+  dimension: z.string().nullable(),
+  value: z.number(),
+  unit: z.enum(['h', '%', 'n', 'd']),
+});
+export type Fact = z.infer<typeof FactSchema>;
+
+export const ReportFactsSchema = z.object({
+  facts: z.array(FactSchema),
+  factsHash: z.string(),
+  periodFrom: z.iso.date(),
+  periodTo: z.iso.date(),
+});
+export type ReportFacts = z.infer<typeof ReportFactsSchema>;
+
+const ReportItemSchema = z.object({ text: z.string(), fact_ids: z.array(z.string()) });
+export const NarrativeSchema = z.object({
+  summary: z.string(),
+  insights: z.array(ReportItemSchema),
+  recommendations: z.array(ReportItemSchema),
+  insufficient_data: z.boolean(),
+});
+export type Narrative = z.infer<typeof NarrativeSchema>;
+
+export const ReportRunSchema = z.object({
+  id: z.uuid(),
+  teamId: z.uuid(),
+  scope: z.enum(REPORT_SCOPES),
+  subjectId: z.uuid(),
+  period: z.enum(REPORT_PERIODS),
+  periodFrom: z.iso.date(),
+  periodTo: z.iso.date(),
+  facts: z.array(FactSchema),
+  narrative: NarrativeSchema,
+  mode: z.enum(REPORT_MODES),
+  validation: z.enum(['ok', 'retried', 'fallback']),
+  validatedBy: z.enum(['server', 'client']),
+  language: z.enum(['es', 'en']),
+  /** Hasta dónde llegan los datos (D-18): lo calcula el servidor. */
+  dataUntil: z.string().nullable(),
+  createdBy: z.uuid().nullable(),
+  createdAt: z.string(),
+});
+export type ReportRun = z.infer<typeof ReportRunSchema>;
+
+/** Qué reporte: alcance, sujeto (persona, proyecto o equipo) y periodo. */
+export interface ReportRequest {
+  teamId: string;
+  scope: ReportScope;
+  subjectId: string;
+  period: ReportPeriod;
+}
+
+/** Motivo por el que el modo Gratis no generó el reporte (docs/IA.md §4). */
+export const TRIAL_REASONS = ['disabled', 'cooldown', 'user_limit', 'team_limit', 'global_limit', 'provider', 'changed', 'facts', 'quota', 'save', 'bad_request', 'unauthorized'] as const;
+export type TrialReason = (typeof TRIAL_REASONS)[number];
+
 /** Error con un mensaje para la persona (qué pasó y qué hacer) y una clase para decidir qué hacer. */
 export class CloudError extends Error {
   constructor(
@@ -351,4 +421,28 @@ export interface Cloud {
   upsertBlocks(userId: string, rows: SyncBlock[]): Promise<void>;
   upsertEntries(userId: string, rows: SyncEntry[]): Promise<void>;
   upsertClosures(userId: string, rows: SyncClosure[]): Promise<void>;
+  /** Etiqueta de IA de un bloque ya subido (F4 D-13); `null` la quita. */
+  setBlockAiUsage(blockId: string, usage: AiUsage | null): Promise<void>;
+
+  // ---- Reportes (F4, filas 20 a 22 y 35 a 37 de docs/ROLES.md) ----
+  reportFacts(req: ReportRequest): Promise<ReportFacts>;
+  /** Guarda con la forma comprobada en el servidor (D-6). Devuelve el id (el existente si ya había uno igual). */
+  saveReport(req: ReportRequest, factsHash: string, narrative: Narrative, mode: ReportMode, validation: 'ok' | 'retried' | 'fallback', language: ReportLanguage): Promise<string>;
+  /** Reporte guardado con la misma clave de caché (D-9). */
+  findReport(req: ReportRequest, facts: ReportFacts, language: ReportLanguage): Promise<ReportRun | null>;
+  report(id: string): Promise<ReportRun | null>;
+  /** Historial que la persona puede ver (RLS), del más nuevo al más viejo. */
+  reports(teamId: string): Promise<ReportRun[]>;
+  /** Modo Gratis por la Edge Function `ai-trial`. Si no se pudo, lanza `TrialError` con el motivo. */
+  generateFreeReport(req: ReportRequest, language: ReportLanguage): Promise<{ report: ReportRun; cached: boolean }>;
+  /** Nombres visibles de las personas que comparten equipo: el validador los busca en el texto de la IA. */
+  memberNames(): Promise<string[]>;
+}
+
+/** El modo Gratis no generó el reporte: `reason` dice por qué (cupo, interruptor, proveedor…). */
+export class TrialError extends Error {
+  constructor(readonly reason: TrialReason, message: string = reason) {
+    super(translateServerMessage(message));
+    this.name = 'TrialError';
+  }
 }

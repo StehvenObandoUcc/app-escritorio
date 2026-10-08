@@ -4,14 +4,21 @@
  * la base de datos, probada en supabase/tests.
  * El código de verificación y de recuperación siempre es MOCK_CODE.
  */
-import type { SyncBlock, SyncClosure, SyncEntry, TeamRule } from '@/bridge/contract';
+import type { AiUsage, SyncBlock, SyncClosure, SyncEntry, TeamRule } from '@/bridge/contract';
+import { localDate } from '@/lib/time';
+import { fallbackNarrative } from '../../supabase/functions/_shared/report-validator.ts';
 import { CONSENT_VERSION } from '@/lib/consent';
 import { deliveryFields } from '@/lib/evidence';
 import {
   CloudError,
   DEFAULT_WORKDAY,
+  TrialError,
   wrongInvitationCode,
   type Cloud,
+  type Fact,
+  type ReportFacts,
+  type ReportRequest,
+  type ReportRun,
   type CloudUser,
   type Member,
   type MyTeam,
@@ -78,6 +85,9 @@ export interface MockCloud extends Cloud {
     /** Hace fallar las siguientes subidas como si no hubiera red. */
     setOffline(offline: boolean): void;
     rules: Map<string, TeamRule[]>;
+    /** Etiquetas de IA subidas aparte (F4 D-13), por id de bloque. */
+    aiUsages: Map<string, AiUsage | null>;
+    reports: ReportRun[];
   };
 }
 
@@ -255,6 +265,70 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
     for (const r of reviews) if (r.status === 'pending' && r.reviewerId === userId) r.reviewerId = null;
   };
 
+  // ---- Reportes (F4): mismas reglas que get_report_facts y save_report, con hechos de tareas simulados ----
+  const reports: ReportRun[] = [];
+  const aiUsages = new Map<string, AiUsage | null>();
+  const trialUse = new Map<string, number>();
+  const TRIAL_PER_USER = 5;
+  const dropPersonalReports = (teamId: string, userId: string) => {
+    for (let i = reports.length - 1; i >= 0; i--) {
+      if (reports[i]!.teamId === teamId && reports[i]!.scope === 'personal' && reports[i]!.subjectId === userId) reports.splice(i, 1);
+    }
+  };
+  const groupMembers = (req: ReportRequest) =>
+    req.scope === 'team'
+      ? members.filter((m) => m.teamId === req.teamId && m.role !== 'viewer').length
+      : projectMembers.filter((pm) => pm.projectId === req.subjectId && ['owner', 'admin', 'member'].includes(roleIn(req.teamId, pm.userId) ?? '')).length;
+  const assertCanGenerate = (req: ReportRequest, userId: string) => {
+    const role = roleIn(req.teamId, userId);
+    if (!role || role === 'viewer') fail('No permitido');
+    if (req.scope === 'personal' && req.subjectId !== userId) fail('No permitido: el reporte personal es solo sobre ti');
+    if (req.scope === 'project' && !canManageProject(req.subjectId, userId)) fail('No permitido: el reporte de proyecto lo generan owner, admin o el lead del proyecto');
+    if (req.scope === 'team' && (req.subjectId !== req.teamId || !['owner', 'admin'].includes(role!))) fail('No permitido: el reporte de equipo lo generan owner o admin');
+    if (req.scope !== 'personal' && groupMembers(req) < 2) fail('Hacen falta al menos 2 miembros para un reporte de grupo', 'invalid');
+  };
+  const periodOf = (period: ReportRequest['period']) => {
+    const today = new Date(`${localDate(now())}T12:00:00`);
+    const shift = (d: Date, days: number) => localDate(new Date(d.getTime() + days * 86_400_000));
+    const monday = -((today.getDay() + 6) % 7);
+    if (period === 'today') return { from: localDate(today), to: localDate(today) };
+    if (period === 'yesterday') return { from: shift(today, -1), to: shift(today, -1) };
+    if (period === 'this_week') return { from: shift(today, monday), to: shift(today, monday + 6) };
+    return { from: shift(today, monday - 7), to: shift(today, monday - 1) };
+  };
+  const factsOf = (req: ReportRequest): ReportFacts => {
+    const { from, to } = periodOf(req.period);
+    const ids = new Set(projects.filter((p) => p.teamId === req.teamId && (req.scope !== 'project' || p.id === req.subjectId)).map((p) => p.id));
+    const scoped = tasks.filter((t) => ids.has(t.projectId) && (req.scope !== 'personal' || t.assigneeId === req.subjectId));
+    const day = (iso: string | null) => (iso ? localDate(new Date(iso)) : null);
+    const rows: Omit<Fact, 'id'>[] = [
+      { metric: 'tasks_done', dimension: null, value: scoped.filter((t) => t.status === 'done' && (day(t.completedAt) ?? '') >= from && (day(t.completedAt) ?? '') <= to).length, unit: 'n' },
+      { metric: 'tasks_in_review', dimension: null, value: scoped.filter((t) => t.status === 'review').length, unit: 'n' },
+      { metric: 'tasks_overdue', dimension: null, value: scoped.filter((t) => t.status !== 'done' && t.dueDate !== null && t.dueDate < localDate(now()) && t.dueDate <= to).length, unit: 'n' },
+      ...(req.scope === 'personal' ? [] : [{ metric: 'members', dimension: null, value: groupMembers(req), unit: 'n' as const }]),
+    ];
+    const facts = rows.map((r, i) => ({ ...r, id: `F${i + 1}` }));
+    return { facts, factsHash: JSON.stringify(facts), periodFrom: from, periodTo: to };
+  };
+  const findCached = (req: ReportRequest, f: ReportFacts, language: string) =>
+    reports.find(
+      (r) => r.teamId === req.teamId && r.scope === req.scope && r.subjectId === req.subjectId && r.periodFrom === f.periodFrom && r.periodTo === f.periodTo
+        && JSON.stringify(r.facts) === f.factsHash && r.language === language,
+    ) ?? null;
+  const canSee = (r: ReportRun, userId: string) =>
+    r.scope === 'team' ? Boolean(roleIn(r.teamId, userId)) : r.scope === 'project' ? projectRole(r.subjectId, userId) !== null : r.createdBy === userId;
+  const store = (req: ReportRequest, f: ReportFacts, narrative: ReportRun['narrative'], mode: ReportRun['mode'], validation: ReportRun['validation'], language: ReportRun['language'], userId: string) => {
+    const cached = findCached(req, f, language);
+    if (cached) return cached;
+    const report: ReportRun = {
+      id: crypto.randomUUID(), teamId: req.teamId, scope: req.scope, subjectId: req.subjectId, period: req.period,
+      periodFrom: f.periodFrom, periodTo: f.periodTo, facts: f.facts, narrative, mode, validation,
+      validatedBy: mode === 'free' ? 'server' : 'client', language, dataUntil: now().toISOString(), createdBy: userId, createdAt: now().toISOString(),
+    };
+    reports.unshift(report);
+    return report;
+  };
+
   const pendingFor = (email: string) =>
     invitations.filter((i) => i.email === email && i.status === 'pending' && Date.parse(i.expiresAt) > now().getTime());
 
@@ -274,6 +348,8 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
         offline = value;
       },
       rules,
+      aiUsages,
+      reports,
     },
 
     currentUser: async () => userOf(current ? byId(current) : undefined),
@@ -403,6 +479,7 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
       if (target === 'owner' && owners(teamId) === 1) fail('El equipo debe conservar al menos un owner', 'invalid');
       members = members.filter((m) => !(m.teamId === teamId && m.userId === userId));
       leaveWork(teamId, userId);
+      dropPersonalReports(teamId, userId);
     },
     leaveTeam: async (teamId) => {
       const a = me();
@@ -411,6 +488,7 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
       if (mine === 'owner' && owners(teamId) === 1) fail('El equipo debe conservar al menos un owner', 'invalid');
       members = members.filter((m) => !(m.teamId === teamId && m.userId === a.id));
       leaveWork(teamId, a.id);
+      dropPersonalReports(teamId, a.id);
     },
 
     teamInvitations: async (teamId) => {
@@ -839,6 +917,49 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
     upsertClosures: async (userId, rows) => {
       checkConsent(userId, rows.map((r) => r.teamId));
       upload(uploaded.closures, rows, (r) => r.id);
+    },
+    setBlockAiUsage: async (blockId, usage) => {
+      if (offline) fail('Sin conexión', 'network');
+      // Como set_block_ai_usage: solo bloques ya subidos (en la nube real, además, propios y de IA).
+      if (!blockOwner.has(blockId)) fail('No permitido: solo puedes etiquetar tus propios bloques de IA');
+      aiUsages.set(blockId, usage);
+    },
+
+    reportFacts: async (req) => {
+      assertCanGenerate(req, me().id);
+      return factsOf(req);
+    },
+    saveReport: async (req, factsHash, narrative, mode, validation, language) => {
+      const a = me();
+      assertCanGenerate(req, a.id);
+      const f = factsOf(req);
+      if (f.factsHash !== factsHash) fail('Los datos cambiaron mientras se generaba el reporte: vuelve a generarlo', 'invalid');
+      const ids = new Set(f.facts.map((x) => x.id));
+      const items = [...narrative.insights, ...narrative.recommendations];
+      if (!narrative.summary || narrative.insights.length > 4 || narrative.recommendations.length > 3 || items.some((i) => !i.fact_ids.length || i.fact_ids.some((id) => !ids.has(id)))) {
+        fail('La narrativa no tiene el formato del reporte', 'invalid');
+      }
+      return store(req, f, narrative, mode, validation, language, a.id).id;
+    },
+    findReport: async (req, facts, language) => findCached(req, facts, language),
+    report: async (id) => reports.find((r) => r.id === id && canSee(r, me().id)) ?? null,
+    reports: async (teamId) => reports.filter((r) => r.teamId === teamId && canSee(r, me().id)),
+    generateFreeReport: async (req, language) => {
+      const a = me();
+      assertCanGenerate(req, a.id);
+      const f = factsOf(req);
+      const cached = findCached(req, f, language);
+      if (cached) return { report: cached, cached: true };
+      const used = trialUse.get(a.id) ?? 0;
+      if (used >= TRIAL_PER_USER) throw new TrialError('user_limit');
+      trialUse.set(a.id, used + 1);
+      return { report: store(req, f, fallbackNarrative(f.facts, language), 'free', 'ok', language, a.id), cached: false };
+    },
+    memberNames: async () => {
+      const a = me();
+      const teamsOfMe = members.filter((m) => m.userId === a.id).map((m) => m.teamId);
+      const ids = new Set(members.filter((m) => teamsOfMe.includes(m.teamId)).map((m) => m.userId));
+      return [...ids].map((id) => profiles.get(id)?.displayName ?? byId(id)?.displayName ?? '').filter(Boolean);
     },
   };
 }

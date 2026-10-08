@@ -17,7 +17,7 @@ function block(
 ): ActivityBlock {
   const at = (m: number) => new Date(Date.UTC(2026, 9, 6, 10, 0, 0) + m * 60_000).toISOString();
   n += 1;
-  return { id: `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`, startedAt: at(from), endedAt: at(to), appName: app, title, category, aiTool, domain };
+  return { id: `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`, startedAt: at(from), endedAt: at(to), appName: app, title, category, aiTool, domain, aiUsage: null };
 }
 
 const total = (xs: { seconds: number }[]) => xs.reduce((s, x) => s + x.seconds, 0);
