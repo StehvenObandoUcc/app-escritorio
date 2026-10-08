@@ -144,6 +144,13 @@ Criterios nuevos:
 - AC-47 Los enlaces `https://` de la evidencia se abren en el navegador; otros se rechazan.
 - AC-48 La CSP está activa.
 
+Versión 4 (ADR-0018 y ADR-0019):
+- AC-45 v4 La tarea muestra sus cuatro estados como pasos y un botón con el siguiente paso de quien mira; el tablero y la lista muestran ese botón; no hay selector de estado.
+- AC-49 El formulario de entrega admite campos de texto, enlace, casilla, imagen y archivo.
+- AC-50 Un campo de imagen o archivo obligatorio exige archivos del tipo correcto, subidos por quien envía.
+- AC-51 Enter avanza entre campos en cualquier formulario; Alt+1…6 abre cada sección; «?» muestra los atajos; las flechas recorren menú y listas.
+- AC-52 Editar, crear una subtarea, enviar o completar ocupan la pantalla entera.
+
 ## Estado de cada criterio (7 oct)
 
 | Criterio | Evidencia |
@@ -158,7 +165,10 @@ Criterios nuevos:
 | AC-42, AC-43 | `src/lib/forms.test.ts`, `src/pages/acceso/AccesoPage.test.tsx` y pruebas de cada formulario |
 | AC-44, AC-45 | `src/pages/proyectos/Proyectos.test.tsx` y `src/lib/tasks.test.ts` |
 | AC-46 a AC-48 | `applyStoredTheme` en `src/main.tsx`; prueba de Rust `only_https_links_with_a_host_are_opened`; CSP en `tauri.conf.json` (build sin scripts en línea) |
-| Prueba real con dos cuentas | **Pendiente**: requiere aplicar `20261008000003` en `pulso-dev` |
+| AC-45 v4, AC-52 | `src/lib/tasks.test.ts` (`nextSteps`) y `src/pages/proyectos/Proyectos.test.tsx` |
+| AC-49, AC-50 | `supabase/tests/evidencia_por_campo.test.ts` y `Proyectos.test.tsx` |
+| AC-51 | `src/app/keyboard.test.tsx` |
+| Prueba real con dos cuentas | **Pendiente**: requiere aplicar `20261008000003` y `20261008000004` en `pulso-dev` |
 
 ## Cómo se comprueba
 Puerta G3 de `docs/PLAN.md` más estos pasos con dos cuentas reales:
