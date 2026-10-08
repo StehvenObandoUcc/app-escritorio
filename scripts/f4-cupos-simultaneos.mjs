@@ -24,31 +24,36 @@ if (missing.length) {
 const env = (name) => process.env[name];
 const parallel = Math.min(Math.max(Number(env('PULSO_PARALLEL') ?? 10) || 10, 2), 50);
 
-const supabase = createClient(env('PULSO_SUPABASE_URL'), env('PULSO_SUPABASE_ANON_KEY'), { auth: { persistSession: false } });
-const { data: auth, error: authError } = await supabase.auth.signInWithPassword({ email: env('PULSO_EMAIL'), password: env('PULSO_PASSWORD') });
-if (authError || !auth.user) {
-  console.error('No se pudo iniciar sesión con esa cuenta.');
-  process.exit(2);
-}
-const { data: teams } = await supabase.from('team_members').select('team_id').eq('user_id', auth.user.id);
-const team = env('PULSO_TEAM_ID') ?? teams?.[0]?.team_id;
-if (!team) {
-  console.error('La cuenta no pertenece a ningún equipo.');
-  process.exit(2);
+// Todo lo que usa la red va en main(): process.exit() con conexiones abiertas hace caer a Node 24 en Windows.
+async function main() {
+  const supabase = createClient(env('PULSO_SUPABASE_URL'), env('PULSO_SUPABASE_ANON_KEY'), { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data: auth, error: authError } = await supabase.auth.signInWithPassword({ email: env('PULSO_EMAIL'), password: env('PULSO_PASSWORD') });
+  if (authError || !auth.user) {
+    console.error('No se pudo iniciar sesión con esa cuenta.');
+    return 2;
+  }
+  const { data: teams } = await supabase.from('team_members').select('team_id').eq('user_id', auth.user.id);
+  const team = env('PULSO_TEAM_ID') ?? teams?.[0]?.team_id;
+  if (!team) {
+    console.error('La cuenta no pertenece a ningún equipo.');
+    return 2;
+  }
+
+  const answers = await Promise.all(Array.from({ length: parallel }, () => supabase.rpc('consume_ai_trial', { p_team: team })));
+  const tally = {};
+  for (const { data, error } of answers) {
+    const key = error ? `error: ${error.message}` : data.ok ? 'ok' : data.reason;
+    tally[key] = (tally[key] ?? 0) + 1;
+  }
+  console.log(`${parallel} peticiones simultáneas:`);
+  for (const [key, n] of Object.entries(tally)) console.log(`  ${key}: ${n}`);
+
+  const passed = tally.ok ?? 0;
+  const limitReached = (tally.user_limit ?? 0) + (tally.team_limit ?? 0) + (tally.global_limit ?? 0) === parallel;
+  if (limitReached) console.log('\nLa cuenta ya no tiene cupo hoy: todas respondieron el límite. Repite mañana o con otra cuenta.');
+  else console.log(`\nPasaron ${passed} (esperado: 1) → ${passed === 1 ? 'CUMPLE' : 'NO CUMPLE'}`);
+  await supabase.auth.signOut();
+  return passed === 1 || limitReached ? 0 : 1;
 }
 
-const answers = await Promise.all(Array.from({ length: parallel }, () => supabase.rpc('consume_ai_trial', { p_team: team })));
-const tally = {};
-for (const { data, error } of answers) {
-  const key = error ? `error: ${error.message}` : data.ok ? 'ok' : data.reason;
-  tally[key] = (tally[key] ?? 0) + 1;
-}
-console.log(`${parallel} peticiones simultáneas:`);
-for (const [key, n] of Object.entries(tally)) console.log(`  ${key}: ${n}`);
-
-const passed = tally.ok ?? 0;
-const limitReached = (tally.user_limit ?? 0) + (tally.team_limit ?? 0) + (tally.global_limit ?? 0) === parallel;
-if (limitReached) console.log('\nLa cuenta ya no tiene cupo hoy: todas respondieron el límite. Repite mañana o con otra cuenta.');
-else console.log(`\nPasaron ${passed} (esperado: 1) → ${passed === 1 ? 'CUMPLE' : 'NO CUMPLE'}`);
-await supabase.auth.signOut();
-process.exit(passed === 1 || limitReached ? 0 : 1);
+process.exitCode = await main();
