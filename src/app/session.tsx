@@ -60,7 +60,8 @@ export interface SessionValue {
   /** Vuelve a leer equipos y perfil (tras crear, aceptar, salir…) */
   refresh: () => Promise<void>;
   sync: SyncState;
-  syncNow: () => void;
+  /** Sube lo pendiente; la promesa termina cuando acaba la subida (o falla y queda para reintentar). */
+  syncNow: () => Promise<void>;
   /** Dominios que el equipo activo marcó como no permitidos (ADR-0009). */
   notAllowedDomains: string[];
   /** El equipo activo pide aceptar una versión nueva del consentimiento. */
@@ -238,7 +239,7 @@ export function SessionProvider({
     selectTeam,
     refresh,
     sync,
-    syncNow: () => void engine.syncNow(),
+    syncNow: () => engine.syncNow(),
     notAllowedDomains,
     needsNewConsent,
   };

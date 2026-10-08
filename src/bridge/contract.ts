@@ -9,6 +9,9 @@
  * - Agregar o cambiar un comando requiere actualizar docs/ARQUITECTURA.md §6.
  */
 import { z } from 'zod';
+import { AI_USAGES } from '@/lib/categories';
+
+export { AI_USAGES };
 
 export const CATEGORIES = [
   'productive',
@@ -22,8 +25,6 @@ export const CATEGORIES = [
 export const CategorySchema = z.enum(CATEGORIES);
 export type Category = z.infer<typeof CategorySchema>;
 
-/** Tipo de uso de una sesión de IA (IA-04). */
-export const AI_USAGES = ['code', 'writing', 'analysis', 'other'] as const;
 export const AiUsageSchema = z.enum(AI_USAGES);
 export type AiUsage = z.infer<typeof AiUsageSchema>;
 
