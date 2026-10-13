@@ -7,6 +7,7 @@ import { z } from 'zod';
 import type { Bridge, SyncBlock, SyncClosure, SyncEntry, TeamRule } from '@/bridge/contract';
 import { t, type TKey } from '@/i18n';
 import type { Database } from '@/lib/database.types';
+import { LIMITS } from '@/lib/limits';
 import { PROMPT_VERSION } from '../../supabase/functions/_shared/report-prompt.ts';
 import {
   CloudError,
@@ -579,7 +580,7 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
     },
     addProcessRule: async (teamId, pattern, category) => {
       const clean = normalizeProcessPattern(pattern);
-      if (clean.length < 1 || clean.length > 120) throw new CloudError('Cada regla necesita un patrón en minúsculas de 1 a 120 caracteres.', 'invalid');
+      if (clean.length < 1 || clean.length > LIMITS.processPattern.max) throw new CloudError('Cada regla necesita un patrón en minúsculas de 1 a 120 caracteres.', 'invalid');
       const user = await requireUser();
       await run(
         client.from('classification_rules').insert({
