@@ -19,6 +19,25 @@ import { useElapsed } from './useElapsed';
 const BREAKDOWN: Category[] = ['productive', 'ai', 'neutral', 'distraction', 'break'];
 const PAUSE_MINUTES = 15;
 
+/** Segundos en pausa de privacidad de hoy: del día mostrado si es hoy; si no, se lee el de hoy. */
+function usePausedToday(bridge: Bridge, date: string, shownPaused: number | null, needed: boolean): number | null {
+  const today = localDate();
+  const [other, setOther] = useState<number | null>(null);
+  useEffect(() => {
+    if (!needed || date === today) return;
+    let alive = true;
+    bridge
+      .dayView(today)
+      .then((d) => alive && setOther(d.totals.paused ?? 0))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [bridge, date, today, needed]);
+  // `null` = todavía no se sabe cuánto se pausó hoy.
+  return date === today ? shownPaused : other;
+}
+
 type Period = 'day' | RangeKind;
 const periods = (): { value: Period; label: string }[] => [
   { value: 'day', label: t('myRange.views.day') },
@@ -77,6 +96,12 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
   const aiTools = useMemo(() => (allBlocks ? aiToolTotals(allBlocks) : []), [allBlocks]);
   const totalsBySite = useMemo(() => (blocks ? domainTotals(blocks) : []), [blocks]);
   const session = useOptionalSession();
+  // Tope diario de pausa del equipo (F5 D-11); 0 = sin tope. Se aplica aquí, no en Rust.
+  const pauseCap = session?.activeTeam?.pauseCapMinutes ?? 0;
+  const pausedToday = usePausedToday(bridge, date, state.phase === 'ready' ? (state.day.totals.paused ?? 0) : null, pauseCap > 0);
+  const pauseUnknown = pauseCap > 0 && pausedToday === null;
+  const pauseLeft = pauseCap > 0 && pausedToday !== null ? Math.max(0, pauseCap - Math.ceil(pausedToday / 60)) : null;
+  const pauseMinutes = pauseLeft === null ? PAUSE_MINUTES : Math.min(PAUSE_MINUTES, pauseLeft);
   const notAllowed = useMemo(() => new Set(session?.notAllowedDomains ?? []), [session?.notAllowedDomains]);
   const sampleTag = bridge.source === 'mock' && <Badge tone="accent">{t('common.sample')}</Badge>;
   const selector = <SegmentedControl label={t('myRange.viewsLabel')} options={periods()} value={period} onChange={setPeriod} />;
@@ -154,9 +179,12 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
               run(() =>
                 state.status.state === 'paused'
                   ? bridge.privacyResume()
-                  : bridge.privacyPause(PAUSE_MINUTES),
+                  : bridge.privacyPause(pauseMinutes),
               )
             }
+            pauseMinutes={pauseLeft === null ? undefined : pauseMinutes}
+            pauseDisabled={pauseUnknown}
+            pauseDisabledReason={pauseLeft === 0 ? t('pause.capReached', { min: pauseCap }) : null}
           />
         </Surface>
         <Surface as="section" aria-label={t('myDay.breakdown')} className="lg:flex-1">
