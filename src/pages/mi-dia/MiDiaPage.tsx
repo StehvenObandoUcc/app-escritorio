@@ -11,11 +11,20 @@ import { Badge, Heading, Surface } from '@/ui/atoms';
 import { CategoryBreakdown, EmptyState, SegmentedControl, TimeEntryForm, TimerControl } from '@/ui/molecules';
 import { ActivityList, ActivityTimeline, AppSummary, PulseStrip, TimeEntryList } from '@/ui/organisms';
 import { PageLayout } from '@/ui/templates';
+import { MyRangeView, rangeTitle } from './MyRangeView';
+import { rangeOf, shiftRange, type RangeKind } from './range';
 import { useDay } from './useDay';
 import { useElapsed } from './useElapsed';
 
 const BREAKDOWN: Category[] = ['productive', 'ai', 'neutral', 'distraction', 'break'];
 const PAUSE_MINUTES = 15;
+
+type Period = 'day' | RangeKind;
+const periods = (): { value: Period; label: string }[] => [
+  { value: 'day', label: t('myRange.views.day') },
+  { value: 'week', label: t('myRange.views.week') },
+  { value: 'month', label: t('myRange.views.month') },
+];
 
 type ActivityView = 'resumen' | 'sitios' | 'linea' | 'detalle';
 const views = (): { value: ActivityView; label: string }[] => [
@@ -51,6 +60,9 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
   const elapsed = useElapsed(status?.timer.startedAt ?? null);
   const taskTitle = useTaskTitle(bridge, status?.timer.taskId ?? null);
   const [view, setView] = useState<ActivityView>('resumen');
+  // Día · Semana · Mes (D-14): solo en estado de React, no se guarda.
+  const [period, setPeriod] = useState<Period>('day');
+  const [anchor, setAnchor] = useState(date);
   const [showHidden, setShowHidden] = useState(true);
   const [tagError, setTagError] = useState<string | null>(null);
   const allBlocks = state.phase === 'ready' ? state.day.blocks : null;
@@ -67,10 +79,31 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
   const session = useOptionalSession();
   const notAllowed = useMemo(() => new Set(session?.notAllowedDomains ?? []), [session?.notAllowedDomains]);
   const sampleTag = bridge.source === 'mock' && <Badge tone="accent">{t('common.sample')}</Badge>;
+  const selector = <SegmentedControl label={t('myRange.viewsLabel')} options={periods()} value={period} onChange={setPeriod} />;
+
+  if (period !== 'day') {
+    const range = rangeOf(period, anchor);
+    // Sin pasar del periodo actual hacia el futuro.
+    const today = localDate();
+    const limit = today > date ? today : date;
+    return (
+      <PageLayout title={t('nav.myDay')} subtitle={rangeTitle(period, range)} actions={sampleTag}>
+        {selector}
+        <MyRangeView
+          bridge={bridge}
+          kind={period}
+          range={range}
+          canGoNext={shiftRange(period, range, 1).from <= limit}
+          onShift={(direction) => setAnchor(shiftRange(period, range, direction).from)}
+        />
+      </PageLayout>
+    );
+  }
 
   if (state.phase === 'loading') {
     return (
       <PageLayout title={t('nav.myDay')} subtitle={formatLongDate(date)} actions={sampleTag}>
+        {selector}
         <p className="text-fg-muted" role="status">
           {t('myDay.loading')}
         </p>
@@ -81,6 +114,7 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
   if (state.phase === 'error') {
     return (
       <PageLayout title={t('nav.myDay')} subtitle={formatLongDate(date)} actions={sampleTag}>
+        {selector}
         <EmptyState
           title={t('myDay.readError')}
           description={t('myDay.readErrorHint', { error: state.message })}
@@ -98,6 +132,7 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
 
   return (
     <PageLayout title={t('nav.myDay')} subtitle={formatLongDate(date)} actions={sampleTag}>
+      {selector}
       <Surface as="section" aria-label={t('myDay.rhythm')}>
         <p className="mb-4 text-fg">{summary}</p>
         <PulseStrip blocks={day.blocks} summary={summary} />
