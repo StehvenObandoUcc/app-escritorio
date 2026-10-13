@@ -291,6 +291,8 @@ export function createMockBridge(now: () => Date = () => new Date()): Bridge {
       if (!ai.baseUrl || !ai.model) throw new Error('Configura primero el proveedor de IA en Ajustes.');
       return JSON.stringify({ summary: 'Resumen de ejemplo.', insights: [], recommendations: [], insufficient_data: true });
     },
+    // Datos de ejemplo: no escribe nada; devuelve la ruta que tendría en Windows.
+    exportMyData: async () => `C:\\Users\\demo\\Downloads\\pulso-mis-datos-${localDate(now())}.json`,
     blockSetAiUsage: async (id, usage) => {
       const block = sampleDay(localDate(now())).blocks.find((b) => b.id === id);
       if (!block || block.category !== 'ai') throw new Error('Solo puedes etiquetar tus bloques de IA.');
