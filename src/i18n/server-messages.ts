@@ -75,6 +75,18 @@ export const SERVER_MESSAGES: Record<string, string> = {
   'La narrativa no tiene el formato del reporte': 'The text does not have the report format',
   'Tipo de uso de IA desconocido': 'Unknown AI usage type',
   'No permitido: solo puedes etiquetar tus propios bloques de IA': 'Not allowed: you can only tag your own AI blocks',
+  // ---- Base de datos: tableros y privacidad (F5) ----
+  'Rango inválido: el fin debe ser posterior al inicio y no superar 92 días': 'Invalid range: the end must be after the start and within 92 days',
+  'El umbral de inactividad debe estar entre 3 y 15 minutos': 'The idle threshold must be between 3 and 15 minutes',
+  'Los ajustes necesitan un valor': 'The settings need a value',
+  'El tope de pausa debe ser 0 (sin tope), 15, 30, 60, 120 o 240 minutos': 'The pause cap must be 0 (no cap), 15, 30, 60, 120 or 240 minutes',
+  'La jornada necesita días, inicio y fin': 'The workday needs days, a start and an end',
+  'La jornada necesita al menos un día': 'The workday needs at least one day',
+  'Los días de la jornada van de 1 (lunes) a 7 (domingo)': 'The workday days go from 1 (Monday) to 7 (Sunday)',
+  'Los días de la jornada no pueden repetirse': 'The workday days cannot repeat',
+  'El inicio y el fin de la jornada van en formato HH:MM': 'The workday start and end use the HH:MM format',
+  'El inicio de la jornada debe ser anterior al fin': 'The workday start must be before the end',
+  'Hace falta indicar si compartes los nombres de tus apps': 'You need to say whether you share the names of your apps',
   // ---- Rust ----
   'Cada regla necesita un patrón en minúsculas de 1 a 120 caracteres.': 'Each rule needs a lowercase pattern of 1 to 120 characters.',
   'El estado interno quedó inconsistente; reinicia Pulso.': 'The internal state became inconsistent; restart Pulso.',
@@ -120,6 +132,8 @@ export const SERVER_MESSAGES: Record<string, string> = {
   'Configura primero el proveedor de IA en Ajustes.': 'Set up the AI provider in Settings first.',
   'Tipo de uso de IA desconocido.': 'Unknown AI usage type.',
   'Solo puedes etiquetar tus bloques de IA.': 'You can only tag your AI blocks.',
+  'No se encontró tu carpeta de usuario para guardar el archivo.': 'Your user folder was not found to save the file.',
+  'Inicia sesión para exportar tus datos.': 'Sign in to export your data.',
 };
 
 /** Mensajes con partes variables (`%` en SQL, `{…}` en Rust). `$1` es la parte capturada. */
