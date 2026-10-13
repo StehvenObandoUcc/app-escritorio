@@ -18,7 +18,7 @@ Resumen: 111 funcionalidades en total: 93 antes de la entrega y 18 después (TA-
 | CU-03 | Recuperar la contraseña con un código por correo | 01 | F2 | Cambiar la contraseña sin conocer la anterior |
 | CU-04 | Perfil: nombre visible, zona horaria, avatar con iniciales | 03 | F2 | Editar el nombre y verlo en la lista del equipo |
 | CU-05 | Foto de perfil | 03 | F7 | — |
-| CU-06 | Preferencias de notificación | 03 | F5 ✂ | Desactivar un aviso y comprobar que no llega |
+| CU-06 | Preferencias de notificación | 03 | ✂ recortada el 12 oct: después de la entrega | Desactivar un aviso y comprobar que no llega |
 | CU-07 | Exportar mis datos a un archivo | — | F5 | El archivo contiene mis bloques y entradas |
 | CU-08 | Eliminar mi cuenta | — | F7 | — |
 
@@ -51,11 +51,11 @@ Resumen: 111 funcionalidades en total: 93 antes de la entrega y 18 después (TA-
 | TA-08 | Descansos manuales | 06 | F1 | *Tomar un descanso* crea un bloque de descanso |
 | TA-09 | *Mi día*: franja de pulso, reparto por categoría y lista de bloques | 06 | F0 ✔ (ejemplo) / F1 (real) | Pantalla |
 | TA-10 | *Mi semana* y *Mi mes* | 17 | F5 | Pantalla con totales por día |
-| TA-11 | Editor de reglas de clasificación del equipo | 05 | F5 | Marcar una app como distracción y verla reclasificada |
+| TA-11 | Editor de reglas de clasificación del equipo (reglas por app; aplican a lo nuevo, spec F5 D-13) | 05 | F5 | Marcar una app como distracción y ver que los bloques nuevos salen así |
 | TA-12 | Abrir con el sistema e icono en la bandeja | — | F6 ✂ | Reiniciar: Pulso arranca solo |
 | TA-13 | macOS y Linux (X11) | — | F7 | — |
 | TA-14 | Tiempo por sitio web: solo el dominio, nunca la página ni la búsqueda (ADR-0009) | 05 | F2 | Abrir perplexity.ai: *Mi día → Por sitio* lo muestra |
-| TA-15 | Apps de lectura y reunión sin teclado no cuentan como inactividad hasta 30 min (ADR-0013). Lista fija en F2; editable con TA-11 en F5 | 05 | F2 | Leer 10 min en Readest sin tocar nada: *Mi día* muestra 10 min de Readest |
+| TA-15 | Apps de lectura y reunión sin teclado no cuentan como inactividad hasta 30 min (ADR-0013). Lista fija; editable después de la entrega (spec F5 D-13) | 05 | F2 | Leer 10 min en Readest sin tocar nada: *Mi día* muestra 10 min de Readest |
 
 ## D. Proyectos y tareas (RF-07, RF-08, RF-09)
 
@@ -115,7 +115,7 @@ Resumen: 111 funcionalidades en total: 93 antes de la entrega y 18 después (TA-
 | DR-03 | Uso de IA del equipo | 16, 18 | F5 | Coincide con los bloques de IA |
 | DR-04 | Gráficas de horas, productividad y apps por periodo | 16 | F5 | Pantalla con datos sembrados |
 | DR-05 | Reporte individual por día, semana y mes; por proyecto y tarea; apps e IA | 17 | F5 | Las cifras coinciden con *Mi día* |
-| DR-06 | Exportar a CSV y PDF | 17 | F5 ✂ (CSV) | Abrir el CSV en una hoja de cálculo |
+| DR-06 | Exportar el tablero a PDF (el CSV se recortó el 12 oct) | 17 | F5 | Imprimir el tablero a PDF desde la app |
 | DR-07 | Reporte para owner, admin y lead: capacidad usada, comparativa y uso de IA | 18 | F5 | Cada rol ve solo su columna de la matriz |
 | DR-08 | Actualización en tiempo real | 16 | F8 | — |
 
@@ -123,9 +123,9 @@ Resumen: 111 funcionalidades en total: 93 antes de la entrega y 18 después (TA-
 
 | ID | Funcionalidad | RF | Fase | Cómo se comprueba |
 |---|---|---|---|---|
-| NO-01 | Aviso al acercarse el fin de la jornada | 19 | F5 ✂ | Llega el aviso del sistema |
-| NO-02 | Aviso por inactividad prolongada | 19 | F5 ✂ | Llega el aviso del sistema |
-| NO-03 | Aviso por tarea próxima a vencer | 19 | F5 ✂ | Llega el aviso del sistema |
+| NO-01 | Aviso al acercarse el fin de la jornada | 19 | ✂ recortada el 12 oct: después de la entrega | Llega el aviso del sistema |
+| NO-02 | Aviso por inactividad prolongada | 19 | ✂ recortada el 12 oct: después de la entrega | Llega el aviso del sistema |
+| NO-03 | Aviso por tarea próxima a vencer | 19 | ✂ recortada el 12 oct: después de la entrega | Llega el aviso del sistema |
 | NO-04 | Alertas para líderes (baja actividad, proyecto atrasado) | 20 | F8 | — |
 
 ## I. Privacidad y seguridad (RF-21, RF-22, RF-23)
