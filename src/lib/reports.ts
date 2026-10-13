@@ -173,6 +173,9 @@ export function toCsv(r: ReportRun): string {
   return [header, ...r.facts.map((f) => [f.metric, f.dimension ?? '', f.value, f.unit])].map((row) => row.map(cell).join(',')).join('\r\n') + '\r\n';
 }
 
+/** Archivo CSV para descargar: lleva BOM UTF-8 para que Excel en Windows lea bien las tildes. */
+export const toCsvFile = (r: ReportRun): string => `\uFEFF${toCsv(r)}`;
+
 /** Descarga un archivo generado en la página. En la app real va a Descargas (V1 de la spec F4). */
 export function downloadText(name: string, content: string, type: string): void {
   const url = URL.createObjectURL(new Blob([content], { type: `${type};charset=utf-8` }));
