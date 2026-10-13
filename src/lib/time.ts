@@ -42,6 +42,40 @@ export function localDate(d: Date = new Date()): string {
   return `${y}-${m}-${day}`;
 }
 
+/** Zona horaria del sistema (IANA), con «UTC» de respaldo; la misma que se guarda en el perfil al crearlo. */
+export function systemTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  } catch {
+    return 'UTC';
+  }
+}
+
+/** Desfase (ms) de `timeZone` en el instante `ms`: hora de pared de esa zona menos el instante, ambos como UTC. */
+function zoneOffsetMs(ms: number, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric',
+  }).formatToParts(new Date(ms));
+  const n = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+  return Date.UTC(n('year'), n('month') - 1, n('day'), n('hour'), n('minute'), n('second')) - Math.floor(ms / 1000) * 1000;
+}
+
+/**
+ * Instante ISO (UTC) de las 00:00 de `date` (AAAA-MM-DD) en la zona horaria IANA dada, solo con `Intl`.
+ * Respeta los cambios de hora. Si la zona no es válida, usa la del dispositivo.
+ */
+export function startOfDayIso(date: string, timeZone: string): string {
+  try {
+    const [y, m, d] = date.split('-').map(Number) as [number, number, number];
+    const wall = Date.UTC(y, m - 1, d);
+    let utc = wall - zoneOffsetMs(wall, timeZone);
+    utc = wall - zoneOffsetMs(utc, timeZone);
+    return new Date(utc).toISOString();
+  } catch {
+    return localDateTimeToIso(date, '00:00');
+  }
+}
+
 /** "2026-10-01" → "jueves, 1 de octubre" (o «Thursday, October 1» en inglés) */
 export function formatLongDate(date: string): string {
   return formatDate(date, { weekday: 'long', day: 'numeric', month: 'long' });
