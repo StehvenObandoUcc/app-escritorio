@@ -21,8 +21,8 @@ export function AppNav({ items, footer }: { items: NavItem[]; footer?: ReactNode
     <nav
       aria-label={t('nav.main')}
       className={cx(
-        'flex shrink-0 border-line bg-surface',
-        'border-t px-2 py-1',
+        'flex min-w-0 shrink-0 border-line bg-surface',
+        'border-t px-1 py-1',
         'md:w-rail md:flex-col md:gap-1 md:border-t-0 md:border-r md:px-2 md:py-3',
         'lg:w-nav lg:px-3',
       )}
@@ -34,16 +34,16 @@ export function AppNav({ items, footer }: { items: NavItem[]; footer?: ReactNode
         </span>
       </div>
 
-      <ul className="flex flex-1 justify-around gap-1 md:flex-none md:flex-col md:justify-start">
+      <ul className="flex min-w-0 flex-1 justify-around md:gap-1 md:flex-none md:flex-col md:justify-start">
         {items.map(({ to, label, icon: Icon }, i) => (
-          <li key={to} className="flex-1 md:flex-none">
+          <li key={to} className="min-w-0 flex-1 md:flex-none">
             <NavLink
               to={to}
               title={`${label} (Alt+${i + 1})`}
               className={({ isActive }) =>
                 cx(
-                  'flex min-h-touch flex-col items-center justify-center gap-1 rounded-md px-2 text-xs font-medium transition-colors',
-                  'md:min-h-control lg:flex-row lg:justify-start lg:gap-3 lg:px-3 lg:text-base',
+                  'flex min-h-touch min-w-0 flex-col items-center justify-center gap-1 rounded-md px-0.5 text-xs font-medium transition-colors',
+                  'md:min-h-control md:px-2 lg:flex-row lg:justify-start lg:gap-3 lg:px-3 lg:text-base',
                   isActive
                     ? 'bg-accent-soft text-accent-text'
                     : 'text-fg-muted hover:bg-sunken hover:text-fg',
@@ -51,7 +51,7 @@ export function AppNav({ items, footer }: { items: NavItem[]; footer?: ReactNode
               }
             >
               <Icon size={18} aria-hidden="true" />
-              <span className="md:sr-only lg:not-sr-only">{label}</span>
+              <span className="max-w-full truncate md:sr-only lg:not-sr-only">{label}</span>
             </NavLink>
           </li>
         ))}
