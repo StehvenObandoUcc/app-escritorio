@@ -77,7 +77,7 @@ La interfaz muestra la etiqueta "Datos de ejemplo" siempre que usa el puente sim
 - Textos en español e inglés con `src/i18n` (ADR-0015): ningún texto visible escrito a mano en JSX (`npm run check:i18n`).
 - Igual que el puente, Supabase se usa solo a través de `src/cloud` (contrato `Cloud`: implementación real y simulada). Las páginas no llaman a `supabase-js` directamente.
 - Sin sesión no se entra a la app (F2): se muestra solo la pantalla de acceso (registro, inicio de sesión y recuperar contraseña), sin navegación. Cerrar sesión está en *Ajustes*. El sensor sigue registrando en el equipo; nada se sube sin sesión ni consentimiento.
-- Rutas (HashRouter), con sesión: `/mi-dia`, `/tareas` (*Mis tareas*, ADR-0014), `/proyectos`, `/proyectos/:id` y `/proyectos/:id/tareas/:tarea` (F3), `/equipo`, `/equipo/privacidad` (qué se mide y quién lo ve; F2), `/reportes`, `/ajustes`, `/dev/galeria` (solo desarrollo).
+- Rutas (HashRouter), con sesión: `/mi-dia`, `/tareas` (*Mis tareas*, ADR-0014), `/proyectos`, `/proyectos/:id` y `/proyectos/:id/tareas/:tarea` (F3), `/equipo`, `/equipo/privacidad` (qué se mide y quién lo ve; F2), `/tablero` (F5), `/reportes`, `/ajustes`, `/dev/galeria` (solo desarrollo).
 
 ## 6. Núcleo Rust: módulos y comandos (lista cerrada)
 
