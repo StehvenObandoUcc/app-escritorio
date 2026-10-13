@@ -10,6 +10,7 @@ import { HiddenAppsPicker, type AppCandidate } from '@/ui/organisms';
 import { PageLayout } from '@/ui/templates';
 import { useOptionalSession } from '@/app/session';
 import { AiSection } from './AiSection';
+import { MiPrivacidadSection } from './MiPrivacidadSection';
 import { PerfilSection } from './PerfilSection';
 
 /** Días hacia atrás de los que se sacan las apps candidatas a ocultar. */
@@ -44,6 +45,7 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
   const [saved, setSaved] = useState<Settings | null>(null);
   const [minutes, setMinutes] = useState('');
   const session = useOptionalSession();
+  const teamIdle = session?.activeTeam?.idleMinutes ?? null;
   const teamForbidsHidden = session?.activeTeam ? !session.activeTeam.allowHiddenApps : false;
   const [hidden, setHidden] = useState<string[]>([]);
   const [recent, setRecent] = useState<AppCandidate[]>([]);
@@ -105,7 +107,7 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setNotice(null);
-    const n = Number(minutes);
+    const n = teamIdle ?? Number(minutes);
     if (!Number.isInteger(n) || n < IDLE_MINUTES_MIN || n > IDLE_MINUTES_MAX) {
       setFormError(t('settings.idleError', { min: IDLE_MINUTES_MIN, max: IDLE_MINUTES_MAX }));
       document.querySelector<HTMLInputElement>('input[name="idleMinutes"]')?.focus();
@@ -152,9 +154,10 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
               inputMode="numeric"
               min={IDLE_MINUTES_MIN}
               max={IDLE_MINUTES_MAX}
-              value={minutes}
+              value={teamIdle === null ? minutes : String(teamIdle)}
               onChange={(e) => setMinutes(e.target.value)}
-              hint={t('settings.idleHint', { min: IDLE_MINUTES_MIN, max: IDLE_MINUTES_MAX })}
+              disabled={teamIdle !== null}
+              hint={teamIdle === null ? t('settings.idleHint', { min: IDLE_MINUTES_MIN, max: IDLE_MINUTES_MAX }) : t('settings.idleTeam', { min: teamIdle })}
             />
             {teamForbidsHidden && (
               <p role="note" className="rounded-md bg-sunken p-3 text-sm text-fg">
@@ -180,6 +183,7 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
           </form>
         </Surface>
       )}
+      <MiPrivacidadSection bridge={bridge} />
       <AiSection bridge={bridge} />
       <EmptyState
         title={t('settings.moreLater')}
