@@ -52,6 +52,25 @@ Lo que las pruebas automáticas no pueden comprobar: Supabase real (`pulso-dev`)
 
 ## F4 · IA y reportes (puerta G4)
 
+### Atajo: validación automática de la parte servidor
+
+El script `scripts/f4-validar-nube.mjs` comprueba **solo la parte servidor** de los pasos 4.2 a 4.7 y 4.19 con tres cuentas de prueba (A = owner, B = member, C = viewer) y escribe `CUMPLE`, `FALLA` u `OMITIDO` por paso. Lo visual de esos pasos sigue siendo manual: las cifras y «Validado en el servidor» en 4.2, la lista «Sobre» sin «Todo el equipo» en 4.5, el formulario oculto al viewer en 4.7 y el texto del aviso de límite en 4.4. Los pasos 4.1, 4.8 a 4.18, 4.20 y 4.21 también siguen siendo manuales.
+
+- **Requisitos:** 0.1, 0.2 y 0.3 hechos (sin ellos `ai-trial` responde 503 y 4.2 falla).
+- Si las cuentas o el equipo no existen, los crea (el registro no exige verificar el correo).
+- La primera ejecución imprime el id del equipo; en las siguientes pon `$env:PULSO_TEAM_ID` para no crear otro equipo.
+- Gasta el cupo gratis de B de ese día (hasta 5 reportes) y tarda unos 3 minutos por el paso 4.4.
+
+```powershell
+$env:PULSO_SUPABASE_URL = (Select-String .env -Pattern '^VITE_SUPABASE_URL=(.*)').Matches.Groups[1].Value
+$env:PULSO_SUPABASE_ANON_KEY = (Select-String .env -Pattern '^VITE_SUPABASE_ANON_KEY=(.*)').Matches.Groups[1].Value
+$env:PULSO_EMAIL_A = '<correo de A>'; $env:PULSO_EMAIL_B = '<correo de B>'; $env:PULSO_EMAIL_C = '<correo de C>'
+$s = Read-Host 'Contraseña (la misma para las tres cuentas)' -AsSecureString; $env:PULSO_PASSWORD = [Net.NetworkCredential]::new('', $s).Password
+# Opcional, para reutilizar un equipo (el script imprime su id al terminar):
+# $env:PULSO_TEAM_ID = '<id del equipo>'
+node scripts/f4-validar-nube.mjs
+```
+
 | # | Quién | Qué hacer | Resultado esperado | Resultado |
 |---|---|---|---|---|
 | 4.1 | Tú | *Mi día* → *Detalle*: etiqueta un bloque de IA como «Código»; espera a «Al día» | La etiqueta se queda al recargar | |
