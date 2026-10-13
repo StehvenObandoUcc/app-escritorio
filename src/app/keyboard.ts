@@ -91,7 +91,7 @@ export function arrowToNearest(e: KeyboardEvent): boolean {
  * Teclado en toda la app (AC-43, AC-51, ADR-0019 y ADR-0021):
  * - flechas: mueven el foco al elemento más cercano en esa dirección; Enter lo activa;
  * - Enter en un formulario pasa al siguiente campo vacío; Ctrl+Enter envía desde un área de texto;
- * - Alt+1 … Alt+6 abren cada sección; «?» muestra la ayuda (si no se está escribiendo);
+ * - Alt+1 … Alt+n abren cada sección de la navegación (n = cantidad de rutas); «?» muestra la ayuda (si no se está escribiendo);
  * - al cambiar de pantalla, el foco va al contenido.
  */
 export function useAppKeyboard(routes: string[], openHelp: () => void) {
