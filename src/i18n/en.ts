@@ -683,6 +683,8 @@ export const en: Dict = {
       disabled: 'Free mode is turned off right now. Use your provider or manual mode.',
       provider: 'The AI service did not respond. Your quota was not used: try again later.',
       changed: 'The data changed while the report was being generated: generate it again.',
+      unauthorized: 'Your session expired. Sign out and sign in again to generate the report.',
+      bad_request: 'The report request is not valid. Update Pulso and try again.',
     },
     failed: 'The report could not be generated: {error}',
     cached: 'There was already a report with the same data: it is shown without using quota.',
