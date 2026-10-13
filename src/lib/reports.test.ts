@@ -4,7 +4,7 @@ import type { ReportRequest, ReportRun } from '@/cloud/contract';
 import { createMockCloud } from '@/cloud/mock';
 import { CONSENT_VERSION } from '@/lib/consent';
 import { setLocale } from '@/i18n';
-import { factLabel, factValue, finishManual, generateWithOwnKey, ManualAnswerError, prepareManual, toCsv, toMarkdown } from './reports';
+import { factLabel, factValue, finishManual, generateWithOwnKey, ManualAnswerError, prepareManual, toCsv, toCsvFile, toJson, toMarkdown } from './reports';
 
 /** Reportes con clave propia y en modo Manual (spec F4: AC-12, AC-13a, AC-17, AC-21, AC-26). */
 async function setup() {
@@ -130,5 +130,13 @@ describe('cifras y exportación (AC-13a, AC-26)', () => {
     expect(md).toContain('IA al 37 %. _(Se apoya en: Parte del tiempo activo · Con IA: 37 %)_');
     const csv = toCsv(report).trim().split('\r\n');
     expect(csv).toEqual(['"Métrica","Detalle","Valor","Unidad"', '"hours_active","","2.7","h"', '"share_category","ai","37","%"', '"hours_ai_tool","chatgpt","0.5","h"']);
+  });
+
+  it('el CSV descargable empieza con BOM y el JSON y el Markdown no (AC-26)', () => {
+    expect(toCsvFile(report).startsWith('\uFEFF"')).toBe(true);
+    expect(toCsvFile(report).slice(1)).toBe(toCsv(report));
+    expect(toCsv(report).startsWith('\uFEFF')).toBe(false);
+    expect(toJson(report).startsWith('\uFEFF')).toBe(false);
+    expect(toMarkdown(report, 'Mi trabajo').startsWith('\uFEFF')).toBe(false);
   });
 });
