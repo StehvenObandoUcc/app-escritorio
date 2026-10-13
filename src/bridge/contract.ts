@@ -299,4 +299,6 @@ export interface Bridge {
   aiChat(messages: ChatMessage[]): Promise<string>;
   /** Etiqueta un bloque de IA con su tipo de uso (IA-04); `null` la quita. */
   blockSetAiUsage(id: string, usage: AiUsage | null): Promise<void>;
+  /** CU-07 (ADR-0023): escribe en Descargas un JSON con todo lo local de la cuenta activa (con títulos descifrados) y devuelve la ruta. */
+  exportMyData(): Promise<string>;
 }
