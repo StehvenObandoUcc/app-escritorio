@@ -681,6 +681,8 @@ export const es = {
       disabled: 'El modo Gratis está apagado en este momento. Usa tu proveedor o el modo manual.',
       provider: 'El servicio de IA no respondió. Tu cupo no se gastó: inténtalo más tarde.',
       changed: 'Los datos cambiaron mientras se generaba el reporte: vuelve a generarlo.',
+      unauthorized: 'Tu sesión venció. Cierra sesión y vuelve a entrar para generar el reporte.',
+      bad_request: 'La petición del reporte no es válida. Actualiza Pulso e inténtalo de nuevo.',
     },
     failed: 'No se pudo generar el reporte: {error}',
     cached: 'Ya había un reporte con los mismos datos: se muestra ese, sin gastar cupo.',
