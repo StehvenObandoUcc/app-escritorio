@@ -2,16 +2,18 @@ import { useEffect, useId, useRef } from 'react';
 import { t, type TKey } from '@/i18n';
 import { Button, Heading } from '@/ui/atoms';
 
-const SHORTCUTS: [string, TKey][] = [
-  ['← ↑ → ↓', 'keyboard.arrows'],
-  ['Enter', 'keyboard.enter'],
-  ['Esc', 'keyboard.esc'],
-  ['Ctrl+Enter', 'keyboard.ctrlEnter'],
-  ['Alt+1 … Alt+6', 'keyboard.sections'],
-];
+/** Secciones de la navegación hoy (Alt+1 … Alt+7): Mi día, Mis tareas, Proyectos, Equipo, Tablero, Reportes y Ajustes. */
+const DEFAULT_SECTIONS = 7;
 
-/** Ayuda de atajos de teclado (ADR-0019). `<dialog>` nativo: Esc la cierra y el foco queda dentro. */
-export function KeyboardHelp({ open, onClose }: { open: boolean; onClose: () => void }) {
+/** Ayuda de atajos de teclado (ADR-0019). `sectionCount` = cuántas secciones abre Alt+número (la lista de rutas de la app). `<dialog>` nativo: Esc la cierra y el foco queda dentro. */
+export function KeyboardHelp({ open, onClose, sectionCount = DEFAULT_SECTIONS }: { open: boolean; onClose: () => void; sectionCount?: number }) {
+  const shortcuts: [string, TKey][] = [
+    ['← ↑ → ↓', 'keyboard.arrows'],
+    ['Enter', 'keyboard.enter'],
+    ['Esc', 'keyboard.esc'],
+    ['Ctrl+Enter', 'keyboard.ctrlEnter'],
+    [`Alt+1 … Alt+${sectionCount}`, 'keyboard.sections'],
+  ];
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   useEffect(() => {
@@ -42,7 +44,7 @@ export function KeyboardHelp({ open, onClose }: { open: boolean; onClose: () => 
             <span id={titleId}>{t('keyboard.title')}</span>
           </Heading>
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-            {SHORTCUTS.map(([keys, label]) => (
+            {shortcuts.map(([keys, label]) => (
               <div key={keys} className="contents">
                 <dt>
                   <kbd className="rounded-xs border border-line-strong bg-sunken px-1 font-sans text-xs">{keys}</kbd>
