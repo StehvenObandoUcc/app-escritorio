@@ -10,6 +10,7 @@ import { appColor } from '@/lib/apps';
 import { formatShortDuration } from '@/lib/time';
 import { Button, Heading, ProgressBar, Select, Surface } from '@/ui/atoms';
 import { FormField, SegmentedControl } from '@/ui/molecules';
+import { ReglasPorApp } from './ReglasPorApp';
 
 
 /** Lo que se escribe como sitio: se acepta una URL y se queda solo el dominio. */
@@ -30,7 +31,7 @@ const ranges = (): { value: Range; label: string }[] => [
 ];
 
 /**
- * Sitios y políticas del equipo (ADR-0009), solo para owner y admin:
+ * Reglas y políticas del equipo (ADR-0009; antes «Sitios y políticas»; suma las reglas por app, F5 D-13), solo para owner y admin:
  * - permitir o no que cada persona oculte apps;
  * - sitios no permitidos (se marcan como distracción, no se bloquean);
  * - tiempo por sitio y persona.
@@ -104,6 +105,7 @@ export function SitiosYPoliticas({ team }: { team: MyTeam }) {
   const notAllowed = new Set((rules.data ?? []).filter((r) => r.notAllowed).map((r) => r.domain));
 
   return (
+    <>
     <Surface as="section" aria-label={t('sites.title')} className="flex flex-col gap-5">
       <div>
         <Heading level={2}>{t('sites.title')}</Heading>
@@ -250,5 +252,7 @@ export function SitiosYPoliticas({ team }: { team: MyTeam }) {
         )}
       </div>
     </Surface>
+    <ReglasPorApp team={team} />
+    </>
   );
 }
