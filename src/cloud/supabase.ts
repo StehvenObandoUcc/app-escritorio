@@ -16,6 +16,13 @@ import {
   MemberSchema,
   MyInvitationSchema,
   MyTeamSchema,
+  AuditEntrySchema,
+  AUDIT_PAGE_SIZE,
+  PresenceSchema,
+  ProcessRuleSchema,
+  TeamDashboardSchema,
+  TimeByTaskSchema,
+  normalizeProcessPattern,
   ProfileSchema,
   HistorySchema,
   ProjectTimeSchema,
@@ -30,7 +37,9 @@ import {
   wrongInvitationCode,
   type Cloud,
   type CloudUser,
+  type MyTeam,
   type ReportRun,
+  type TeamDashboard,
   type TrialReason,
   type ReviewSubmission,
   type TaskInput,
@@ -136,8 +145,149 @@ const TeamRowSchema = z.object({
   role: TeamRoleSchema,
   consent_at: z.string().nullable(),
   consent_version: z.string().nullable(),
+  /** Columna de F5 (20261013000001); falta si la migración aún no está aplicada. */
+  share_app_names: z.boolean().nullish(),
   teams: z.object({ name: z.string(), settings: z.record(z.string(), z.unknown()).nullable() }),
 });
+
+/** Fila de `team_members` con su equipo → `MyTeam`, con los valores por defecto de la spec F5 si faltan. */
+export function myTeamFromRow(raw: unknown): MyTeam {
+  const r = TeamRowSchema.parse(raw);
+  const workday = WorkdaySchema.safeParse(r.teams.settings?.workday);
+  const policies = z
+    .object({
+      allow_hidden_apps: z.boolean(),
+      alert_not_allowed: z.boolean(),
+      alert_repeat_minutes: z.number().int(),
+      ai_counts_as_productive: z.boolean(),
+      presence_visible_to_members: z.boolean(),
+      pause_cap_minutes: z.number().int().nonnegative(),
+    })
+    .partial()
+    .safeParse(r.teams.settings?.policies);
+  const policy = policies.success ? policies.data : {};
+  const idle = z.number().int().min(3).max(15).safeParse(r.teams.settings?.idle_minutes);
+  return MyTeamSchema.parse({
+    id: r.team_id,
+    name: r.teams.name,
+    role: r.role,
+    consentAt: r.consent_at,
+    consentVersion: r.consent_version,
+    workday: workday.success ? workday.data : DEFAULT_WORKDAY,
+    allowHiddenApps: policy.allow_hidden_apps ?? true,
+    alertNotAllowed: policy.alert_not_allowed ?? true,
+    alertRepeatMinutes: policy.alert_repeat_minutes ?? 10,
+    idleMinutes: idle.success ? idle.data : null,
+    aiCountsAsProductive: policy.ai_counts_as_productive ?? false,
+    presenceVisibleToMembers: policy.presence_visible_to_members ?? false,
+    pauseCapMinutes: policy.pause_cap_minutes ?? 0,
+    shareAppNames: r.share_app_names ?? true,
+  });
+}
+
+// ---- Tablero (F5, D-2): la función SQL responde en snake_case; aquí se valida y se pasa a camelCase ----
+const RawCats = z.strictObject({ productive: z.number(), neutral: z.number(), distraction: z.number(), ai: z.number() });
+const RawTask = z.strictObject({ id: z.uuid(), title: z.string(), project_id: z.uuid(), project_name: z.string() });
+const RawDashboard = z.strictObject({
+  role: TeamRoleSchema,
+  is_lead: z.boolean(),
+  totals: z
+    .strictObject({
+      members: z.number(),
+      hours_active: z.number(),
+      hours_productive: z.number(),
+      hours_category: RawCats,
+      ai_hours: z.number(),
+      ai_sessions: z.number(),
+      ai_tool: z.record(z.string(), z.number()),
+      ai_usage: z.strictObject({ code: z.number(), writing: z.number(), analysis: z.number(), other: z.number(), untagged: z.number() }),
+      tasks_doing: z.number(),
+      tasks_done: z.number(),
+    })
+    .nullable(),
+  per_day: z.array(z.strictObject({ day: z.string(), hours_category: RawCats })),
+  members: z.array(
+    z.strictObject({
+      user_id: z.uuid(),
+      name: z.string().nullable(),
+      share_app_names: z.boolean(),
+      hours_active: z.number(),
+      hours_productive: z.number(),
+      hours_category: RawCats,
+      ai_hours: z.number(),
+      ai_sessions: z.number(),
+      capacity_hours: z.number(),
+      capacity_share: z.number().nullable(),
+      tasks_doing: z.array(RawTask),
+    }),
+  ),
+  lead_members: z.array(
+    z.strictObject({
+      user_id: z.uuid(),
+      name: z.string().nullable(),
+      project_hours: z.number(),
+      ai_hours_in_projects: z.number(),
+      tasks_doing: z.array(RawTask),
+    }),
+  ),
+  top_apps: z.array(z.strictObject({ app_name: z.string(), hours: z.number() })),
+});
+
+/** Respuesta de `team_dashboard` → `TeamDashboard` (validada dos veces: forma del servidor y forma del contrato). */
+export function teamDashboardFromRow(raw: unknown): TeamDashboard {
+  const r = RawDashboard.parse(raw);
+  const task = (x: z.infer<typeof RawTask>) => ({ id: x.id, title: x.title, projectId: x.project_id, projectName: x.project_name });
+  return TeamDashboardSchema.parse({
+    role: r.role,
+    isLead: r.is_lead,
+    totals: r.totals && {
+      members: r.totals.members,
+      hoursActive: r.totals.hours_active,
+      hoursProductive: r.totals.hours_productive,
+      hoursCategory: r.totals.hours_category,
+      aiHours: r.totals.ai_hours,
+      aiSessions: r.totals.ai_sessions,
+      aiTool: r.totals.ai_tool,
+      aiUsage: r.totals.ai_usage,
+      tasksDoing: r.totals.tasks_doing,
+      tasksDone: r.totals.tasks_done,
+    },
+    perDay: r.per_day.map((d) => ({ day: d.day, hoursCategory: d.hours_category })),
+    members: r.members.map((m) => ({
+      userId: m.user_id,
+      name: m.name,
+      shareAppNames: m.share_app_names,
+      hoursActive: m.hours_active,
+      hoursProductive: m.hours_productive,
+      hoursCategory: m.hours_category,
+      aiHours: m.ai_hours,
+      aiSessions: m.ai_sessions,
+      capacityHours: m.capacity_hours,
+      capacityShare: m.capacity_share,
+      tasksDoing: m.tasks_doing.map(task),
+    })),
+    leadMembers: r.lead_members.map((m) => ({
+      userId: m.user_id,
+      name: m.name,
+      projectHours: m.project_hours,
+      aiHoursInProjects: m.ai_hours_in_projects,
+      tasksDoing: m.tasks_doing.map(task),
+    })),
+    topApps: r.top_apps.map((a) => ({ appName: a.app_name, hours: a.hours })),
+  });
+}
+
+/** Filas de la base que aún no están en `database.types.ts` (se limpia al regenerarlo con `npm run db:types`). */
+const RawPresence = z.array(z.object({ user_id: z.uuid(), name: z.string().nullable(), state: z.string(), since: z.string().nullable() }));
+const RawTimeByTask = z.array(
+  z.object({
+    project_id: z.uuid().nullable(),
+    project_name: z.string().nullable(),
+    task_id: z.uuid().nullable(),
+    task_title: z.string().nullable(),
+    seconds: z.coerce.number(),
+  }),
+);
 
 export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string): Cloud {
   // Tipado con los tipos generados de la base (npm run db:types): nombres de tablas, columnas y funciones
@@ -153,6 +303,11 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
   const auth = client.auth;
   type Fn = keyof Database['public']['Functions'];
   const rpc = <F extends Fn>(fn: F, args?: Database['public']['Functions'][F]['Args']) => run(client.rpc(fn, args));
+  // F5 (20261013000001): las funciones y la columna `team_members.share_app_names` aún no están en los tipos generados.
+  // Estas llamadas van sin tipos de la base y se validan con zod de inmediato; cuando el responsable regenere
+  // `database.types.ts` (npm run db:types) se pasan a `rpc`/`client` y este cliente se quita.
+  const loose = client as unknown as SupabaseClient;
+  const looseRpc = (fn: string, args?: Record<string, unknown>) => run(loose.rpc(fn, args));
   /**
    * ADR-0018: los archivos de cada campo se suben antes de enviar y el campo se responde con sus ids. Al enviar,
    * la base comprueba que sean de esta tarea, de quien envía y del tipo del campo, y los liga a la revisión.
@@ -246,33 +401,15 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
     myTeams: async () => {
       const user = await requireUser();
       const rows = await run(
-        client
+        loose
           .from('team_members')
-          .select('team_id, role, consent_at, consent_version, teams(name, settings)')
+          .select('team_id, role, consent_at, consent_version, share_app_names, teams(name, settings)')
           .eq('user_id', user.id),
       );
       return z
-        .array(TeamRowSchema)
+        .array(z.unknown())
         .parse(rows)
-        .map((r) => {
-          const workday = WorkdaySchema.safeParse(r.teams.settings?.workday);
-          const policies = z
-            .object({ allow_hidden_apps: z.boolean(), alert_not_allowed: z.boolean(), alert_repeat_minutes: z.number().int() })
-            .partial()
-            .safeParse(r.teams.settings?.policies);
-          const policy = policies.success ? policies.data : {};
-          return MyTeamSchema.parse({
-            id: r.team_id,
-            name: r.teams.name,
-            role: r.role,
-            consentAt: r.consent_at,
-            consentVersion: r.consent_version,
-            workday: workday.success ? workday.data : DEFAULT_WORKDAY,
-            allowHiddenApps: policy.allow_hidden_apps ?? true,
-            alertNotAllowed: policy.alert_not_allowed ?? true,
-            alertRepeatMinutes: policy.alert_repeat_minutes ?? 10,
-          });
-        })
+        .map(myTeamFromRow)
         .sort((a, b) => a.name.localeCompare(b.name, 'es'));
     },
     createTeam: async (name) => z.uuid().parse(await rpc('create_team', { p_name: name })),
@@ -426,8 +563,35 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
         }),
       );
     },
+    // Borra cualquier regla por id (la política `classification_rules_delete` decide quién): sirve también para las de app.
     removeDomainRule: async (ruleId) => {
       await run(client.from('classification_rules').delete().eq('id', ruleId));
+    },
+    processRules: async (teamId) => {
+      const rows = z
+        .array(z.object({ id: z.uuid(), pattern: z.string(), category: z.enum(['productive', 'neutral', 'distraction', 'ai']) }))
+        .parse(
+          await run(
+            client.from('classification_rules').select('id, pattern, category').eq('team_id', teamId).eq('match_type', 'process').order('pattern'),
+          ),
+        );
+      return rows.map((r) => ProcessRuleSchema.parse({ id: r.id, pattern: r.pattern, category: r.category }));
+    },
+    addProcessRule: async (teamId, pattern, category) => {
+      const clean = normalizeProcessPattern(pattern);
+      if (clean.length < 1 || clean.length > 120) throw new CloudError('Cada regla necesita un patrón en minúsculas de 1 a 120 caracteres.', 'invalid');
+      const user = await requireUser();
+      await run(
+        client.from('classification_rules').insert({
+          team_id: teamId,
+          priority: 0,
+          match_type: 'process',
+          pattern: clean,
+          category,
+          ai_tool: null,
+          created_by: user.id,
+        }),
+      );
     },
     teamDomainSummary: async (teamId, from, to) => {
       const rows = z
@@ -523,6 +687,53 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
     setBlockAiUsage: async (blockId, usage) => {
       // El tipo generado no marca p_usage como opcional; null quita la etiqueta.
       await run(client.rpc('set_block_ai_usage', { p_id: blockId, p_usage: usage as string }));
+    },
+
+    // ---- Tableros, presencia y ajustes (F5) ----
+    teamDashboard: async (teamId, from, to) => teamDashboardFromRow(await looseRpc('team_dashboard', { p_team: teamId, p_from: from, p_to: to })),
+    teamPresence: async (teamId) =>
+      RawPresence.parse(await looseRpc('team_presence', { p_team: teamId })).map((r) =>
+        PresenceSchema.parse({ userId: r.user_id, name: r.name, state: r.state, since: r.since }),
+      ),
+    setTeamSettings: async (teamId, s) => {
+      await looseRpc('set_team_settings', {
+        p_team: teamId,
+        p_idle_minutes: s.idleMinutes,
+        p_workday: { days: s.workday.days, start: s.workday.start, end: s.workday.end },
+        p_ai_counts_as_productive: s.aiCountsAsProductive,
+        p_presence_visible_to_members: s.presenceVisibleToMembers,
+        p_pause_cap_minutes: s.pauseCapMinutes,
+      });
+    },
+    setShareAppNames: async (teamId, share) => {
+      await looseRpc('set_share_app_names', { p_team: teamId, p_share: share });
+    },
+    myTimeByTask: async (teamId, from, to) =>
+      RawTimeByTask.parse(await looseRpc('my_time_by_task', { p_team: teamId, p_from: from, p_to: to })).map((r) =>
+        TimeByTaskSchema.parse({ projectId: r.project_id, projectName: r.project_name, taskId: r.task_id, taskTitle: r.task_title, seconds: r.seconds }),
+      ),
+    auditLog: async (teamId, options = {}) => {
+      let query = client
+        .from('audit_log')
+        .select('id, action, actor_id, target_user, details, created_at')
+        .eq('team_id', teamId);
+      if (options.action) query = query.eq('action', options.action);
+      if (options.beforeId !== undefined) query = query.lt('id', options.beforeId);
+      const rows = z
+        .array(
+          z.object({
+            id: z.number().int(),
+            action: z.string(),
+            actor_id: z.uuid().nullable(),
+            target_user: z.uuid().nullable(),
+            details: z.record(z.string(), z.unknown()),
+            created_at: z.string(),
+          }),
+        )
+        .parse(await run(query.order('id', { ascending: false }).limit(AUDIT_PAGE_SIZE)));
+      return rows.map((r) =>
+        AuditEntrySchema.parse({ id: r.id, action: r.action, actorId: r.actor_id, targetUserId: r.target_user, details: r.details, createdAt: r.created_at }),
+      );
     },
 
     // ---- Reportes (F4) ----
