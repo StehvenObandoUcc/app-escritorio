@@ -284,3 +284,17 @@ Decisiones abiertas:
 - **A-4** · Resuelta el 7 oct: el correo de recuperación llega con el SMTP de Gmail (puerto 465).
 - **Pasa a F5** (con TA-11, pedido el 6 oct): reglas de productividad del equipo y editar la lista de apps sin teclado. La lista fija ya está en F2 (TA-15, ADR-0013).
 - **A-5** · Enviar por correo el código de invitación, además de mostrarlo para compartirlo (pedido el 6 oct). Depende de A-4 y necesita una Edge Function o el SMTP del proyecto; se retoma después de G2.
+
+## 9. Adaptaciones (12 y 13 de octubre, F4 y F5)
+
+### 9.1 Forma de trabajo con agentes
+- Un orquestador escribe la spec de cada fase y una ficha por cambio (plantilla de `AGENTS.md`), un agente revisor la revisa antes y revisa el diff después, y un agente programador implementa una ficha por vez. Si algo es ambiguo, el programador responde `BLOQUEADO` y se decide antes de seguir.
+- La verificación completa (`npm run verify` y `npm run verify:rust`) corre en una copia en la nube con Linux; las 3 pruebas exclusivas de Windows y la app real se comprueban en el equipo del responsable.
+- Los commits los hace el orquestador en la rama de la fase, en español y sin líneas de atribución (§8.1).
+
+### 9.2 Cambios al plan
+- **F5 empezó en paralelo con la validación real de F4** (G4 pendiente). Los fallos de F4 tienen prioridad sobre F5. La validación de la parte servidor de F4 se automatizó con `scripts/f4-validar-nube.mjs`.
+- **Recortes (decisión del responsable, 12 oct, §4):** NO-01 a NO-03, CU-06 y la exportación a CSV de DR-06 pasan a después de la entrega.
+- **Decisiones de producto (13 oct):** reglas por app solo para lo nuevo; *Mi semana/Mi mes* sin desglose por app; exportar mis datos a *Descargas* (ADR-0023).
+- **Riesgo aceptado:** con exactamente 2 miembros, quien solo ve totales podría deducir las cifras del otro restando las suyas (misma regla de mínimo 2 que F4).
+- **Límite aceptado:** el tope diario de pausa se aplica en la interfaz, no en Rust (F7).
