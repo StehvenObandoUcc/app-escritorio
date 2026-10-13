@@ -99,5 +99,6 @@ export function createTauriBridge(): Bridge {
     blockSetAiUsage: async (id, usage) => {
       await invoke('block_set_ai_usage', { id, usage });
     },
+    exportMyData: async () => z.string().parse(await invoke('export_my_data')),
   };
 }
