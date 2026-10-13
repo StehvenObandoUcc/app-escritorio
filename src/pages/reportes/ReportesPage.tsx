@@ -4,7 +4,7 @@ import { useState, type FormEvent, type ReactNode } from 'react';
 import { useSession } from '@/app/session';
 import { REPORT_MODES, REPORT_PERIODS, TrialError, type ReportFacts, type ReportMode, type ReportPeriod, type ReportRequest, type ReportRun } from '@/cloud/contract';
 import { errorMessage, getLocale, t } from '@/i18n';
-import { describeError, downloadText, finishManual, generateWithOwnKey, ManualAnswerError, prepareManual, toCsv, toJson, toMarkdown, type ValidationError } from '@/lib/reports';
+import { describeError, downloadText, finishManual, generateWithOwnKey, ManualAnswerError, prepareManual, toCsvFile, toJson, toMarkdown, type ValidationError } from '@/lib/reports';
 import { Badge, Button, Heading, Select, Surface } from '@/ui/atoms';
 import { EmptyState, Toast } from '@/ui/molecules';
 import { ReportHistory, ReportView, type ExportFormat } from '@/ui/organisms';
@@ -137,7 +137,7 @@ export function ReportesPage() {
     if (format === 'pdf') return window.print();
     const [ext, type] = EXTENSION[format];
     const name = `pulso-${selected.scope}-${selected.periodFrom}.${ext}`;
-    const content = format === 'markdown' ? toMarkdown(selected, titleOf(selected)) : format === 'json' ? toJson(selected) : toCsv(selected);
+    const content = format === 'markdown' ? toMarkdown(selected, titleOf(selected)) : format === 'json' ? toJson(selected) : toCsvFile(selected);
     downloadText(name, content, type);
     setNotice(t('reports.export.saved', { name }));
   };
@@ -266,6 +266,8 @@ const TRIAL_MESSAGE: Partial<Record<TrialError['reason'], () => string>> = {
   disabled: () => t('reports.trial.disabled'),
   provider: () => t('reports.trial.provider'),
   changed: () => t('reports.trial.changed'),
+  unauthorized: () => t('reports.trial.unauthorized'),
+  bad_request: () => t('reports.trial.bad_request'),
 };
 
 function Labeled({ label, children }: { label: string; children: ReactNode }) {
