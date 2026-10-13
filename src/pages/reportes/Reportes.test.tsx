@@ -6,6 +6,7 @@ import { createMockBridge } from '@/bridge/mock';
 import type { ReportRequest } from '@/cloud/contract';
 import { createMockCloud } from '@/cloud/mock';
 import { CONSENT_VERSION } from '@/lib/consent';
+import { TrialError } from '@/cloud/contract';
 import { ReportesPage } from './ReportesPage';
 
 const LONG = 20_000;
@@ -83,6 +84,15 @@ describe('Reportes (F4)', () => {
     await choose('Periodo', 'Ayer');
     await generate();
     expect(await screen.findByRole('alert')).toHaveTextContent('Usaste tus 5 reportes gratis de hoy. Conecta tu propio proveedor o usa el modo manual.');
+  }, LONG);
+
+  it('una sesión vencida en el modo Gratis muestra el aviso y no la razón cruda (AC-30)', async () => {
+    const { cloud } = await setup('ana');
+    vi.spyOn(cloud, 'generateFreeReport').mockRejectedValue(new TrialError('unauthorized'));
+    renderWithSession(<ReportesPage />, { path: '/reportes', cloud });
+    await screen.findByRole('option', { name: 'Mi trabajo' });
+    await generate();
+    expect(await screen.findByRole('alert')).toHaveTextContent('Tu sesión venció. Cierra sesión y vuelve a entrar para generar el reporte.');
   }, LONG);
 
   it('modo Manual: copiar el prompt, una respuesta inválida se explica y una válida se guarda (AC-21)', async () => {
