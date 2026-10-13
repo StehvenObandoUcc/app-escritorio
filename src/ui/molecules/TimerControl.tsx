@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { t } from '@/i18n';
 import { Coffee, EyeOff, Play, Square } from 'lucide-react';
 import { formatClock } from '@/lib/time';
@@ -14,6 +15,12 @@ export interface TimerControlProps {
   onStop: () => void;
   onBreakToggle: () => void;
   onPauseToggle: () => void;
+  /** Minutos que ofrece la pausa; si se pasa, la etiqueta los dice (tope diario del equipo, F5 D-11). */
+  pauseMinutes?: number;
+  /** Si viene texto, la pausa no se puede iniciar (sí reanudar) y se explica el motivo. */
+  pauseDisabledReason?: string | null;
+  /** Desactiva la pausa sin mostrar motivo (p. ej. mientras se averigua cuánto queda). Reanudar sigue activo. */
+  pauseDisabled?: boolean;
 }
 
 
@@ -26,7 +33,13 @@ export function TimerControl({
   onStop,
   onBreakToggle,
   onPauseToggle,
+  pauseMinutes,
+  pauseDisabledReason,
+  pauseDisabled = false,
 }: TimerControlProps) {
+  const reasonId = useId();
+  const blocked = (pauseDisabled || Boolean(pauseDisabledReason)) && state !== 'paused';
+  const showReason = blocked && Boolean(pauseDisabledReason);
   return (
     <div className="flex flex-col gap-4">
       <div>
@@ -55,10 +68,21 @@ export function TimerControl({
         <Button icon={<Coffee size={16} aria-hidden="true" />} onClick={onBreakToggle}>
           {state === 'break' ? t('timer.endBreak') : t('timer.takeBreak')}
         </Button>
-        <Button variant="ghost" icon={<EyeOff size={16} aria-hidden="true" />} onClick={onPauseToggle}>
-          {state === 'paused' ? t('timer.resume') : t('timer.pause')}
+        <Button
+          variant="ghost"
+          icon={<EyeOff size={16} aria-hidden="true" />}
+          onClick={onPauseToggle}
+          disabled={blocked}
+          aria-describedby={showReason ? reasonId : undefined}
+        >
+          {state === 'paused' ? t('timer.resume') : !pauseMinutes ? t('timer.pause') : t('timer.pauseFor', { min: pauseMinutes })}
         </Button>
       </div>
+      {showReason && (
+        <p id={reasonId} className="text-sm text-fg-muted">
+          {pauseDisabledReason}
+        </p>
+      )}
     </div>
   );
 }
