@@ -56,7 +56,12 @@ import { MyRangeView } from '@/pages/mi-dia/MyRangeView';
 import { DashboardBody, TableroPage } from '@/pages/tablero/TableroPage';
 import { PresenceSection } from '@/pages/tablero/sections';
 import { formatDuration } from '@/lib/time';
-import { t } from '@/i18n';
+import { errorMessage, t } from '@/i18n';
+import { MiPrivacidadSection } from '@/pages/ajustes/MiPrivacidadSection';
+import { TeamSettingsSection } from '@/pages/equipo/AjustesEquipo';
+import { AuditoriaTab } from '@/pages/equipo/AuditoriaTab';
+import { ReglasPorApp } from '@/pages/equipo/ReglasPorApp';
+import { useSession } from '@/app/session';
 
 const SWATCHES = [
   ['canvas', 'bg-canvas'],
@@ -163,6 +168,27 @@ export function GaleriaPage() {
           onStop={noop}
           onBreakToggle={noop}
           onPauseToggle={noop}
+        />
+        <TimerControl
+          running={false}
+          elapsedSeconds={0}
+          state="tracking"
+          onStart={noop}
+          onStop={noop}
+          onBreakToggle={noop}
+          onPauseToggle={noop}
+          pauseMinutes={10}
+        />
+        <TimerControl
+          running={false}
+          elapsedSeconds={0}
+          state="tracking"
+          onStart={noop}
+          onStop={noop}
+          onBreakToggle={noop}
+          onPauseToggle={noop}
+          pauseMinutes={0}
+          pauseDisabledReason={t('pause.capReached', { min: 30 })}
         />
         <div className="max-w-96">
           <CategoryBreakdown
@@ -327,6 +353,12 @@ export function GaleriaPage() {
         <HorizontalBarList label={t('charts.galleryEmpty')} formatValue={formatDuration} items={[]} />
         <MyRangeView bridge={GALLERY_BRIDGE} kind="week" range={{ from: '2026-10-05', to: '2026-10-11' }} canGoNext onShift={noop} />
       </Section>
+      <Section title={t('teamSettings.galleryTitle')}>
+        <GalleryEquipo />
+      </Section>
+      <Section title={t('myPrivacy.galleryTitle')}>
+        <GalleryEquipo privacy />
+      </Section>
       <Section title={t('dashboard.galleryTitle')}>
         <Heading level={3}>{t('dashboard.galleryPage')}</Heading>
         <GalleryTablero />
@@ -459,6 +491,78 @@ function GalleryTablero() {
         </div>
       </SessionProvider>
     </QueryClientProvider>
+  );
+}
+
+const GALLERY_AUDIT_ACTIONS = ['team_created', 'invitation_sent', 'invitation_accepted', 'role_changed', 'settings_changed', 'member_removed'] as const;
+
+/**
+ * Equipo (F5) con la nube simulada: ajustes del equipo con valores de ejemplo, auditoría con filas de ejemplo
+ * (incluye a un exmiembro y una acción del sistema) y reglas por app. Tiene su propia sesión.
+ */
+function GalleryEquipo({ privacy = false }: { privacy?: boolean }) {
+  const [demo, setDemo] = useState<{ cloud: MockCloud; engine: SyncEngine } | null>(null);
+  const [failure, setFailure] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const cloud = createMockCloud();
+    const owner = cloud.debug.addAccount('equipo-galeria@pulso.test', 'secreto-123', 'Ana Gómez');
+    const team = cloud.debug.addTeam('Equipo de muestra', owner);
+    const luis = cloud.debug.addAccount('luis-galeria@pulso.test', 'secreto-123', 'Luis Pardo');
+    cloud.debug.addMember(team, luis, 'member', true);
+    GALLERY_AUDIT_ACTIONS.forEach((action, i) =>
+      cloud.debug.audit.push({
+        teamId: team,
+        id: i + 1,
+        action,
+        actorId: i === 0 ? null : i === 5 ? crypto.randomUUID() : owner,
+        targetUserId: action === 'role_changed' || action === 'invitation_accepted' ? luis : null,
+        details: {},
+        createdAt: `2026-10-0${i + 1}T14:${10 + i}:00Z`,
+      }),
+    );
+    void cloud
+      .signIn('equipo-galeria@pulso.test', 'secreto-123')
+      .then(() => cloud.giveConsent(team, CONSENT_VERSION))
+      .then(() =>
+        cloud.setTeamSettings(team, {
+          idleMinutes: 7,
+          workday: { days: [1, 2, 3, 4, 5], start: '08:30', end: '17:30' },
+          aiCountsAsProductive: true,
+          presenceVisibleToMembers: false,
+          pauseCapMinutes: 60,
+        }),
+      )
+      .then(() => cloud.addProcessRule(team, 'Code.exe', 'productive'))
+      .then(() => cloud.addProcessRule(team, 'Spotify.exe', 'distraction'))
+      .then(() => alive && setDemo({ cloud, engine: new SyncEngine({ bridge: GALLERY_BRIDGE, cloud, setTimer: () => () => {} }) }))
+      .catch((cause) => alive && setFailure(errorMessage(cause)));
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const [queryClient] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: false } } }));
+  if (failure) return <p role="alert" className="text-sm text-danger">{t('teamSettings.galleryError', { error: failure })}</p>;
+  if (!demo) return <p role="status">{t('common.loading')}</p>;
+  return (
+    <QueryClientProvider client={queryClient}>
+      <SessionProvider cloud={demo.cloud} bridge={GALLERY_BRIDGE} engine={demo.engine}>
+        <GalleryEquipoPieces privacy={privacy} />
+      </SessionProvider>
+    </QueryClientProvider>
+  );
+}
+
+function GalleryEquipoPieces({ privacy }: { privacy: boolean }) {
+  const { activeTeam } = useSession();
+  if (!activeTeam) return <p role="status">{t('common.loading')}</p>;
+  if (privacy) return <MiPrivacidadSection bridge={GALLERY_BRIDGE} />;
+  return (
+    <div className="flex flex-col gap-4">
+      <TeamSettingsSection team={activeTeam} />
+      <AuditoriaTab team={activeTeam} />
+      <ReglasPorApp team={activeTeam} />
+    </div>
   );
 }
 
