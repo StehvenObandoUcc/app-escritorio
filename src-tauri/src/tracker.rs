@@ -12,6 +12,7 @@ use crate::views::{self, DayView, RangeView, TimeEntryView, iso};
 use chrono::{DateTime, Duration, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard};
 use uuid::Uuid;
 
@@ -408,6 +409,53 @@ impl Tracker {
         last_alert: None,
       }),
     })
+  }
+
+  /// CU-07 (ADR-0023): escribe `pulso-mis-datos-AAAA-MM-DD.json` (fecha local) en `dir` con todo lo local de la
+  /// cuenta activa y devuelve la ruta. Los títulos van descifrados: son de la propia persona y no salen del equipo.
+  pub fn export_my_data_to<Tz: TimeZone>(&self, now: DateTime<Utc>, dir: &Path, tz: &Tz) -> Result<PathBuf> {
+    let mut g = self.lock()?;
+    let Some(user) = g.store.user().map(String::from) else {
+      return Err("Inicia sesión para exportar tus datos.".into());
+    };
+    g.flush(now)?;
+    let rows = g.store.export_rows()?;
+    let blocks: Vec<serde_json::Value> = rows
+      .blocks
+      .iter()
+      .map(|(b, usage)| {
+        // Un título que no se puede descifrar (clave perdida) se exporta como null.
+        let title = b.title_enc.as_deref().and_then(|enc| g.cipher.decrypt(enc).ok());
+        serde_json::json!({
+          "id": b.id, "team_id": b.team_id, "started_at": iso(b.started_at), "ended_at": iso(b.ended_at),
+          "app_name": b.app_name, "title": title, "category": b.category.as_str(),
+          "ai_tool": b.ai_tool, "ai_usage_type": usage, "domain": b.domain,
+        })
+      })
+      .collect();
+    let time_entries: Vec<serde_json::Value> = rows
+      .entries
+      .iter()
+      .map(|(e, team_id)| {
+        serde_json::json!({
+          "id": e.id, "team_id": team_id, "started_at": iso(e.started_at), "ended_at": e.ended_at.map(iso),
+          "task_id": e.task_id, "source": e.source,
+        })
+      })
+      .collect();
+    let closures: Vec<serde_json::Value> = rows
+      .closures
+      .iter()
+      .map(|c| serde_json::json!({ "id": c.id, "team_id": c.team_id, "closed_at": iso(c.closed_at), "reopened_at": iso(c.reopened_at) }))
+      .collect();
+    let doc = serde_json::json!({
+      "exported_at": iso(now), "user_id": user, "blocks": blocks, "time_entries": time_entries, "closures": closures,
+    });
+    let text = serde_json::to_string_pretty(&doc).map_err(|e| format!("No se pudo preparar la exportación: {e}"))?;
+    std::fs::create_dir_all(dir).map_err(|e| format!("No se pudo crear la carpeta de destino: {e}"))?;
+    let path = dir.join(format!("pulso-mis-datos-{}.json", now.with_timezone(tz).date_naive().format("%Y-%m-%d")));
+    std::fs::write(&path, text).map_err(|e| format!("No se pudo guardar el archivo: {e}"))?;
+    Ok(path)
   }
 
   /// Al arrancar: si Pulso estuvo cerrado más de 2 minutos desde el último bloque, guarda el hueco
@@ -1497,5 +1545,70 @@ mod tests {
   fn no_closure_on_the_very_first_run() {
     let t = tracker();
     assert!(t.record_closure_since_last_run(at(12, 0, 0)).unwrap().is_none());
+  }
+
+  // ---- CU-07: exportar mis datos (AC-27) ----
+
+  fn temp_dir() -> PathBuf {
+    std::env::temp_dir().join(format!("pulso-export-test-{}", Uuid::new_v4()))
+  }
+
+  #[test]
+  fn export_writes_only_the_active_accounts_rows_with_decrypted_titles() {
+    let cipher = TitleCipher::new(&TitleCipher::generate_key());
+    let mut store = Store::open_in_memory().unwrap();
+    let block = |id: &str, title: &str| BlockRow {
+      id: id.into(),
+      started_at: at(12, 0, 0),
+      ended_at: at(12, 5, 0),
+      app_name: "code".into(),
+      title_enc: Some(cipher.encrypt(title).unwrap()),
+      category: Category::Productive,
+      ai_tool: None,
+      team_id: Some(TEAM.into()),
+      domain: None,
+    };
+    for (user, id, title) in [(ANA, "b-ana", "Informe de Ana"), (BETO, "b-beto", "Secreto de Beto")] {
+      store.set_user(Some(user.into()));
+      store.insert_block(&block(id, title)).unwrap();
+      store.time_entry_add(at(12, 0, 0), at(12, 30, 0), Some("task-1"), Some(TEAM), at(13, 0, 0)).unwrap();
+      store.insert_closure(&Closure { id: format!("c-{id}"), team_id: Some(TEAM.into()), closed_at: at(10, 0, 0), reopened_at: at(11, 0, 0) }).unwrap();
+    }
+    let t = Tracker::new(store, cipher).unwrap();
+    t.active_team_set(at(13, 0, 0), Some(TEAM), Some(ANA)).unwrap();
+    let dir = temp_dir();
+    let path = t.export_my_data_to(at(13, 0, 5), &dir, &Utc).unwrap();
+    assert!(path.exists());
+    assert_eq!(path, dir.join("pulso-mis-datos-2026-10-05.json"));
+    let v: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+    assert_eq!(v["user_id"], ANA);
+    assert_eq!(v["exported_at"], "2026-10-05T13:00:05Z");
+    let blocks = v["blocks"].as_array().unwrap();
+    assert_eq!(blocks.len(), 1);
+    assert_eq!(blocks[0]["id"], "b-ana");
+    assert_eq!(blocks[0]["title"], "Informe de Ana");
+    assert_eq!(blocks[0]["team_id"], TEAM);
+    assert_eq!(blocks[0]["category"], "productive");
+    assert!(blocks[0]["ai_usage_type"].is_null());
+    let entries = v["time_entries"].as_array().unwrap();
+    assert_eq!(entries.len(), 1);
+    assert_eq!(entries[0]["task_id"], "task-1");
+    assert_eq!(entries[0]["source"], "manual");
+    let closures = v["closures"].as_array().unwrap();
+    assert_eq!(closures.len(), 1);
+    assert_eq!(closures[0]["id"], "c-b-ana");
+    assert!(!std::fs::read_to_string(&path).unwrap().contains("Beto"));
+    // Un segundo export el mismo día sobrescribe el archivo.
+    assert_eq!(t.export_my_data_to(at(14, 0, 0), &dir, &Utc).unwrap(), path);
+    std::fs::remove_dir_all(&dir).unwrap();
+  }
+
+  #[test]
+  fn export_without_an_account_fails_and_writes_nothing() {
+    let t = tracker();
+    let dir = temp_dir();
+    let err = t.export_my_data_to(at(13, 0, 0), &dir, &Utc).unwrap_err();
+    assert_eq!(err, "Inicia sesión para exportar tus datos.");
+    assert!(!dir.exists());
   }
 }
