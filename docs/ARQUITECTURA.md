@@ -116,7 +116,7 @@ Comandos (nombres exactos; `src/bridge/contract.ts` es su espejo en TypeScript):
 | F4 | `ai_config_set(base_url, model, key)` · `ai_config_get()` · `ai_config_clear()` | `ai_config_get` devuelve `{base_url, model, has_key}`, **nunca la clave** |
 | F4 | `ai_chat(messages)` | texto de la respuesta |
 | F4 | `block_set_ai_usage(id, usage)` (ADR-0022) | — (etiqueta un bloque de IA: `code` · `writing` · `analysis` · `other` · `null`) |
-| F5 | `export_my_data(path)` | ruta del archivo |
+| F5 | `export_my_data()` (ADR-0023) | ruta del archivo en Descargas |
 
 Agregar un comando exige actualizar esta tabla, `contract.ts` y `mock.ts` en el mismo cambio.
 
