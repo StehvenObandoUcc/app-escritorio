@@ -109,7 +109,7 @@ Datos y permisos (PGlite; un equipo con owner, admin, lead, member y viewer, y a
 Interfaz (Vitest con la nube y el puente simulados):
 - AC-14 `/tablero` muestra a cada rol solo sus secciones (AC-1 a AC-3); sin datos, estado vacío; con error, mensaje traducido (UI-07). Con `totals: null`, el aviso de D-3.
 - AC-15 La presencia se pide cada 60 s (temporizadores falsos) y cada estado se ve con texto, no solo con color.
-- AC-16 Cada gráfica tiene su tabla equivalente con las mismas cifras del JSON.
+- AC-16 Cada gráfica tiene su tabla equivalente con las mismas cifras del JSON. (15 oct, decisión del responsable: en «Uso de IA» y «Apps más usadas» la lista de barras, que dice nombre y valor en texto, cuenta como equivalente; no llevan tabla aparte.)
 - AC-17 «Imprimir / PDF» llama a `window.print()` y la navegación y los controles tienen `print:hidden`.
 - AC-18 *Mi día* tiene Día · Semana · Mes; Semana pide `range_view` de lunes a domingo y Mes del día 1 al último; las flechas cambian el periodo; con `aiCountsAsProductive = true`, «Productivas» suma IA.
 - AC-19 Con conexión, *Mi semana/Mi mes* lista el tiempo por proyecto y tarea; sin conexión, «Sin conexión» y el resto sigue visible.
