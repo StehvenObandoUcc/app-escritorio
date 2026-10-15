@@ -21,7 +21,7 @@ Lo que las pruebas automáticas no pueden comprobar: Supabase real (`pulso-dev`)
 | # | Quién | Qué hacer | Resultado esperado | Resultado |
 |---|---|---|---|---|
 | 0.1 | Tú | `npm run db:push` y `npm run db:types` | Aplica `20261011000001_ia_y_reportes.sql`; `database.types.ts` trae `report_runs` y `save_report` | OK (8 oct) |
-| 0.2 | Tú | Clave **nueva** de DeepSeek, solo para Pulso y con poco saldo. `npx supabase@2.119.0 secrets set DEEPSEEK_API_KEY=… AI_TRIAL_ENABLED=true AI_TRIAL_MODEL=<modelo>` (la clave se escribe en la terminal, nunca en un archivo) | El comando termina sin error | Repetir: el 15 oct se puso sin la clave real |
+| 0.2 | Tú | Clave **nueva** de DeepSeek, solo para Pulso y con poco saldo. `npx supabase@2.119.0 secrets set DEEPSEEK_API_KEY=… AI_TRIAL_ENABLED=true AI_TRIAL_MODEL=<modelo>` (la clave se escribe en la terminal, nunca en un archivo) | El comando termina sin error | OK (15 oct) |
 | 0.3 | Tú | `npx supabase@2.119.0 functions deploy ai-trial --use-api` | `Deployed Function ai-trial` | OK (15 oct) |
 | 0.4 | Agente | `npm run verify` y `npm run verify:rust` en la rama `feat/f4-ia-y-reportes` | Todo en verde | OK (8 oct: 431 + 115 pruebas) |
 
@@ -74,12 +74,12 @@ node scripts/f4-validar-nube.mjs
 | # | Quién | Qué hacer | Resultado esperado | Resultado |
 |---|---|---|---|---|
 | 4.1 | Tú | *Mi día* → *Detalle*: etiqueta un bloque de IA como «Código»; espera a «Al día» | La etiqueta se queda al recargar | |
-| 4.2 | Tú | Con B: *Reportes* → Mi trabajo · Hoy · Gratis → Generar | Sale el reporte con cifras, «Datos hasta HH:MM», «Validado en el servidor» (en Supabase, `report_runs.validated_by = server`) y el texto marcado como redactado por IA. En las cifras aparece «Tiempo de IA por tipo de uso · Código» (AC-29) | |
-| 4.3 | Tú | Repite 4.2 sin cambiar nada | «Ya había un reporte con los mismos datos…» y el historial no crece | |
-| 4.4 | Tú | Con B: genera en Gratis otros reportes **distintos** (ayer, esta semana, la semana pasada; hoy en inglés) esperando 30 s entre uno y otro, hasta el sexto | El sexto muestra «Usaste tus 5 reportes gratis de hoy…» (AC-14) | |
-| 4.5 | Tú | Con B: mira la lista «Sobre» | No aparece «Todo el equipo» (un member no genera el reporte de equipo) | |
-| 4.6 | Tú | Con A (owner): genera «Todo el equipo» · Ayer | Sale con totales del grupo, sin nombres; en Supabase → `audit_log` hay una fila `report_generated` (AC-27) | |
-| 4.7 | Tú | Con C (viewer): abre *Reportes* | Ve el reporte de equipo de 4.6 en el historial; no ve el formulario ni reportes personales | |
+| 4.2 | Tú | Con B: *Reportes* → Mi trabajo · Hoy · Gratis → Generar | Sale el reporte con cifras, «Datos hasta HH:MM», «Validado en el servidor» (en Supabase, `report_runs.validated_by = server`) y el texto marcado como redactado por IA. En las cifras aparece «Tiempo de IA por tipo de uso · Código» (AC-29) || Servidor OK (15 oct, script); falta lo visual |
+| 4.3 | Tú | Repite 4.2 sin cambiar nada | «Ya había un reporte con los mismos datos…» y el historial no crece || Servidor OK (15 oct, script); falta lo visual |
+| 4.4 | Tú | Con B: genera en Gratis otros reportes **distintos** (ayer, esta semana, la semana pasada; hoy en inglés) esperando 30 s entre uno y otro, hasta el sexto | El sexto muestra «Usaste tus 5 reportes gratis de hoy…» (AC-14) || Servidor OK (15 oct, script: 429 user_limit); falta ver el texto del aviso |
+| 4.5 | Tú | Con B: mira la lista «Sobre» | No aparece «Todo el equipo» (un member no genera el reporte de equipo) || Servidor OK (15 oct, script); falta lo visual |
+| 4.6 | Tú | Con A (owner): genera «Todo el equipo» · Ayer | Sale con totales del grupo, sin nombres; en Supabase → `audit_log` hay una fila `report_generated` (AC-27) || Servidor OK (15 oct, script) |
+| 4.7 | Tú | Con C (viewer): abre *Reportes* | Ve el reporte de equipo de 4.6 en el historial; no ve el formulario ni reportes personales || Servidor OK (15 oct, script); falta lo visual |
 | 4.8 | Tú | `npx supabase@2.119.0 secrets set AI_TRIAL_ENABLED=false`; genera un reporte gratis nuevo; luego vuelve a `true` | «El modo Gratis está apagado en este momento…» | |
 | 4.9 | Tú | *Ajustes → IA*: proveedor, modelo y clave válidos → Guardar → Probar conexión | «Conexión correcta: el proveedor respondió.» | |
 | 4.10 | Tú | Cambia la clave por una inválida → Probar conexión. Luego un modelo inexistente. Luego sin red | Mensajes claros: clave no válida, modelo no encontrado, sin conexión (AC-18) | |
@@ -91,7 +91,7 @@ node scripts/f4-validar-nube.mjs
 | 4.16 | Tú | Cambia la app a inglés y genera un reporte nuevo | Pantalla y texto de la IA en inglés (AC-30) | |
 | 4.17 | Tú | Mañana: abre *Reportes* | Los reportes de hoy siguen en el historial y se abren igual (AC-25) | |
 | 4.18 | Tú | Con una cuenta de prueba que tenga un reporte personal: *Equipo* → Salir del equipo; vuelve a entrar con una invitación | Su reporte personal ya no está; el de equipo sigue (AC-28) | |
-| 4.19 | Tú | `node scripts/f4-cupos-simultaneos.mjs` (cuenta con cupo; gasta 1) | `ok: 1`, el resto `cooldown` y `CUMPLE` (AC-15) | |
+| 4.19 | Tú | `node scripts/f4-cupos-simultaneos.mjs` (cuenta con cupo; gasta 1) | `ok: 1`, el resto `cooldown` y `CUMPLE` (AC-15) || OK (15 oct, f4-validar-nube: ok 1, cooldown 9) |
 | 4.20 | Tú | Con `PULSO_AI_BASE_URL`, `PULSO_AI_MODEL` y `PULSO_AI_KEY`: `node scripts/f4-reportes-reales.mjs` | `Plantilla: N de 20 (meta: 3 o menos) → CUMPLE` (AC-13b) | |
 | 4.21 | Tú | Abre `/dev/galeria` (solo con `npm run dev`), sección «Reportes (F4)», en ventana estrecha, media y ancha, en tema claro y oscuro; recorre *Reportes* solo con el teclado | Se ve bien en los seis casos y todo se alcanza con flechas, Enter y Esc (AC-31) | |
 
