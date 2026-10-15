@@ -379,15 +379,16 @@ describe('capacidad (AC-7)', () => {
     expect(byName(week).Nico!.capacity_hours).toBe(10 * Math.min(today!.d, 5));
 
     // Con bloques de la semana en curso (lunes 00:00-00:30, en la zona del perfil): capacidad = 10 h × días laborables
-    // transcurridos de lunes a hoy, calculados aquí con la misma zona (America/Bogota); 0,5 h activas.
+    // transcurridos de lunes a hoy, calculados aquí con la misma zona (America/Bogota); 0,5 h activas más lo ya sembrado en la semana.
     const [elapsed] = await db.admin<{ n: number }>(
       `select count(*)::integer as n from generate_series((date_trunc('week', now() at time zone 'America/Bogota'))::date,
          (now() at time zone 'America/Bogota')::date, interval '1 day') d where extract(isodow from d) <= 5`);
+    const base = byName(week).Nico!.hours_active; // horas ya sembradas esta semana (ayer, salvo los lunes)
     const mondayBlock = await block(nico, teamA, thisMonday, `${thisMonday} + interval '30 minutes'`, 'Excel', 'productive');
     try {
       const w = byName(await dash(owen, teamA, [thisMonday, `${thisMonday} + interval '7 days'`]));
       const capacity = 10 * elapsed!.n;
-      expect(w.Nico).toMatchObject({ hours_active: 0.5, capacity_hours: capacity, capacity_share: Math.round((100 * 0.5) / capacity) });
+      expect(w.Nico).toMatchObject({ hours_active: base + 0.5, capacity_hours: capacity, capacity_share: Math.round((100 * (base + 0.5)) / capacity) });
     } finally {
       await db.admin('delete from activity_blocks where id = $1', [mondayBlock]);
     }
