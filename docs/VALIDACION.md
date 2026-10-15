@@ -21,8 +21,8 @@ Lo que las pruebas automáticas no pueden comprobar: Supabase real (`pulso-dev`)
 | # | Quién | Qué hacer | Resultado esperado | Resultado |
 |---|---|---|---|---|
 | 0.1 | Tú | `npm run db:push` y `npm run db:types` | Aplica `20261011000001_ia_y_reportes.sql`; `database.types.ts` trae `report_runs` y `save_report` | OK (8 oct) |
-| 0.2 | Tú | Clave **nueva** de DeepSeek, solo para Pulso y con poco saldo. `npx supabase@2.119.0 secrets set DEEPSEEK_API_KEY=… AI_TRIAL_ENABLED=true AI_TRIAL_MODEL=<modelo>` (la clave se escribe en la terminal, nunca en un archivo) | El comando termina sin error | |
-| 0.3 | Tú | `npx supabase@2.119.0 functions deploy ai-trial --use-api` | `Deployed Function ai-trial` | |
+| 0.2 | Tú | Clave **nueva** de DeepSeek, solo para Pulso y con poco saldo. `npx supabase@2.119.0 secrets set DEEPSEEK_API_KEY=… AI_TRIAL_ENABLED=true AI_TRIAL_MODEL=<modelo>` (la clave se escribe en la terminal, nunca en un archivo) | El comando termina sin error | Repetir: el 15 oct se puso sin la clave real |
+| 0.3 | Tú | `npx supabase@2.119.0 functions deploy ai-trial --use-api` | `Deployed Function ai-trial` | OK (15 oct) |
 | 0.4 | Agente | `npm run verify` y `npm run verify:rust` en la rama `feat/f4-ia-y-reportes` | Todo en verde | OK (8 oct: 431 + 115 pruebas) |
 
 ## F1 · Sensor y *Mi día* (regresión tras los cambios de F4 en Rust)
