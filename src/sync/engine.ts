@@ -10,8 +10,9 @@
  * horaria de la persona; los demás se marcan como atendidos y no salen del equipo.
  */
 import { errorMessage, t } from '@/i18n';
-import type { Bridge, SyncBatch, SyncKind } from '@/bridge/contract';
+import type { Bridge, SyncBatch, SyncBlock, SyncKind } from '@/bridge/contract';
 import { CloudError, type Cloud } from '@/cloud/contract';
+import { HIDDEN_APP } from '@/lib/apps';
 import { isWithinWorkday, type WorkdayWindow } from '@/lib/workday';
 
 export const BATCH_SIZE = 200;
@@ -26,7 +27,12 @@ export interface SyncContext {
   teamId: string;
   workday: WorkdayWindow;
   timezone: string;
+  /** Si la persona comparte los nombres de sus apps con el equipo (F5 D-8). Solo `true` los deja salir. */
+  shareAppNames: boolean;
 }
+
+/** El contexto cambió a mitad de un ciclo: se aborta antes de enviar nada más (PS-05). */
+class StaleContext extends Error {}
 
 export type SyncPhase = 'off' | 'syncing' | 'pending' | 'synced' | 'error';
 
@@ -86,6 +92,15 @@ export class SyncEngine {
     if (!context) this.set({ phase: 'off', message: null });
   }
 
+  /**
+   * Fija ya mismo si se comparten los nombres de apps en el contexto actual (PS-05, D-8). Un ciclo en curso
+   * lo nota antes de su próxima subida y se reinicia, así que nada sale con el nombre una vez apagado.
+   */
+  setShareAppNames(share: boolean): void {
+    if (!this.context || this.context.shareAppNames === share) return;
+    this.context = { ...this.context, shareAppNames: share };
+  }
+
   /** Espera de reintento tras `failures` fallos seguidos: 5 s, 10 s, 20 s… hasta 5 min. */
   static retryDelay(failures: number): number {
     return Math.min(RETRY_MAX_MS, RETRY_MIN_MS * 2 ** Math.max(0, failures - 1));
@@ -101,6 +116,20 @@ export class SyncEngine {
   }
 
   private async run(): Promise<void> {
+    try {
+      await this.cycle();
+    } catch (cause) {
+      if (!(cause instanceof StaleContext)) throw cause;
+      // Cambió el contexto: si sigue habiendo uno, se empieza de nuevo con el vigente.
+      if (this.context) return this.run();
+    }
+  }
+
+  private assertCurrent(ctx: SyncContext): void {
+    if (this.context !== ctx) throw new StaleContext();
+  }
+
+  private async cycle(): Promise<void> {
     const ctx = this.context;
     if (!ctx) {
       this.set({ phase: 'off', message: null });
@@ -115,14 +144,15 @@ export class SyncEngine {
     try {
       for (let round = 0; round < MAX_ROUNDS; round++) {
         const batch = await this.deps.bridge.syncPending(BATCH_SIZE);
-        if (this.context !== ctx) return; // cambió de equipo o de sesión a mitad de camino
+        this.assertCurrent(ctx); // cambió de equipo, de sesión o de permiso a mitad de camino
         await this.uploadBatch(ctx, batch);
-        const full = [batch.blocks, batch.entries, batch.closures].some((list) => list.length >= BATCH_SIZE);
+        const full = [batch.blocks, batch.entries, batch.closures, batch.aiUsages].some((list) => list.length >= BATCH_SIZE);
         if (!full) break;
       }
       this.failures = 0;
       this.set({ phase: 'synced', message: null, lastSyncedAt: this.now().toISOString() });
     } catch (cause) {
+      if (cause instanceof StaleContext) throw cause;
       this.fail(cause);
     }
   }
@@ -133,18 +163,26 @@ export class SyncEngine {
     const outside = batch.closures.filter((c) => !inside.includes(c));
     if (outside.length) await bridge.syncMarkSynced('closures', outside.map((c) => c.id));
 
-    await this.upload('blocks', batch.blocks, (rows) => cloud.upsertBlocks(ctx.userId, rows));
-    await this.upload('entries', batch.entries, (rows) => cloud.upsertEntries(ctx.userId, rows));
-    await this.upload('closures', inside, (rows) => cloud.upsertClosures(ctx.userId, rows));
+    // PS-05 (D-8 capa 1): el nombre y el sitio salen solo si hay permiso y el bloque es del equipo del contexto.
+    // Se decide fila a fila en el momento de enviar, con el contexto vigente (`upload` lo comprueba antes de cada envío).
+    const mask = (b: SyncBlock): SyncBlock => (ctx.shareAppNames !== true || b.teamId !== ctx.teamId ? { ...b, appName: HIDDEN_APP, domain: null } : b);
+    await this.upload(ctx, 'blocks', batch.blocks, (rows) => cloud.upsertBlocks(ctx.userId, rows.map(mask)));
+    await this.upload(ctx, 'entries', batch.entries, (rows) => cloud.upsertEntries(ctx.userId, rows));
+    await this.upload(ctx, 'closures', inside, (rows) => cloud.upsertClosures(ctx.userId, rows));
+    // Etiquetas de IA de bloques ya subidos (F4 D-13): una llamada por bloque, sin volver a subirlo.
+    await this.upload(ctx, 'aiUsages', batch.aiUsages, async (rows) => {
+      for (const r of rows) await cloud.setBlockAiUsage(r.id, r.aiUsageType);
+    });
   }
 
   /**
    * Sube un grupo. Si el servidor rechaza el lote por un dato inválido, prueba fila por fila:
    * las válidas se suben y las inválidas se descartan (no tiene sentido reintentarlas siempre).
    */
-  private async upload<T extends { id: string }>(kind: SyncKind, rows: T[], send: (rows: T[]) => Promise<void>) {
+  private async upload<T extends { id: string }>(ctx: SyncContext, kind: SyncKind, rows: T[], send: (rows: T[]) => Promise<void>) {
     if (!rows.length) return;
     try {
+      this.assertCurrent(ctx);
       await send(rows);
       await this.deps.bridge.syncMarkSynced(kind, rows.map((r) => r.id));
       return;
@@ -153,6 +191,7 @@ export class SyncEngine {
     }
     for (const row of rows) {
       try {
+        this.assertCurrent(ctx);
         await send([row]);
       } catch (cause) {
         if (!(cause instanceof CloudError) || cause.kind !== 'invalid') throw cause;

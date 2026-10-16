@@ -27,8 +27,8 @@ obliga a cambiar la migración y su prueba en el mismo cambio.
 | 10 | Registrar y editar tiempo propio | S | S | S | S | — | F2 |
 | 11 | Editar el tiempo de otra persona | — | — | — | — | — | F2 |
 | 12 | Ver la propia actividad con títulos (solo local) | S | S | S | S | — | F1 |
-| 13 | Ver actividad agregada por miembro (categorías, apps, sitios por dominio, horas) | ✔ | ✔ | P (solo tiempo de sus proyectos) | — | — | F2 · «P» en F3 (`project_time_summary`) |
-| 14 | Ver uso de IA por miembro | ✔ | ✔ | P | — | — | F2 · «P» en F5 (los bloques no llevan proyecto; spec F3, D-13) |
+| 13 | Ver actividad agregada por miembro (categorías, apps, sitios por dominio, horas) | ✔ | ✔ | P (solo horas de temporizador en sus proyectos; sin apps, sitios ni categorías; spec F5, D-5) | — | — | F2 · «P» en F3 (`project_time_summary`) |
+| 14 | Ver uso de IA por miembro | ✔ | ✔ | P | — | — | F2 · «P» en F5: horas de IA solapadas con sus temporizadores en tareas de sus proyectos (los bloques no llevan proyecto; spec F3, D-13; spec F5, D-5) |
 | 15 | Ver totales del equipo sin nombres | ✔ | ✔ | ✔ | ✔ | ✔ | F5 |
 | 16 | Crear o archivar proyectos | ✔ | ✔ | — | — | — | F3 ✔ |
 | 17 | Gestionar miembros de un proyecto | ✔ | ✔ | P | — | — | F3 ✔ |
@@ -36,9 +36,9 @@ obliga a cambiar la migración y su prueba en el mismo cambio.
 | 19 | Crear tareas y cambiar el estado de las propias | ✔ | ✔ | ✔ | ✔ (en sus proyectos) | — | F3 ✔ |
 | 20 | Generar un reporte personal | S | S | S | S | — | F4 |
 | 21 | Generar un reporte de proyecto | ✔ | ✔ | P | — | — | F4 |
-| 22 | Generar un reporte de equipo | ✔ | ✔ | — | — | ver los ya generados | F4 |
+| 22 | Generar un reporte de equipo | ✔ | ✔ | — | — | — | F4 |
 | 23 | Editar reglas de clasificación y políticas de privacidad | ✔ | ✔ | — | — | — | F2 (sitios, avisos y apps ocultas, ADR-0009/0010) / F5 (resto) |
-| 24 | Ver quién está activo ahora | ✔ | ✔ | P | si el equipo lo permite | — | F5 |
+| 24 | Ver quién está activo ahora | ✔ | ✔ | P | si el equipo lo permite | — | F5 (permitido = `teams.settings.policies.presence_visible_to_members`) |
 | 25 | Exportar los datos propios | S | S | S | S | S | F5 |
 | 26 | Ver los cierres de Pulso dentro de la jornada (A-1) | ✔ | ✔ | S | S | — | F2 |
 | 27 | Enviar una tarea a revisión (responsable o apoyo) | S | S | S | S | — | F3 |
@@ -49,15 +49,22 @@ obliga a cambiar la migración y su prueba en el mismo cambio.
 | 32 | Completar una tarea directamente, con el formulario de entrega | ✔ | ✔ | P | — | — | F3 |
 | 33 | Borrar un proyecto (escribiendo su nombre) | ✔ | ✔ | — | — | — | F3 |
 | 34 | Borrar una tarea | ✔ | ✔ | P | — | — | F3 |
+| 35 | Ver un reporte de equipo ya generado | ✔ | ✔ | ✔ | ✔ | ✔ | F4 |
+| 36 | Ver un reporte de proyecto ya generado | ✔ | ✔ | ✔ (en sus proyectos) | ✔ (en sus proyectos) | — | F4 |
+| 37 | Ver un reporte personal | S | S | S | S | — | F4 |
+| 38 | Cambiar los ajustes del equipo (umbral, jornada, regla de IA, presencia visible, tope de pausa) | ✔ | ✔ | — | — | — | F5 |
+| 39 | No compartir los nombres de las propias apps | S | S | S | S | — | F5 |
+| 40 | Ver la comparativa y la capacidad por persona (DR-07; el lead solo ve `lead_members`, filas 13 y 14) | ✔ | ✔ | — | — | — | F5 |
 
 ## Reglas de integridad
 
 - El equipo siempre conserva al menos un `owner`: el último no puede salir ni degradarse. (F0 ✔)
 - Un `admin` no puede modificar ni expulsar a un `owner` ni a otro `admin`. (F0 ✔)
-- Nadie escribe la tabla `team_members` directamente: solo mediante `create_team`, `set_member_role`, `remove_member`, `leave_team` y, desde F2, `accept_invitation`. (F0 ✔, F2 ✔)
+- Nadie escribe la tabla `team_members` directamente: solo mediante `create_team`, `set_member_role`, `remove_member`, `leave_team`, `set_share_app_names` (solo la columna `share_app_names`, de la propia fila, F5) y, desde F2, `accept_invitation`. (F0 ✔, F2 ✔)
 - Las invitaciones vencen a los 7 días y solo las puede aceptar quien inició sesión con ese correo **y** escribe el código de la invitación; tras 5 códigos incorrectos se anula (ADR-0008). (F2 ✔)
-- Cambios de rol, expulsiones, configuración de IA y reportes sobre otras personas quedan en `audit_log`. (F2 ✔ roles, expulsiones, salidas, invitaciones y consentimiento; IA y reportes en F4)
-- Salida de un equipo (la persona se va o es expulsada: misma regla): se borran sus `activity_blocks` de ese equipo; sus `time_entries` se conservan y se muestran como «Exmiembro»; el hecho queda en `audit_log`. También se borran sus cierres de Pulso (`app_closures`). (F2 ✔)
+- Cambios de rol, expulsiones y reportes de proyecto o de equipo quedan en `audit_log`. (F2 ✔ roles, expulsiones, salidas, invitaciones y consentimiento; reportes en F4. La configuración de IA es local en v1: no hay nada que auditar en el servidor.)
+- Reportes (filas 20 a 22 y 35 a 37, F4): los de proyecto y de equipo solo llevan totales del grupo, sin cifras de ninguna persona, y exigen al menos 2 miembros; un reporte personal solo lo ve quien lo generó. La comparación entre miembros es de F5 (DR-07).
+- Salida de un equipo (la persona se va o es expulsada: misma regla): se borran sus `activity_blocks` de ese equipo; sus `time_entries` se conservan y se muestran como «Exmiembro»; el hecho queda en `audit_log`. También se borran sus cierres de Pulso (`app_closures`). (F2 ✔) Desde F4 se borran también sus reportes personales de ese equipo; los de proyecto y equipo que generó se conservan.
 
 - Sin consentimiento (`team_members.consent_at`) no se sube actividad, tiempo ni cierres. (F2 ✔)
 - Proyectos y tareas se escriben solo con `create_project`, `set_project_archived`, `set_project_member`, `remove_project_member`, `create_task`, `update_task` y `set_task_status`. Un `member` solo ve los proyectos de los que es miembro; el `viewer`, ninguno. Solo un miembro del proyecto puede ser responsable de una tarea; un proyecto archivado no admite cambios. (F3 ✔)

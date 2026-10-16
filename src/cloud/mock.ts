@@ -4,14 +4,31 @@
  * la base de datos, probada en supabase/tests.
  * El código de verificación y de recuperación siempre es MOCK_CODE.
  */
-import type { SyncBlock, SyncClosure, SyncEntry, TeamRule } from '@/bridge/contract';
+import type { AiUsage, SyncBlock, SyncClosure, SyncEntry, TeamRule } from '@/bridge/contract';
+import { localDate } from '@/lib/time';
+import { fallbackNarrative } from '../../supabase/functions/_shared/report-validator.ts';
 import { CONSENT_VERSION } from '@/lib/consent';
 import { deliveryFields } from '@/lib/evidence';
 import {
+  AUDIT_PAGE_SIZE,
   CloudError,
   DEFAULT_WORKDAY,
+  PAUSE_CAP_MINUTES,
+  TeamDashboardSchema,
+  TrialError,
+  normalizeProcessPattern,
   wrongInvitationCode,
+  type AuditEntry,
   type Cloud,
+  type HoursByCategory,
+  type Presence,
+  type PresenceState,
+  type TeamSettingsInput,
+  type TimeByTask,
+  type Fact,
+  type ReportFacts,
+  type ReportRequest,
+  type ReportRun,
   type CloudUser,
   type Member,
   type MyTeam,
@@ -78,12 +95,49 @@ export interface MockCloud extends Cloud {
     /** Hace fallar las siguientes subidas como si no hubiera red. */
     setOffline(offline: boolean): void;
     rules: Map<string, TeamRule[]>;
+    /** Etiquetas de IA subidas aparte (F4 D-13), por id de bloque. */
+    aiUsages: Map<string, AiUsage | null>;
+    reports: ReportRun[];
+    /** Auditoría simulada (F5 D-12): las pruebas pueden añadir filas con su `id`; `setTeamSettings` y `setShareAppNames` también escriben. */
+    audit: (AuditEntry & { teamId: string })[];
   };
 }
 
 const fail = (message: string, kind: CloudError['kind'] = 'forbidden') => {
   throw new CloudError(message, kind);
 };
+
+const assertPeriod = (fromMs: number, toMs: number) => {
+  if (!(toMs > fromMs) || toMs - fromMs > 92 * 86_400_000) {
+    fail('Rango inválido: el fin debe ser posterior al inicio y no superar 92 días', 'invalid');
+  }
+};
+/** Segundos que el intervalo [aStart, aEnd) tiene dentro de [from, to). */
+const overlapSec = (aStart: number, aEnd: number, from: number, to: number) => Math.max(0, Math.min(aEnd, to) - Math.max(aStart, from)) / 1000;
+/** Segundos a horas con 1 decimal. */
+const hrs = (seconds: number) => Math.round(seconds / 360) / 10;
+/** Días calendario (hora local) que toca [from, to), con su inicio, fin y día ISO (1 = lunes). */
+const localDays = (fromMs: number, toMs: number) => {
+  const out: { date: string; s: number; e: number; iso: number }[] = [];
+  let d = new Date(new Date(fromMs).getFullYear(), new Date(fromMs).getMonth(), new Date(fromMs).getDate());
+  while (d.getTime() < toMs) {
+    const next = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+    out.push({ date: localDate(d), s: d.getTime(), e: next.getTime(), iso: d.getDay() || 7 });
+    d = next;
+  }
+  return out;
+};
+interface DashBlock {
+  user: string;
+  category: keyof HoursByCategory;
+  appName: string;
+  aiTool: string | null;
+  usage: AiUsage | null;
+  start: number;
+  end: number;
+  /** Segundos dentro del periodo. */
+  sec: number;
+}
 
 /**
  * `confirmEmail`: imita un proyecto que aún exige confirmar el correo al registrarse (antes de ADR-0008).
@@ -100,6 +154,14 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
   const policies = new Map<string, boolean>();
   const alerts = new Map<string, { enabled: boolean; repeat: number }>();
   const domainRules: { id: string; teamId: string; domain: string; notAllowed: boolean }[] = [];
+  // ---- F5: ajustes del equipo, privacidad, reglas por app y auditoría ----
+  const teamSettings = new Map<string, TeamSettingsInput>();
+  const settingsOf = (teamId: string): TeamSettingsInput =>
+    teamSettings.get(teamId) ?? { idleMinutes: null, workday: DEFAULT_WORKDAY, aiCountsAsProductive: false, presenceVisibleToMembers: false, pauseCapMinutes: 0 };
+  const shareNames = new Map<string, boolean>();
+  const sharesNames = (teamId: string, userId: string) => shareNames.get(`${teamId}|${userId}`) ?? true;
+  const processList: { id: string; teamId: string; pattern: string; category: 'productive' | 'neutral' | 'distraction' | 'ai' }[] = [];
+  const audit: (AuditEntry & { teamId: string })[] = [];
   const canManage = (teamId: string, userId: string) => ['owner', 'admin'].includes(roleIn(teamId, userId) ?? '');
   let offline = false;
   const blockOwner = new Map<string, string>();
@@ -117,6 +179,29 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
     return a;
   };
   const roleIn = (teamId: string, userId: string) => members.find((m) => m.teamId === teamId && m.userId === userId)?.role;
+  const nameOf = (id: string) => profiles.get(id)?.displayName ?? byId(id)?.displayName ?? null;
+  const writeAudit = (teamId: string, action: string, targetUserId: string | null, details: Record<string, unknown>) => {
+    audit.push({
+      teamId,
+      id: audit.reduce((max, a) => Math.max(max, a.id), 0) + 1,
+      action,
+      actorId: current,
+      targetUserId,
+      details,
+      createdAt: now().toISOString(),
+    });
+  };
+  /** Bloques activos de miembros (sin viewer) que tocan el periodo, con los segundos recortados a él (como `b` en team_dashboard). */
+  const dashboardBlocks = (teamId: string, people: Set<string>, fromMs: number, toMs: number): DashBlock[] =>
+    uploaded.blocks.flatMap((b): DashBlock[] => {
+      const user = blockOwner.get(b.id);
+      const start = Date.parse(b.startedAt);
+      const end = Date.parse(b.endedAt);
+      const sec = overlapSec(start, end, fromMs, toMs);
+      if (b.teamId !== teamId || !user || !people.has(user) || sec <= 0) return [];
+      if (b.category !== 'productive' && b.category !== 'neutral' && b.category !== 'distraction' && b.category !== 'ai') return [];
+      return [{ user, category: b.category, appName: b.appName, aiTool: b.aiTool, usage: b.aiUsageType, start, end, sec }];
+    });
   const owners = (teamId: string) => members.filter((m) => m.teamId === teamId && m.role === 'owner').length;
   const addAccount = (email: string, password: string, displayName: string, verified = true) => {
     const id = crypto.randomUUID();
@@ -255,6 +340,70 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
     for (const r of reviews) if (r.status === 'pending' && r.reviewerId === userId) r.reviewerId = null;
   };
 
+  // ---- Reportes (F4): mismas reglas que get_report_facts y save_report, con hechos de tareas simulados ----
+  const reports: ReportRun[] = [];
+  const aiUsages = new Map<string, AiUsage | null>();
+  const trialUse = new Map<string, number>();
+  const TRIAL_PER_USER = 5;
+  const dropPersonalReports = (teamId: string, userId: string) => {
+    for (let i = reports.length - 1; i >= 0; i--) {
+      if (reports[i]!.teamId === teamId && reports[i]!.scope === 'personal' && reports[i]!.subjectId === userId) reports.splice(i, 1);
+    }
+  };
+  const groupMembers = (req: ReportRequest) =>
+    req.scope === 'team'
+      ? members.filter((m) => m.teamId === req.teamId && m.role !== 'viewer').length
+      : projectMembers.filter((pm) => pm.projectId === req.subjectId && ['owner', 'admin', 'member'].includes(roleIn(req.teamId, pm.userId) ?? '')).length;
+  const assertCanGenerate = (req: ReportRequest, userId: string) => {
+    const role = roleIn(req.teamId, userId);
+    if (!role || role === 'viewer') fail('No permitido');
+    if (req.scope === 'personal' && req.subjectId !== userId) fail('No permitido: el reporte personal es solo sobre ti');
+    if (req.scope === 'project' && !canManageProject(req.subjectId, userId)) fail('No permitido: el reporte de proyecto lo generan owner, admin o el lead del proyecto');
+    if (req.scope === 'team' && (req.subjectId !== req.teamId || !['owner', 'admin'].includes(role!))) fail('No permitido: el reporte de equipo lo generan owner o admin');
+    if (req.scope !== 'personal' && groupMembers(req) < 2) fail('Hacen falta al menos 2 miembros para un reporte de grupo', 'invalid');
+  };
+  const periodOf = (period: ReportRequest['period']) => {
+    const today = new Date(`${localDate(now())}T12:00:00`);
+    const shift = (d: Date, days: number) => localDate(new Date(d.getTime() + days * 86_400_000));
+    const monday = -((today.getDay() + 6) % 7);
+    if (period === 'today') return { from: localDate(today), to: localDate(today) };
+    if (period === 'yesterday') return { from: shift(today, -1), to: shift(today, -1) };
+    if (period === 'this_week') return { from: shift(today, monday), to: shift(today, monday + 6) };
+    return { from: shift(today, monday - 7), to: shift(today, monday - 1) };
+  };
+  const factsOf = (req: ReportRequest): ReportFacts => {
+    const { from, to } = periodOf(req.period);
+    const ids = new Set(projects.filter((p) => p.teamId === req.teamId && (req.scope !== 'project' || p.id === req.subjectId)).map((p) => p.id));
+    const scoped = tasks.filter((t) => ids.has(t.projectId) && (req.scope !== 'personal' || t.assigneeId === req.subjectId));
+    const day = (iso: string | null) => (iso ? localDate(new Date(iso)) : null);
+    const rows: Omit<Fact, 'id'>[] = [
+      { metric: 'tasks_done', dimension: null, value: scoped.filter((t) => t.status === 'done' && (day(t.completedAt) ?? '') >= from && (day(t.completedAt) ?? '') <= to).length, unit: 'n' },
+      { metric: 'tasks_in_review', dimension: null, value: scoped.filter((t) => t.status === 'review').length, unit: 'n' },
+      { metric: 'tasks_overdue', dimension: null, value: scoped.filter((t) => t.status !== 'done' && t.dueDate !== null && t.dueDate < localDate(now()) && t.dueDate <= to).length, unit: 'n' },
+      ...(req.scope === 'personal' ? [] : [{ metric: 'members', dimension: null, value: groupMembers(req), unit: 'n' as const }]),
+    ];
+    const facts = rows.map((r, i) => ({ ...r, id: `F${i + 1}` }));
+    return { facts, factsHash: JSON.stringify(facts), periodFrom: from, periodTo: to };
+  };
+  const findCached = (req: ReportRequest, f: ReportFacts, language: string) =>
+    reports.find(
+      (r) => r.teamId === req.teamId && r.scope === req.scope && r.subjectId === req.subjectId && r.periodFrom === f.periodFrom && r.periodTo === f.periodTo
+        && JSON.stringify(r.facts) === f.factsHash && r.language === language,
+    ) ?? null;
+  const canSee = (r: ReportRun, userId: string) =>
+    r.scope === 'team' ? Boolean(roleIn(r.teamId, userId)) : r.scope === 'project' ? projectRole(r.subjectId, userId) !== null : r.createdBy === userId;
+  const store = (req: ReportRequest, f: ReportFacts, narrative: ReportRun['narrative'], mode: ReportRun['mode'], validation: ReportRun['validation'], language: ReportRun['language'], userId: string) => {
+    const cached = findCached(req, f, language);
+    if (cached) return cached;
+    const report: ReportRun = {
+      id: crypto.randomUUID(), teamId: req.teamId, scope: req.scope, subjectId: req.subjectId, period: req.period,
+      periodFrom: f.periodFrom, periodTo: f.periodTo, facts: f.facts, narrative, mode, validation,
+      validatedBy: mode === 'free' ? 'server' : 'client', language, dataUntil: now().toISOString(), createdBy: userId, createdAt: now().toISOString(),
+    };
+    reports.unshift(report);
+    return report;
+  };
+
   const pendingFor = (email: string) =>
     invitations.filter((i) => i.email === email && i.status === 'pending' && Date.parse(i.expiresAt) > now().getTime());
 
@@ -274,6 +423,9 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
         offline = value;
       },
       rules,
+      aiUsages,
+      reports,
+      audit,
     },
 
     currentUser: async () => userOf(current ? byId(current) : undefined),
@@ -347,10 +499,15 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
             role: m.role,
             consentAt: m.consentAt,
             consentVersion: m.consentVersion,
-            workday: DEFAULT_WORKDAY,
+            workday: settingsOf(m.teamId).workday,
             allowHiddenApps: policies.get(m.teamId) ?? true,
             alertNotAllowed: alerts.get(m.teamId)?.enabled ?? true,
             alertRepeatMinutes: alerts.get(m.teamId)?.repeat ?? 10,
+            idleMinutes: settingsOf(m.teamId).idleMinutes,
+            aiCountsAsProductive: settingsOf(m.teamId).aiCountsAsProductive,
+            presenceVisibleToMembers: settingsOf(m.teamId).presenceVisibleToMembers,
+            pauseCapMinutes: settingsOf(m.teamId).pauseCapMinutes,
+            shareAppNames: sharesNames(m.teamId, m.userId),
           }),
         )
         .sort((x, y) => x.name.localeCompare(y.name, 'es'));
@@ -403,6 +560,7 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
       if (target === 'owner' && owners(teamId) === 1) fail('El equipo debe conservar al menos un owner', 'invalid');
       members = members.filter((m) => !(m.teamId === teamId && m.userId === userId));
       leaveWork(teamId, userId);
+      dropPersonalReports(teamId, userId);
     },
     leaveTeam: async (teamId) => {
       const a = me();
@@ -411,6 +569,7 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
       if (mine === 'owner' && owners(teamId) === 1) fail('El equipo debe conservar al menos un owner', 'invalid');
       members = members.filter((m) => !(m.teamId === teamId && m.userId === a.id));
       leaveWork(teamId, a.id);
+      dropPersonalReports(teamId, a.id);
     },
 
     teamInvitations: async (teamId) => {
@@ -486,6 +645,9 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
       ...domainRules
         .filter((r) => r.teamId === teamId)
         .map((r): TeamRule => ({ match: 'domain', pattern: r.domain, category: 'distraction', ai_tool: null, not_allowed: r.notAllowed })),
+      ...processList
+        .filter((r) => r.teamId === teamId)
+        .map((r): TeamRule => ({ match: 'process', pattern: r.pattern, category: r.category, ai_tool: null, not_allowed: false })),
       ...(rules.get(teamId) ?? []),
     ],
     setTeamPolicy: async (teamId, allowHiddenApps) => {
@@ -506,10 +668,27 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
       if (!/^[a-z0-9.-]{1,253}$/.test(domain)) fail('Escribe solo el dominio, por ejemplo youtube.com.', 'invalid');
       domainRules.push({ id: crypto.randomUUID(), teamId, domain, notAllowed: true });
     },
+    // Como en la nube real, borra cualquier regla por id (de sitio o de app).
     removeDomainRule: async (ruleId) => {
       const i = domainRules.findIndex((r) => r.id === ruleId);
-      if (i < 0 || !canManage(domainRules[i]!.teamId, me().id)) fail('No tienes permiso para esta acción.');
-      domainRules.splice(i, 1);
+      if (i >= 0) {
+        if (!canManage(domainRules[i]!.teamId, me().id)) fail('No tienes permiso para esta acción.');
+        domainRules.splice(i, 1);
+        return;
+      }
+      const j = processList.findIndex((r) => r.id === ruleId);
+      if (j < 0 || !canManage(processList[j]!.teamId, me().id)) fail('No tienes permiso para esta acción.');
+      processList.splice(j, 1);
+    },
+    processRules: async (teamId) =>
+      roleIn(teamId, me().id)
+        ? processList.filter((r) => r.teamId === teamId).map(({ id, pattern, category }) => ({ id, pattern, category })).sort((a, b) => a.pattern.localeCompare(b.pattern))
+        : [],
+    addProcessRule: async (teamId, pattern, category) => {
+      if (!canManage(teamId, me().id)) fail('No tienes permiso para esta acción.');
+      const clean = normalizeProcessPattern(pattern);
+      if (clean.length < 1 || clean.length > 120) fail('Cada regla necesita un patrón en minúsculas de 1 a 120 caracteres.', 'invalid');
+      processList.push({ id: crypto.randomUUID(), teamId, pattern: clean, category });
     },
     teamDomainSummary: async (teamId, from, to) => {
       if (!canManage(teamId, me().id)) fail('No permitido');
@@ -822,7 +1001,12 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
     },
     upsertBlocks: async (userId, rows) => {
       checkConsent(userId, rows.map((r) => r.teamId));
-      upload(uploaded.blocks, rows, (r) => r.id);
+      // Respaldo del servidor de PS-05 (D-8): sin compartir nombres, el bloque se guarda sin app ni dominio.
+      upload(
+        uploaded.blocks,
+        rows.map((r) => (sharesNames(r.teamId, userId) ? r : { ...r, appName: 'App oculta', domain: null })),
+        (r) => r.id,
+      );
       for (const r of rows) blockOwner.set(r.id, userId);
     },
     upsertEntries: async (userId, rows) => {
@@ -839,6 +1023,277 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
     upsertClosures: async (userId, rows) => {
       checkConsent(userId, rows.map((r) => r.teamId));
       upload(uploaded.closures, rows, (r) => r.id);
+    },
+    setBlockAiUsage: async (blockId, usage) => {
+      if (offline) fail('Sin conexión', 'network');
+      // Como set_block_ai_usage: solo bloques ya subidos (en la nube real, además, propios y de IA).
+      if (!blockOwner.has(blockId)) fail('No permitido: solo puedes etiquetar tus propios bloques de IA');
+      aiUsages.set(blockId, usage);
+    },
+
+    // ---- Tableros, presencia y ajustes (F5): imitan las funciones de 20261013000001 ----
+    teamDashboard: async (teamId, from, to) => {
+      const a = me();
+      const role = roleIn(teamId, a.id);
+      if (!role) fail('No permitido');
+      const fromMs = Date.parse(from);
+      const toMs = Date.parse(to);
+      assertPeriod(fromMs, toMs);
+      const cfg = settingsOf(teamId);
+      const people = members.filter((m) => m.teamId === teamId && m.role !== 'viewer').map((m) => m.userId);
+      const show = role === 'owner' || role === 'admin' || people.length >= 2;
+      const blocks = dashboardBlocks(teamId, new Set(people), fromMs, toMs);
+      const sum = (list: DashBlock[]): Record<keyof HoursByCategory, number> => {
+        const out = { productive: 0, neutral: 0, distraction: 0, ai: 0 };
+        for (const b of list) out[b.category] += b.sec;
+        return out;
+      };
+      const active = (c: Record<keyof HoursByCategory, number>) => c.productive + c.neutral + c.distraction + c.ai;
+      const prod = (c: Record<keyof HoursByCategory, number>) => c.productive + (cfg.aiCountsAsProductive ? c.ai : 0);
+      const hours = (c: Record<keyof HoursByCategory, number>): HoursByCategory => ({
+        productive: hrs(c.productive), neutral: hrs(c.neutral), distraction: hrs(c.distraction), ai: hrs(c.ai),
+      });
+      const teamProjects = new Set(projects.filter((p) => p.teamId === teamId).map((p) => p.id));
+      const teamTasks = tasks.filter((t) => teamProjects.has(t.projectId));
+      const projectName = (id: string) => projects.find((p) => p.id === id)?.name ?? '';
+      const doing = (userId: string, only?: Set<string>) =>
+        teamTasks
+          .filter((t) => t.assigneeId === userId && t.status === 'doing' && (!only || only.has(t.projectId)))
+          .map((t) => ({ id: t.id, title: t.title, projectId: t.projectId, projectName: projectName(t.projectId) }))
+          .sort((x, y) => x.projectName.localeCompare(y.projectName) || x.title.localeCompare(y.title));
+
+      const all = sum(blocks);
+      const aiBlocks = blocks.filter((b) => b.category === 'ai');
+      const aiTool: Record<string, number> = {};
+      const aiUsage = { code: 0, writing: 0, analysis: 0, other: 0, untagged: 0 };
+      for (const b of aiBlocks) {
+        const tool = (b.aiTool ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const key = ['chatgpt', 'claude', 'gemini', 'deepseek', 'copilot', 'ollama', 'lmstudio'].includes(tool) ? tool : 'other';
+        aiTool[key] = (aiTool[key] ?? 0) + b.sec;
+        aiUsage[b.usage ?? 'untagged'] += b.sec;
+      }
+
+      // D-6: capacidad = horas de la jornada × días laborales del periodo hasta hoy incluido.
+      const [sh, sm] = cfg.workday.start.split(':').map(Number) as [number, number];
+      const [eh, em] = cfg.workday.end.split(':').map(Number) as [number, number];
+      const today = localDate(now());
+      const days = localDays(fromMs, toMs);
+      const capSec = Math.max(0, (eh * 60 + em - (sh * 60 + sm)) * 60) * days.filter((d) => d.date <= today && cfg.workday.days.includes(d.iso)).length;
+
+      const manager = role === 'owner' || role === 'admin';
+      const leadProjects = new Set(
+        role === 'member' ? projects.filter((p) => p.teamId === teamId && projectMembers.some((m) => m.projectId === p.id && m.userId === a.id && m.role === 'lead')).map((p) => p.id) : [],
+      );
+      const isLead = leadProjects.size > 0;
+      let leadMembers: unknown[] = [];
+      if (isLead) {
+        const leadPeople = [...new Set(projectMembers.filter((m) => leadProjects.has(m.projectId) && people.includes(m.userId)).map((m) => m.userId))];
+        const leadTasks = new Set(tasks.filter((t) => leadProjects.has(t.projectId)).map((t) => t.id));
+        leadMembers = leadPeople
+          .map((userId) => {
+            // Temporizadores propios en tareas de sus proyectos; los que se solapan se unen para no contar la IA dos veces.
+            const spans = uploaded.entries
+              .filter((e) => e.teamId === teamId && !e.deletedAt && e.taskId && leadTasks.has(e.taskId) && entryOwner.get(e.id) === userId)
+              .map((e): [number, number] => [Math.max(Date.parse(e.startedAt), fromMs), Math.min(e.endedAt ? Date.parse(e.endedAt) : now().getTime(), toMs)])
+              .filter(([s0, e0]) => e0 > s0)
+              .sort((x, y) => x[0] - y[0]);
+            const merged: [number, number][] = [];
+            for (const [s0, e0] of spans) {
+              const last = merged[merged.length - 1];
+              if (last && s0 <= last[1]) last[1] = Math.max(last[1], e0);
+              else merged.push([s0, e0]);
+            }
+            const aiSec = aiBlocks.filter((b) => b.user === userId).reduce((t0, b) => t0 + merged.reduce((t1, [s0, e0]) => t1 + overlapSec(b.start, b.end, s0, e0), 0), 0);
+            return {
+              userId,
+              name: nameOf(userId),
+              projectHours: hrs(spans.reduce((t0, [s0, e0]) => t0 + (e0 - s0) / 1000, 0)),
+              aiHoursInProjects: hrs(aiSec),
+              tasksDoing: doing(userId, leadProjects),
+            };
+          })
+          .sort((x, y) => (x.name ?? '').localeCompare(y.name ?? ''));
+      }
+
+      const apps = new Map<string, number>();
+      for (const b of blocks) if (b.appName !== 'App oculta') apps.set(b.appName, (apps.get(b.appName) ?? 0) + b.sec);
+
+      return TeamDashboardSchema.parse({
+        role,
+        isLead,
+        totals: show
+          ? {
+              members: people.length,
+              hoursActive: hrs(active(all)),
+              hoursProductive: hrs(prod(all)),
+              hoursCategory: hours(all),
+              aiHours: hrs(all.ai),
+              aiSessions: aiBlocks.filter((b) => b.start >= fromMs).length,
+              aiTool: Object.fromEntries(Object.entries(aiTool).map(([k, v]) => [k, hrs(v)])),
+              aiUsage: Object.fromEntries(Object.entries(aiUsage).map(([k, v]) => [k, hrs(v)])),
+              tasksDoing: teamTasks.filter((t) => t.status === 'doing').length,
+              tasksDone: teamTasks.filter((t) => t.status === 'done' && t.completedAt && Date.parse(t.completedAt) >= fromMs && Date.parse(t.completedAt) < toMs).length,
+            }
+          : null,
+        perDay: show
+          ? days.map((d) => ({
+              day: d.date,
+              hoursCategory: hours(sum(blocks.map((b) => ({ ...b, sec: overlapSec(b.start, b.end, Math.max(d.s, fromMs), Math.min(d.e, toMs)) })))),
+            }))
+          : [],
+        members: manager
+          ? people
+              .map((userId) => {
+                const mine = blocks.filter((b) => b.user === userId);
+                const c = sum(mine);
+                return {
+                  userId,
+                  name: nameOf(userId),
+                  shareAppNames: sharesNames(teamId, userId),
+                  hoursActive: hrs(active(c)),
+                  hoursProductive: hrs(prod(c)),
+                  hoursCategory: hours(c),
+                  aiHours: hrs(c.ai),
+                  aiSessions: mine.filter((b) => b.category === 'ai' && b.start >= fromMs).length,
+                  capacityHours: hrs(capSec),
+                  capacityShare: capSec > 0 ? Math.round((100 * active(c)) / capSec) : null,
+                  tasksDoing: doing(userId),
+                };
+              })
+              .sort((x, y) => (x.name ?? '').localeCompare(y.name ?? ''))
+          : [],
+        leadMembers,
+        topApps: manager
+          ? [...apps].sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0])).slice(0, 10).map(([appName, sec]) => ({ appName, hours: hrs(sec) }))
+          : [],
+      });
+    },
+    teamPresence: async (teamId) => {
+      const a = me();
+      const role = roleIn(teamId, a.id);
+      if (!role || role === 'viewer') fail('No permitido');
+      const leadProjects = new Set(
+        role === 'member' ? projects.filter((p) => p.teamId === teamId && projectMembers.some((m) => m.projectId === p.id && m.userId === a.id && m.role === 'lead')).map((p) => p.id) : [],
+      );
+      const seeAll = role === 'owner' || role === 'admin' || (role === 'member' && settingsOf(teamId).presenceVisibleToMembers);
+      if (!seeAll && leadProjects.size === 0) fail('No permitido');
+      const visible = new Set(projectMembers.filter((m) => leadProjects.has(m.projectId)).map((m) => m.userId));
+      const recent = now().getTime() - 3 * 60_000;
+      return members
+        .filter((m) => m.teamId === teamId && m.role !== 'viewer' && (seeAll || visible.has(m.userId)))
+        .map((m): Presence => {
+          const last = uploaded.blocks
+            .filter((b) => b.teamId === teamId && blockOwner.get(b.id) === m.userId)
+            .sort((x, y) => Date.parse(y.endedAt) - Date.parse(x.endedAt))[0];
+          if (!last || Date.parse(last.endedAt) < recent) return { userId: m.userId, name: nameOf(m.userId), state: 'offline', since: null };
+          const state: PresenceState = last.category === 'idle' ? 'idle' : last.category === 'paused' ? 'paused' : last.category === 'break' ? 'break' : 'active';
+          return { userId: m.userId, name: nameOf(m.userId), state, since: last.startedAt };
+        })
+        .sort((x, y) => (x.name ?? '').localeCompare(y.name ?? ''));
+    },
+    setTeamSettings: async (teamId, input) => {
+      if (!canManage(teamId, me().id)) fail('No permitido');
+      if (input.idleMinutes !== null && (input.idleMinutes < 3 || input.idleMinutes > 15)) fail('El umbral de inactividad debe estar entre 3 y 15 minutos', 'invalid');
+      if (!(PAUSE_CAP_MINUTES as readonly number[]).includes(input.pauseCapMinutes)) {
+        fail('El tope de pausa debe ser 0 (sin tope), 15, 30, 60, 120 o 240 minutos', 'invalid');
+      }
+      const { days, start, end } = input.workday;
+      if (days.length === 0) fail('La jornada necesita al menos un día', 'invalid');
+      if (days.some((d) => !Number.isInteger(d) || d < 1 || d > 7)) fail('Los días de la jornada van de 1 (lunes) a 7 (domingo)', 'invalid');
+      if (new Set(days).size !== days.length) fail('Los días de la jornada no pueden repetirse', 'invalid');
+      const hhmm = /^([01]\d|2[0-3]):[0-5]\d$/;
+      if (!hhmm.test(start) || !hhmm.test(end)) fail('El inicio y el fin de la jornada van en formato HH:MM', 'invalid');
+      if (start >= end) fail('El inicio de la jornada debe ser anterior al fin', 'invalid');
+      const workday = { days: [...days].sort((x, y) => x - y), start, end };
+      teamSettings.set(teamId, { ...input, workday });
+      writeAudit(teamId, 'settings_changed', null, {
+        idle_minutes: input.idleMinutes,
+        workday,
+        ai_counts_as_productive: input.aiCountsAsProductive,
+        presence_visible_to_members: input.presenceVisibleToMembers,
+        pause_cap_minutes: input.pauseCapMinutes,
+      });
+    },
+    setShareAppNames: async (teamId, share) => {
+      const a = me();
+      const role = roleIn(teamId, a.id);
+      if (!role || role === 'viewer') fail('No permitido');
+      shareNames.set(`${teamId}|${a.id}`, share);
+      if (!share) {
+        // Capa 3 de D-8: también se ocultan los bloques ya subidos en este equipo.
+        uploaded.blocks.forEach((b, i) => {
+          if (b.teamId === teamId && blockOwner.get(b.id) === a.id) uploaded.blocks[i] = { ...b, appName: 'App oculta', domain: null };
+        });
+      }
+      writeAudit(teamId, 'share_apps_changed', a.id, { share });
+    },
+    myTimeByTask: async (teamId, from, to) => {
+      const a = me();
+      const role = roleIn(teamId, a.id);
+      if (!role || role === 'viewer') fail('No permitido');
+      const fromMs = Date.parse(from);
+      const toMs = Date.parse(to);
+      assertPeriod(fromMs, toMs);
+      const totals = new Map<string, TimeByTask>();
+      for (const e of uploaded.entries) {
+        if (e.teamId !== teamId || e.deletedAt || entryOwner.get(e.id) !== a.id) continue;
+        const sec = overlapSec(Date.parse(e.startedAt), e.endedAt ? Date.parse(e.endedAt) : now().getTime(), fromMs, toMs);
+        if (sec <= 0) continue;
+        const task = e.taskId ? tasks.find((t) => t.id === e.taskId) : undefined;
+        const project = task ? projects.find((p) => p.id === task.projectId) : undefined;
+        const key = task?.id ?? 'none';
+        const row = totals.get(key) ?? { projectId: project?.id ?? null, projectName: project?.name ?? null, taskId: task?.id ?? null, taskTitle: task?.title ?? null, seconds: 0 };
+        row.seconds += sec;
+        totals.set(key, row);
+      }
+      return [...totals.values()]
+        .map((r) => ({ ...r, seconds: Math.round(r.seconds) }))
+        .sort((x, y) => (x.projectName ?? '\uffff').localeCompare(y.projectName ?? '\uffff') || (x.taskTitle ?? '\uffff').localeCompare(y.taskTitle ?? '\uffff'));
+    },
+    auditLog: async (teamId, options = {}) => {
+      if (!canManage(teamId, me().id)) return [];
+      return audit
+        .filter((r) => r.teamId === teamId && (options.action === undefined || r.action === options.action) && (options.beforeId === undefined || r.id < options.beforeId))
+        .sort((x, y) => y.id - x.id)
+        .slice(0, AUDIT_PAGE_SIZE)
+        .map((r): AuditEntry => ({ id: r.id, action: r.action, actorId: r.actorId, targetUserId: r.targetUserId, details: r.details, createdAt: r.createdAt }));
+    },
+
+    reportFacts: async (req) => {
+      assertCanGenerate(req, me().id);
+      return factsOf(req);
+    },
+    saveReport: async (req, factsHash, narrative, mode, validation, language) => {
+      const a = me();
+      assertCanGenerate(req, a.id);
+      const f = factsOf(req);
+      if (f.factsHash !== factsHash) fail('Los datos cambiaron mientras se generaba el reporte: vuelve a generarlo', 'invalid');
+      const ids = new Set(f.facts.map((x) => x.id));
+      const items = [...narrative.insights, ...narrative.recommendations];
+      if (!narrative.summary || narrative.insights.length > 4 || narrative.recommendations.length > 3 || items.some((i) => !i.fact_ids.length || i.fact_ids.some((id) => !ids.has(id)))) {
+        fail('La narrativa no tiene el formato del reporte', 'invalid');
+      }
+      return store(req, f, narrative, mode, validation, language, a.id).id;
+    },
+    findReport: async (req, facts, language) => findCached(req, facts, language),
+    report: async (id) => reports.find((r) => r.id === id && canSee(r, me().id)) ?? null,
+    reports: async (teamId) => reports.filter((r) => r.teamId === teamId && canSee(r, me().id)),
+    generateFreeReport: async (req, language) => {
+      const a = me();
+      assertCanGenerate(req, a.id);
+      const f = factsOf(req);
+      const cached = findCached(req, f, language);
+      if (cached) return { report: cached, cached: true };
+      const used = trialUse.get(a.id) ?? 0;
+      if (used >= TRIAL_PER_USER) throw new TrialError('user_limit');
+      trialUse.set(a.id, used + 1);
+      return { report: store(req, f, fallbackNarrative(f.facts, language), 'free', 'ok', language, a.id), cached: false };
+    },
+    memberNames: async () => {
+      const a = me();
+      const teamsOfMe = members.filter((m) => m.userId === a.id).map((m) => m.teamId);
+      const ids = new Set(members.filter((m) => teamsOfMe.includes(m.teamId)).map((m) => m.userId));
+      return [...ids].map((id) => profiles.get(id)?.displayName ?? byId(id)?.displayName ?? '').filter(Boolean);
     },
   };
 }

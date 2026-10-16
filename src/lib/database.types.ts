@@ -89,6 +89,38 @@ export type Database = {
           },
         ]
       }
+      ai_usage: {
+        Row: {
+          count: number
+          day: string
+          last_at: string | null
+          team_id: string
+          user_id: string
+        }
+        Insert: {
+          count?: number
+          day: string
+          last_at?: string | null
+          team_id: string
+          user_id: string
+        }
+        Update: {
+          count?: number
+          day?: string
+          last_at?: string | null
+          team_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_closures: {
         Row: {
           closed_at: string
@@ -340,6 +372,77 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "projects_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_runs: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data_until: string | null
+          facts: Json
+          facts_hash: string
+          id: string
+          language: string
+          mode: string
+          narrative: Json
+          period: string
+          period_from: string
+          period_to: string
+          prompt_version: string
+          scope: string
+          subject_id: string
+          team_id: string
+          validated_by: string
+          validation: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data_until?: string | null
+          facts: Json
+          facts_hash: string
+          id?: string
+          language: string
+          mode: string
+          narrative: Json
+          period: string
+          period_from: string
+          period_to: string
+          prompt_version: string
+          scope: string
+          subject_id: string
+          team_id: string
+          validated_by?: string
+          validation: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data_until?: string | null
+          facts?: Json
+          facts_hash?: string
+          id?: string
+          language?: string
+          mode?: string
+          narrative?: Json
+          period?: string
+          period_from?: string
+          period_to?: string
+          prompt_version?: string
+          scope?: string
+          subject_id?: string
+          team_id?: string
+          validated_by?: string
+          validation?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_runs_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"
@@ -645,6 +748,7 @@ export type Database = {
           consent_version: string | null
           joined_at: string
           role: string
+          share_app_names: boolean
           team_id: string
           user_id: string
         }
@@ -653,6 +757,7 @@ export type Database = {
           consent_version?: string | null
           joined_at?: string
           role: string
+          share_app_names?: boolean
           team_id: string
           user_id: string
         }
@@ -661,6 +766,7 @@ export type Database = {
           consent_version?: string | null
           joined_at?: string
           role?: string
+          share_app_names?: boolean
           team_id?: string
           user_id?: string
         }
@@ -770,8 +876,14 @@ export type Database = {
         }
         Returns: string
       }
+      ai_trial_day: { Args: never; Returns: string }
+      ai_trial_limits: { Args: never; Returns: Json }
       assert_assignee: {
         Args: { p_assignee: string; p_project: string }
+        Returns: undefined
+      }
+      assert_dashboard_period: {
+        Args: { p_from: string; p_to: string }
         Returns: undefined
       }
       assert_delivery: {
@@ -800,6 +912,7 @@ export type Database = {
         }
         Returns: string
       }
+      consume_ai_trial: { Args: { p_team: string }; Returns: Json }
       create_project: {
         Args: { p_name: string; p_team: string }
         Returns: string
@@ -823,6 +936,16 @@ export type Database = {
         Returns: string
       }
       create_team: { Args: { p_name: string }; Returns: string }
+      dashboard_cats: {
+        Args: {
+          p_ai: number
+          p_distraction: number
+          p_neutral: number
+          p_productive: number
+        }
+        Returns: Json
+      }
+      dashboard_hours: { Args: { p_seconds: number }; Returns: number }
       decline_invitation: { Args: { p_id: string }; Returns: undefined }
       delete_project: {
         Args: { p_confirm_name: string; p_project: string }
@@ -839,6 +962,15 @@ export type Database = {
       }
       evidence_catalog: { Args: never; Returns: Json }
       evidence_task: { Args: { p_path: string }; Returns: string }
+      get_report_facts: {
+        Args: {
+          p_period: string
+          p_scope: string
+          p_subject: string
+          p_team: string
+        }
+        Returns: Json
+      }
       give_consent: {
         Args: { p_team: string; p_version: string }
         Returns: undefined
@@ -856,6 +988,12 @@ export type Database = {
         }[]
       }
       is_task_worker: { Args: { p_task: string }; Returns: boolean }
+      lead_projects: {
+        Args: { p_team: string }
+        Returns: {
+          project_id: string
+        }[]
+      }
       leave_team: { Args: { p_team: string }; Returns: undefined }
       link_delivery_attachments: {
         Args: { p_answers: Json; p_review: string; p_task: string }
@@ -865,6 +1003,7 @@ export type Database = {
         Args: { p_details: Json; p_kind: string; p_task: string }
         Returns: undefined
       }
+      mark_trial_report: { Args: { p_id: string }; Returns: boolean }
       my_invitations: {
         Args: never
         Returns: {
@@ -876,6 +1015,16 @@ export type Database = {
           team_name: string
         }[]
       }
+      my_time_by_task: {
+        Args: { p_from: string; p_team: string; p_to: string }
+        Returns: {
+          project_id: string
+          project_name: string
+          seconds: number
+          task_id: string
+          task_title: string
+        }[]
+      }
       new_invitation_code: { Args: never; Returns: string }
       project_role: { Args: { p_project: string }; Returns: string }
       project_time_summary: {
@@ -885,6 +1034,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      refund_ai_trial: {
+        Args: { p_team: string; p_user: string }
+        Returns: undefined
+      }
       remove_member: {
         Args: { p_team: string; p_user: string }
         Returns: undefined
@@ -893,14 +1046,61 @@ export type Database = {
         Args: { p_project: string; p_user: string }
         Returns: undefined
       }
+      report_ai_tool: { Args: { p_tool: string }; Returns: string }
+      report_assert_can_generate: {
+        Args: { p_scope: string; p_subject: string; p_team: string }
+        Returns: string
+      }
+      report_facts: {
+        Args: {
+          p_from: string
+          p_scope: string
+          p_subject: string
+          p_team: string
+          p_to: string
+          p_tz: string
+        }
+        Returns: Json
+      }
+      report_items_valid: {
+        Args: { p_ids: string[]; p_items: Json; p_max: number }
+        Returns: boolean
+      }
+      report_members: {
+        Args: { p_scope: string; p_subject: string; p_team: string }
+        Returns: number
+      }
+      report_period: {
+        Args: { p_period: string; p_tz: string }
+        Returns: Record<string, unknown>
+      }
       review_task: {
         Args: { p_approve: boolean; p_comment?: string; p_review: string }
         Returns: undefined
       }
       review_template: { Args: { p_project: string }; Returns: Json }
       revoke_invitation: { Args: { p_id: string }; Returns: undefined }
+      save_report: {
+        Args: {
+          p_facts_hash: string
+          p_language: string
+          p_mode: string
+          p_narrative: Json
+          p_period: string
+          p_prompt_version: string
+          p_scope: string
+          p_subject: string
+          p_team: string
+          p_validation: string
+        }
+        Returns: string
+      }
       set_alert_policy: {
         Args: { p_enabled: boolean; p_repeat_minutes: number; p_team: string }
+        Returns: undefined
+      }
+      set_block_ai_usage: {
+        Args: { p_id: string; p_usage: string }
         Returns: undefined
       }
       set_member_role: {
@@ -917,6 +1117,10 @@ export type Database = {
       }
       set_review_template: {
         Args: { p_project: string; p_template: Json }
+        Returns: undefined
+      }
+      set_share_app_names: {
+        Args: { p_share: boolean; p_team: string }
         Returns: undefined
       }
       set_task_collaborators: {
@@ -937,6 +1141,17 @@ export type Database = {
       }
       set_team_policy: {
         Args: { p_allow_hidden_apps: boolean; p_team: string }
+        Returns: undefined
+      }
+      set_team_settings: {
+        Args: {
+          p_ai_counts_as_productive: boolean
+          p_idle_minutes: number
+          p_pause_cap_minutes: number
+          p_presence_visible_to_members: boolean
+          p_team: string
+          p_workday: Json
+        }
         Returns: undefined
       }
       shares_team_with: { Args: { p_user: string }; Returns: boolean }
@@ -967,12 +1182,25 @@ export type Database = {
           user_id: string
         }[]
       }
+      team_dashboard: {
+        Args: { p_from: string; p_team: string; p_to: string }
+        Returns: Json
+      }
       team_domain_summary: {
         Args: { p_from: string; p_team: string; p_to: string }
         Returns: {
           category: string
           domain: string
           seconds: number
+          user_id: string
+        }[]
+      }
+      team_presence: {
+        Args: { p_team: string }
+        Returns: {
+          name: string
+          since: string
+          state: string
           user_id: string
         }[]
       }

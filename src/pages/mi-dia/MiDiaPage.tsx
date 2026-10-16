@@ -1,4 +1,4 @@
-import { t } from '@/i18n';
+import { errorMessage, t } from '@/i18n';
 import { useEffect, useMemo, useState } from 'react';
 import type { Bridge, Category } from '@/bridge/contract';
 import { useOptionalSession } from '@/app/session';
@@ -11,11 +11,39 @@ import { Badge, Heading, Surface } from '@/ui/atoms';
 import { CategoryBreakdown, EmptyState, SegmentedControl, TimeEntryForm, TimerControl } from '@/ui/molecules';
 import { ActivityList, ActivityTimeline, AppSummary, PulseStrip, TimeEntryList } from '@/ui/organisms';
 import { PageLayout } from '@/ui/templates';
+import { MyRangeView, rangeTitle } from './MyRangeView';
+import { rangeOf, shiftRange, type RangeKind } from './range';
 import { useDay } from './useDay';
 import { useElapsed } from './useElapsed';
 
 const BREAKDOWN: Category[] = ['productive', 'ai', 'neutral', 'distraction', 'break'];
 const PAUSE_MINUTES = 15;
+
+/** Segundos en pausa de privacidad de hoy: del día mostrado si es hoy; si no, se lee el de hoy. */
+function usePausedToday(bridge: Bridge, date: string, shownPaused: number | null, needed: boolean): number | null {
+  const today = localDate();
+  const [other, setOther] = useState<number | null>(null);
+  useEffect(() => {
+    if (!needed || date === today) return;
+    let alive = true;
+    bridge
+      .dayView(today)
+      .then((d) => alive && setOther(d.totals.paused ?? 0))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [bridge, date, today, needed]);
+  // `null` = todavía no se sabe cuánto se pausó hoy.
+  return date === today ? shownPaused : other;
+}
+
+type Period = 'day' | RangeKind;
+const periods = (): { value: Period; label: string }[] => [
+  { value: 'day', label: t('myRange.views.day') },
+  { value: 'week', label: t('myRange.views.week') },
+  { value: 'month', label: t('myRange.views.month') },
+];
 
 type ActivityView = 'resumen' | 'sitios' | 'linea' | 'detalle';
 const views = (): { value: ActivityView; label: string }[] => [
@@ -51,7 +79,11 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
   const elapsed = useElapsed(status?.timer.startedAt ?? null);
   const taskTitle = useTaskTitle(bridge, status?.timer.taskId ?? null);
   const [view, setView] = useState<ActivityView>('resumen');
+  // Día · Semana · Mes (D-14): solo en estado de React, no se guarda.
+  const [period, setPeriod] = useState<Period>('day');
+  const [anchor, setAnchor] = useState(date);
   const [showHidden, setShowHidden] = useState(true);
+  const [tagError, setTagError] = useState<string | null>(null);
   const allBlocks = state.phase === 'ready' ? state.day.blocks : null;
   const hasHidden = useMemo(() => Boolean(allBlocks?.some((b) => b.appName === HIDDEN_APP)), [allBlocks]);
   // Solo cambia lo que se ve: los totales del día (franja y reparto) siguen incluyendo las apps ocultas.
@@ -64,12 +96,39 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
   const aiTools = useMemo(() => (allBlocks ? aiToolTotals(allBlocks) : []), [allBlocks]);
   const totalsBySite = useMemo(() => (blocks ? domainTotals(blocks) : []), [blocks]);
   const session = useOptionalSession();
+  // Tope diario de pausa del equipo (F5 D-11); 0 = sin tope. Se aplica aquí, no en Rust.
+  const pauseCap = session?.activeTeam?.pauseCapMinutes ?? 0;
+  const pausedToday = usePausedToday(bridge, date, state.phase === 'ready' ? (state.day.totals.paused ?? 0) : null, pauseCap > 0);
+  const pauseUnknown = pauseCap > 0 && pausedToday === null;
+  const pauseLeft = pauseCap > 0 && pausedToday !== null ? Math.max(0, pauseCap - Math.ceil(pausedToday / 60)) : null;
+  const pauseMinutes = pauseLeft === null ? PAUSE_MINUTES : Math.min(PAUSE_MINUTES, pauseLeft);
   const notAllowed = useMemo(() => new Set(session?.notAllowedDomains ?? []), [session?.notAllowedDomains]);
   const sampleTag = bridge.source === 'mock' && <Badge tone="accent">{t('common.sample')}</Badge>;
+  const selector = <SegmentedControl label={t('myRange.viewsLabel')} options={periods()} value={period} onChange={setPeriod} />;
+
+  if (period !== 'day') {
+    const range = rangeOf(period, anchor);
+    // Sin pasar del periodo actual hacia el futuro.
+    const today = localDate();
+    const limit = today > date ? today : date;
+    return (
+      <PageLayout title={t('nav.myDay')} subtitle={rangeTitle(period, range)} actions={sampleTag}>
+        {selector}
+        <MyRangeView
+          bridge={bridge}
+          kind={period}
+          range={range}
+          canGoNext={shiftRange(period, range, 1).from <= limit}
+          onShift={(direction) => setAnchor(shiftRange(period, range, direction).from)}
+        />
+      </PageLayout>
+    );
+  }
 
   if (state.phase === 'loading') {
     return (
       <PageLayout title={t('nav.myDay')} subtitle={formatLongDate(date)} actions={sampleTag}>
+        {selector}
         <p className="text-fg-muted" role="status">
           {t('myDay.loading')}
         </p>
@@ -80,6 +139,7 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
   if (state.phase === 'error') {
     return (
       <PageLayout title={t('nav.myDay')} subtitle={formatLongDate(date)} actions={sampleTag}>
+        {selector}
         <EmptyState
           title={t('myDay.readError')}
           description={t('myDay.readErrorHint', { error: state.message })}
@@ -97,6 +157,7 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
 
   return (
     <PageLayout title={t('nav.myDay')} subtitle={formatLongDate(date)} actions={sampleTag}>
+      {selector}
       <Surface as="section" aria-label={t('myDay.rhythm')}>
         <p className="mb-4 text-fg">{summary}</p>
         <PulseStrip blocks={day.blocks} summary={summary} />
@@ -118,9 +179,12 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
               run(() =>
                 state.status.state === 'paused'
                   ? bridge.privacyResume()
-                  : bridge.privacyPause(PAUSE_MINUTES),
+                  : bridge.privacyPause(pauseMinutes),
               )
             }
+            pauseMinutes={pauseLeft === null ? undefined : pauseMinutes}
+            pauseDisabled={pauseUnknown}
+            pauseDisabledReason={pauseLeft === 0 ? t('pause.capReached', { min: pauseCap }) : null}
           />
         </Surface>
         <Surface as="section" aria-label={t('myDay.breakdown')} className="lg:flex-1">
@@ -207,7 +271,22 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
                 </p>
               ))}
             {view === 'linea' && <ActivityTimeline rows={timeline} />}
-            {view === 'detalle' && <ActivityList blocks={blocks ?? []} />}
+            {view === 'detalle' && (
+              <>
+                {tagError && (
+                  <p role="alert" className="px-4 pt-3 text-sm text-danger md:px-5">
+                    {tagError}
+                  </p>
+                )}
+                <ActivityList
+                  blocks={blocks ?? []}
+                  onAiUsage={(id, usage) => {
+                    setTagError(null);
+                    bridge.blockSetAiUsage(id, usage).then(reload, (cause: unknown) => setTagError(errorMessage(cause)));
+                  }}
+                />
+              </>
+            )}
           </Surface>
         )}
       </section>

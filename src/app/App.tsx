@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ChartColumn, FolderKanban, ListChecks, Settings, Sun, Users } from 'lucide-react';
+import { ChartColumn, FolderKanban, LayoutDashboard, ListChecks, Settings, Sun, Users } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router';
 import { bridge } from '@/bridge';
@@ -12,7 +12,8 @@ import { AjustesPage } from '@/pages/ajustes/AjustesPage';
 import { EquipoPage } from '@/pages/equipo/EquipoPage';
 import { PrivacidadPage } from '@/pages/equipo/PrivacidadPage';
 import { MiDiaPage } from '@/pages/mi-dia/MiDiaPage';
-import { PendingPage } from '@/pages/PendingPage';
+import { ReportesPage } from '@/pages/reportes/ReportesPage';
+import { TableroPage } from '@/pages/tablero/TableroPage';
 import { ProyectoPage } from '@/pages/proyectos/ProyectoPage';
 import { TareaPage } from '@/pages/proyectos/TareaPage';
 import { ProyectosPage } from '@/pages/proyectos/ProyectosPage';
@@ -26,18 +27,20 @@ import { useAppKeyboard } from './keyboard';
 import { LocaleProvider } from './locale';
 import { SessionProvider, useSession } from './session';
 
-const nav = (): NavItem[] => [
+export const nav = (): NavItem[] => [
   { to: '/mi-dia', label: t('nav.myDay'), icon: Sun },
   { to: '/tareas', label: t('nav.myTasks'), icon: ListChecks },
   { to: '/proyectos', label: t('nav.projects'), icon: FolderKanban },
   { to: '/equipo', label: t('nav.team'), icon: Users },
+  { to: '/tablero', label: t('nav.dashboard'), icon: LayoutDashboard },
   { to: '/reportes', label: t('nav.reports'), icon: ChartColumn },
   { to: '/ajustes', label: t('nav.settings'), icon: Settings },
 ];
 
 const cloud = createCloud(bridge);
 
-const ROUTES = ['/mi-dia', '/tareas', '/proyectos', '/equipo', '/reportes', '/ajustes'];
+/** Rutas de la navegación en el mismo orden: Alt+1 … Alt+n abre la n-ésima (`nav()` y esta lista deben coincidir). */
+export const ROUTES = ['/mi-dia', '/tareas', '/proyectos', '/equipo', '/tablero', '/reportes', '/ajustes'];
 
 /** Pie de la navegación: equipo activo (D1), sincronización y tema. */
 function NavFooter() {
@@ -86,7 +89,7 @@ function Gate() {
   return (
     <AppShell nav={<AppNav items={nav()} footer={<NavFooter />} />}>
       <AlertBanner alerts={alerts} onDismiss={dismiss} />
-      <KeyboardHelp open={help} onClose={() => setHelp(false)} />
+      <KeyboardHelp open={help} onClose={() => setHelp(false)} sectionCount={ROUTES.length} />
       <Routes>
         <Route path="/" element={<Navigate to="/mi-dia" replace />} />
         <Route path="/mi-dia" element={<MiDiaPage bridge={bridge} />} />
@@ -96,7 +99,8 @@ function Gate() {
         <Route path="/proyectos/:id/tareas/:tarea" element={<TareaPage />} />
         <Route path="/equipo" element={<EquipoPage />} />
         <Route path="/equipo/privacidad" element={<PrivacidadPage />} />
-        <Route path="/reportes" element={<PendingPage title={t('nav.reports')} phase="F4" what={t('app.reportsPending')} />} />
+        <Route path="/tablero" element={<TableroPage />} />
+        <Route path="/reportes" element={<ReportesPage />} />
         <Route path="/ajustes" element={<AjustesPage bridge={bridge} />} />
         {import.meta.env.DEV && <Route path="/dev/galeria" element={<GaleriaPage />} />}
         <Route path="*" element={<Navigate to="/mi-dia" replace />} />

@@ -16,3 +16,6 @@ export * from './ConfirmDialog';
 export * from './Toast';
 export * from './ProjectCard';
 export * from './KeyboardHelp';
+export * from './StackedBarChart';
+export * from './HorizontalBarList';
+export * from './ResponsiveTable';

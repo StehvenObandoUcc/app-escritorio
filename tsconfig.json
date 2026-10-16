@@ -12,10 +12,11 @@
     "noUncheckedIndexedAccess": true,
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
+    "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "noEmit": true,
     "types": ["vite/client", "node"],
     "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["src", "supabase/tests", "vite.config.ts"]
+  "include": ["src", "supabase/tests", "supabase/functions/_shared", "supabase/functions/ai-trial/handler.ts", "vite.config.ts"]
 }

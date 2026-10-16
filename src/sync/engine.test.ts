@@ -15,14 +15,14 @@ function setup() {
   const userId = cloud.debug.addAccount('caro@pulso.test', 'secreto-123', 'Caro');
   const teamId = cloud.debug.addTeam('Equipo A', cloud.debug.addAccount('ana@pulso.test', 'secreto-123', 'Ana'));
   cloud.debug.addMember(teamId, userId, 'member', true);
-  const ctx: SyncContext = { userId, teamId, workday: WEEK, timezone: 'America/Bogota' };
+  const ctx: SyncContext = { userId, teamId, workday: WEEK, timezone: 'America/Bogota', shareAppNames: true };
   return { cloud, ctx };
 }
 
 /** Puente falso que entrega un lote fijo y anota lo que se marca como subido. */
 function fakeBridge(batch: Partial<SyncBatch>) {
-  const marked: Record<SyncKind, string[]> = { blocks: [], entries: [], closures: [] };
-  const full = SyncBatchSchema.parse({ blocks: [], entries: [], closures: [], ...batch });
+  const marked: Record<SyncKind, string[]> = { blocks: [], entries: [], closures: [], aiUsages: [] };
+  const full = SyncBatchSchema.parse({ blocks: [], entries: [], closures: [], aiUsages: [], ...batch });
   const bridge = {
     ...createMockBridge(),
     syncPending: async () => {
@@ -30,6 +30,7 @@ function fakeBridge(batch: Partial<SyncBatch>) {
         blocks: full.blocks.filter((b) => !marked.blocks.includes(b.id)),
         entries: full.entries.filter((e) => !marked.entries.includes(e.id)),
         closures: full.closures.filter((c) => !marked.closures.includes(c.id)),
+        aiUsages: full.aiUsages.filter((u) => !marked.aiUsages.includes(u.id)),
       };
       return left;
     },
@@ -141,7 +142,7 @@ describe('motor de sincronización', () => {
 
   it('una fila inválida se descarta sin bloquear a las demás', async () => {
     const { cloud, ctx } = setup();
-    const good = { id: '66666666-6666-4666-8666-666666666666', teamId: ctx.teamId, startedAt: '2026-10-05T14:00:00Z', endedAt: '2026-10-05T15:00:00Z', appName: 'code', category: 'productive' as const, aiTool: null, domain: null };
+    const good = { id: '66666666-6666-4666-8666-666666666666', teamId: ctx.teamId, startedAt: '2026-10-05T14:00:00Z', endedAt: '2026-10-05T15:00:00Z', appName: 'code', category: 'productive' as const, aiTool: null, domain: null, aiUsageType: null };
     const bad = { ...good, id: '77777777-7777-4777-8777-777777777777' };
     const { bridge, marked } = fakeBridge({ blocks: [good, bad] });
     const upsert = cloud.upsertBlocks.bind(cloud);
@@ -157,10 +158,29 @@ describe('motor de sincronización', () => {
     expect(engine.getState()).toMatchObject({ phase: 'synced', rejected: 1 });
   });
 
+  it('la etiqueta de IA viaja con un bloque sin subir y aparte cuando ya se subió (F4 AC-29)', async () => {
+    const { cloud, ctx } = setup();
+    const block = { id: '99999999-9999-4999-8999-999999999999', teamId: ctx.teamId, startedAt: '2026-10-05T14:00:00Z', endedAt: '2026-10-05T15:00:00Z', appName: 'chrome', category: 'ai' as const, aiTool: 'ChatGPT', domain: null, aiUsageType: 'code' as const };
+    const first = fakeBridge({ blocks: [block] });
+    const engine = new SyncEngine({ bridge: first.bridge, cloud, setTimer: () => () => {} });
+    engine.setContext(ctx);
+    await engine.syncNow();
+    expect(cloud.debug.uploaded.blocks[0]!.aiUsageType).toBe('code');
+    expect(blockRow(ctx.userId, block).ai_usage_type).toBe('code');
+
+    // Ya subido: quitar la etiqueta va por set_block_ai_usage y se marca aparte.
+    const second = fakeBridge({ aiUsages: [{ id: block.id, aiUsageType: null }] });
+    const again = new SyncEngine({ bridge: second.bridge, cloud, setTimer: () => () => {} });
+    again.setContext(ctx);
+    await again.syncNow();
+    expect(cloud.debug.aiUsages.get(block.id)).toBeNull();
+    expect(second.marked.aiUsages).toEqual([block.id]);
+  });
+
   it('ninguna fila enviada a Supabase lleva título (AC-18)', () => {
     const userId = '88888888-8888-4888-8888-888888888888';
     const rows = [
-      blockRow(userId, { id: TEAM, teamId: TEAM, startedAt: 'a', endedAt: 'b', appName: 'chrome', category: 'ai', aiTool: 'ChatGPT', domain: 'chatgpt.com' }),
+      blockRow(userId, { id: TEAM, teamId: TEAM, startedAt: 'a', endedAt: 'b', appName: 'chrome', category: 'ai', aiTool: 'ChatGPT', domain: 'chatgpt.com', aiUsageType: 'code' }),
       entryRow(userId, { id: TEAM, teamId: TEAM, startedAt: 'a', endedAt: null, taskId: null, source: 'timer', updatedAt: 'a', deletedAt: null }),
       closureRow(userId, { id: TEAM, teamId: TEAM, closedAt: 'a', reopenedAt: 'b' }),
     ];
@@ -173,5 +193,71 @@ describe('motor de sincronización', () => {
         closures: [],
       }),
     ).toThrow();
+  });
+
+  describe('nombres de apps (PS-05, AC-24)', () => {
+    const block = (ctx: SyncContext) => ({
+      id: '44444444-4444-4444-8444-444444444444',
+      teamId: ctx.teamId,
+      startedAt: '2026-10-05T14:00:00Z',
+      endedAt: '2026-10-05T14:30:00Z',
+      appName: 'Google Chrome',
+      category: 'productive' as const,
+      aiTool: null,
+      domain: 'github.com',
+      aiUsageType: null,
+    });
+    const run = async (shareAppNames: boolean) => {
+      const { cloud, ctx } = setup();
+      const spy = vi.spyOn(cloud, 'upsertBlocks');
+      const { bridge } = fakeBridge({ blocks: [block(ctx)] });
+      const engine = new SyncEngine({ bridge, cloud, setTimer: () => () => {} });
+      engine.setContext({ ...ctx, shareAppNames });
+      await engine.syncNow();
+      return spy.mock.calls.flatMap(([, rows]) => rows);
+    };
+
+    it('con shareAppNames = false sube el bloque sin nombre ni sitio', async () => {
+      const sent = await run(false);
+      expect(sent).toHaveLength(1);
+      expect(sent[0]).toMatchObject({ appName: 'App oculta', domain: null, category: 'productive' });
+      expect(JSON.stringify(sent)).not.toMatch(/Chrome|github/);
+    });
+
+    it('con shareAppNames = true sube el nombre y el sitio', async () => {
+      const sent = await run(true);
+      expect(sent[0]).toMatchObject({ appName: 'Google Chrome', domain: 'github.com' });
+    });
+
+    it('un bloque de otro equipo que el del contexto se enmascara aunque se comparta', async () => {
+      const { cloud, ctx } = setup();
+      const spy = vi.spyOn(cloud, 'upsertBlocks');
+      const other = { ...block(ctx), teamId: '99999999-9999-4999-8999-999999999999' };
+      const { bridge } = fakeBridge({ blocks: [other] });
+      const engine = new SyncEngine({ bridge, cloud, setTimer: () => () => {} });
+      engine.setContext(ctx);
+      await engine.syncNow().catch(() => {});
+      const sent = spy.mock.calls.flatMap(([, rows]) => rows);
+      expect(sent.every((b) => b.appName === 'App oculta' && b.domain === null)).toBe(true);
+    });
+
+    it('apagar con un ciclo en curso no sube nombres después', async () => {
+      const { cloud, ctx } = setup();
+      const spy = vi.spyOn(cloud, 'upsertBlocks');
+      const { bridge } = fakeBridge({ blocks: [block(ctx)] });
+      // El apagado llega justo cuando el ciclo ya leyó el lote y aún no lo ha subido.
+      const engine = new SyncEngine({ bridge, cloud, setTimer: () => () => {} });
+      const pending = bridge.syncPending;
+      bridge.syncPending = async () => {
+        const batch = await pending();
+        engine.setShareAppNames(false);
+        return batch;
+      };
+      engine.setContext(ctx);
+      await engine.syncNow();
+      const sent = spy.mock.calls.flatMap(([, rows]) => rows);
+      expect(sent.length).toBeGreaterThan(0);
+      expect(JSON.stringify(sent)).not.toMatch(/Chrome|github/);
+    });
   });
 });

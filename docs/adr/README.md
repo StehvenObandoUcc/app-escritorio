@@ -27,5 +27,7 @@ decisión de `docs/ARQUITECTURA.md` §3 o cambiar una celda de `docs/ROLES.md`.
 | [0019](./0019-teclado-y-flujo-por-pasos.md) | Teclado en toda la app y flujo de la tarea por pasos | Aceptado |
 | [0020](./0020-evidencia-por-tarea.md) | Evidencia requerida por tarea, de un catálogo empresarial | Aceptado |
 | [0021](./0021-flechas-en-toda-la-app.md) | Flechas en toda la app (navegación espacial) | Aceptado |
+| [0022](./0022-ia-y-reportes.md) | IA y reportes: reqwest, un solo validador y etiquetado de IA | Aceptado |
+| [0023](./0023-exportar-a-descargas.md) | Exportar mis datos a Descargas, sin argumento | Aceptado |
 
 Plantilla: copia cualquiera de los anteriores. Numeración consecutiva de cuatro dígitos.

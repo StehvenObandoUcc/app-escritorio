@@ -19,6 +19,7 @@ export const LIMITS = {
   reviewComment: { max: 2000 },
   evidence: { bytes: 50 * 1024 * 1024, files: 10 },
   domain: { max: 253 },
+  processPattern: { max: 120 },
 } as const;
 
 /** Tipos de archivo admitidos como evidencia (igual que `allowed_mime_types` del bucket `task-evidence`). */
