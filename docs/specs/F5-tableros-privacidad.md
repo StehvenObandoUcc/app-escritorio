@@ -1,7 +1,7 @@
 # Spec F5 · Tableros, privacidad y ajustes del equipo
 
 Funcionalidades: DR-01 a DR-05, DR-06 (solo PDF), DR-07, TA-10, TA-11, IA-02 (pantalla), IA-05, EQ-09, EQ-10 (pantalla), PS-05, PS-06, PS-07 (filas F5), CU-07. Además, la corrección del supuesto 5 de F4 (`data_until`).
-Estado: borrador v2 (13 oct), revisado por el agente revisor. Decisiones de producto tomadas por el responsable el 13 oct: reglas por app solo para lo nuevo; *Mi semana/Mi mes* con categorías, IA y proyectos; exportar a *Descargas*. Falta la aprobación formal.
+Estado: aprobada (por StehvenObando, 16 oct). Validada en real el 16 oct (`docs/VALIDACION.md`, pasos 5.1 a 5.13). Decisiones de producto tomadas por el responsable el 13 oct: reglas por app solo para lo nuevo; *Mi semana/Mi mes* con categorías, IA y proyectos; exportar a *Descargas*.
 Recortado el 12 oct (PLAN §4, decisión del responsable): NO-01 a NO-03, CU-06 y la exportación a CSV de DR-06. Pasan a después de la entrega.
 
 ## Objetivo

@@ -139,21 +139,21 @@ Funcionalidades: RI-01 a RI-10, IA-04. Detalle en `docs/IA.md`.
 | C · Interfaz | Validador, *Ajustes → IA*, vista de reporte, modo manual, historial, exportación |
 
 **Puerta G4**
-- [ ] 20 reportes de prueba: ningún número inventado llega a la pantalla.
-- [ ] El sexto reporte gratis del día muestra el aviso de límite.
-- [ ] Una clave propia válida pasa *Probar conexión*; una inválida explica qué pasó.
-- [ ] En modo manual, un texto que no cumple el formato se rechaza con un mensaje claro.
-- [ ] Un `member` no puede generar el reporte del equipo.
+- [ ] 20 reportes de prueba: ningún número inventado llega a la pantalla. *(paso 4.20, sáb 17)*
+- [x] El sexto reporte gratis del día muestra el aviso de límite.
+- [x] Una clave propia válida pasa *Probar conexión*; una inválida explica qué pasó.
+- [x] En modo manual, un texto que no cumple el formato se rechaza con un mensaje claro.
+- [x] Un `member` no puede generar el reporte del equipo.
 
 ### F5 · Tableros, privacidad y avisos (mié 14 – jue 15)
 
 Funcionalidades: DR-01 a DR-07, TA-10, TA-11, IA-02, IA-05, EQ-09, EQ-10 (pantalla), PS-05, PS-06, CU-06, CU-07, NO-01 a NO-03.
 
 **Puerta G5**
-- [ ] Una prueba de punta a punta por rol: cada uno ve exactamente su columna de la matriz.
-- [ ] Las cifras del tablero coinciden con *Mi día* de cada miembro.
-- [ ] Quien oculta sus apps aparece solo con categorías.
-- [ ] **Congelamiento el jueves 15 a las 23:59**: desde aquí solo se corrigen errores.
+- [x] Una prueba de punta a punta por rol: cada uno ve exactamente su columna de la matriz.
+- [x] Las cifras del tablero coinciden con *Mi día* de cada miembro.
+- [x] Quien oculta sus apps aparece solo con categorías.
+- [x] **Congelamiento el jueves 15 a las 23:59**: desde aquí solo se corrigen errores.
 
 ### F6 · Endurecer y entregar (vie 16 – dom 18)
 
@@ -309,3 +309,4 @@ Decisiones abiertas:
 | F6-4 | P2 | **La tarea queda sin responsable al pasar a alguien a viewer.** Es coherente (un viewer no pertenece a proyectos), pero no se avisa a quien hace el cambio. Valorar un aviso en el diálogo de cambio de rol. Visto el 16 oct. |
 | F6-5 | P2 | **Prueba inestable bajo carga:** `src/pages/mi-dia/PausaConTope.test.tsx` («tope 30 y 20 min pausados: ofrece 10 min») falló una vez en `npm run verify` y pasa aislada (5 de 5). Visto el 16 oct. |
 | F6-6 | P2 | **Reporte de «Hoy» en modo Manual casi siempre da «Los datos cambiaron…».** Al salir de Pulso para ir al chat de IA se cierran y suben bloques nuevos, y `save_report` rechaza (PT409) porque las cifras ya no son las del prompt. Es el comportamiento pedido (R5), pero en Manual conviene un periodo cerrado («Ayer», «Semana pasada»). Hasta el 16 oct el error era 40001 y PostgREST lo reintentaba en bucle hasta el «upstream request timeout» (corregido en `0e54e41`). Valorar en F7 calcular los facts hasta un corte fijo (`data_until`). |
+| F6-7 | P2 | **ChatGPT no siempre devuelve el formato del modo Manual** (respondió en prosa o con cifras calculadas, como porcentajes); Claude sí lo cumplió. Valorar en `prompts/report.v1.md` un ejemplo literal del JSON y la frase «responde solo con el objeto JSON». Visto el 16 oct en 4.14. |
