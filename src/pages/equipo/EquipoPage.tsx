@@ -297,7 +297,12 @@ function Members({ team }: { team: MyTeam }) {
   const [removing, setRemoving] = useState<{ userId: string; name: string } | null>(null);
   const query = useQuery({ queryKey: ['members', team.id], queryFn: () => cloud.members(team.id) });
   const reload = async () => {
-    await queryClient.invalidateQueries({ queryKey: ['members', team.id] });
+    // El tablero depende de los roles.
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['members', team.id] }),
+      queryClient.invalidateQueries({ queryKey: ['team-dashboard', team.id] }),
+      queryClient.invalidateQueries({ queryKey: ['team-presence', team.id] }),
+    ]);
     await refresh();
   };
 
