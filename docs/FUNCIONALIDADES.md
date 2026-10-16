@@ -7,7 +7,7 @@ en que se construyen y cómo se comprueba cada una. Nada se construye si no tien
 - **F7–F9**: después de la entrega. Están diseñadas, no olvidadas.
 - **✂** = recortable: es lo primero que sale si una fase se atrasa (orden en `docs/PLAN.md` §4).
 
-Resumen: 107 funcionalidades en total: 89 antes de la entrega y 18 después (TA-14 y PS-11 se añadieron el 6 oct, ADR-0009; TA-15 el 7 oct, ADR-0013).
+Resumen: 111 funcionalidades en total: 93 antes de la entrega y 18 después (TA-14 y PS-11 se añadieron el 6 oct, ADR-0009; TA-15 el 7 oct, ADR-0013; PT-11 a PT-13 y UI-08 el 7 oct, ADR-0014 y ADR-0015).
 
 ## A. Cuenta y acceso (RF-01, RF-03)
 
@@ -45,7 +45,7 @@ Resumen: 107 funcionalidades en total: 89 antes de la entrega y 18 después (TA-
 | TA-02 | Bloques de actividad; los de menos de 10 s se fusionan | 05 | F1 | Prueba unitaria de Rust |
 | TA-03 | Clasificación en productivo, neutro, distracción o IA mediante reglas | 05 | F1 | Prueba unitaria del clasificador |
 | TA-04 | Inactividad con umbral configurable (3 a 15 min) | 04, 05 | F1 | Dejar el equipo quieto: aparece un bloque sin actividad |
-| TA-05 | Temporizador: iniciar y detener, con tarea opcional | 04 | F1 (tarea en F3) | Iniciar, esperar, detener: queda la entrada |
+| TA-05 | Temporizador: iniciar y detener, con tarea opcional | 04 | F1 (tarea en F3: desde el detalle de la tarea) | Iniciar, esperar, detener: queda la entrada |
 | TA-06 | Registro manual de tiempo; editar y eliminar entradas propias | 04 | F1 | Añadir una entrada de ayer |
 | TA-07 | Jornada: empieza con la primera actividad y termina con la última | 06 | F1 | El resumen muestra inicio y fin |
 | TA-08 | Descansos manuales | 06 | F1 | *Tomar un descanso* crea un bloque de descanso |
@@ -71,6 +71,9 @@ Resumen: 107 funcionalidades en total: 89 antes de la entrega y 18 después (TA-
 | PT-08 | Avance del proyecto: tareas hechas y tiempo real frente al estimado | 09 | F3 | Las cifras coinciden con las tareas |
 | PT-09 | Tareas visibles sin conexión (solo lectura) | 26 | F3 | Sin red, la lista sigue visible |
 | PT-10 | Editar tareas sin conexión | 26, 27 | F8 | — |
+| PT-11 | Tipos de tarea y subtareas de un nivel (ADR-0014) | 07 | F3 | Crear una subtarea: aparece bajo su madre y suma a su avance |
+| PT-12 | Responsable y apoyos, con permiso opcional para que el responsable gestione apoyos (ADR-0014) | 07 | F3 | Prueba de permisos |
+| PT-13 | Revisión al estilo de un PR: formulario de entrega configurable, criterios, evidencia, aprobar o pedir cambios, e historial (ADR-0014) | 07, 09 | F3 | Enviar, pedir cambios y aprobar: queda en el historial |
 
 ## E. Uso de herramientas de IA (RF-10, RF-11)
 
@@ -162,6 +165,7 @@ Resumen: 107 funcionalidades en total: 89 antes de la entrega y 18 después (TA-
 | UI-05 | Galería de componentes | F0 ✔ | `#/dev/galeria` |
 | UI-06 | Accesibilidad: foco visible, contraste AA, uso con teclado | F0 ✔ → F6 | Revisión de F6 |
 | UI-07 | Estados de carga, vacío y error en cada pantalla | cada fase | Pruebas de cada página |
+| UI-08 | Español e inglés en toda la app y en las notificaciones (ADR-0015) | F3 | *Ajustes → Idioma*: todo cambia al instante; `npm run check:i18n` |
 
 ## L. Entrega
 

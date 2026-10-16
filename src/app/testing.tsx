@@ -10,15 +10,26 @@ import type { Bridge } from '@/bridge/contract';
 import { createMockBridge } from '@/bridge/mock';
 import { createMockCloud, type MockCloud } from '@/cloud/mock';
 import { SyncEngine } from '@/sync/engine';
+import { useAppKeyboard } from './keyboard';
 import { SessionProvider } from './session';
 
+const NO_ROUTES: string[] = [];
+const noop = () => {};
+
+/** La ruta actual (para comprobar navegaciones) y la capa de teclado de toda la app, como en App.tsx. */
 function Where() {
-  return <p data-testid="ruta">{useLocation().pathname}</p>;
+  useAppKeyboard(NO_ROUTES, noop);
+  return <p data-testid="ruta">{useLocation().pathname + useLocation().search}</p>;
 }
 
 export function renderWithSession(
   page: ReactElement,
-  { path = '/', cloud = createMockCloud(), bridge = createMockBridge() }: { path?: string; cloud?: MockCloud; bridge?: Bridge } = {},
+  {
+    path = '/',
+    route = '*',
+    cloud = createMockCloud(),
+    bridge = createMockBridge(),
+  }: { path?: string; route?: string; cloud?: MockCloud; bridge?: Bridge } = {},
 ) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   const engine = new SyncEngine({ bridge, cloud, setTimer: () => () => {} });
@@ -27,7 +38,7 @@ export function renderWithSession(
       <SessionProvider cloud={cloud} bridge={bridge} engine={engine}>
         <MemoryRouter initialEntries={[path]}>
           <Routes>
-            <Route path="*" element={page} />
+            <Route path={route} element={page} />
           </Routes>
           <Where />
         </MemoryRouter>

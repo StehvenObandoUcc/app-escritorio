@@ -3,14 +3,11 @@
  * Solo decide qué botones aparecen: quien hace cumplir las reglas es la base de datos (RLS y
  * funciones SQL, probadas en supabase/tests). Si esto y la base discrepan, gana la base.
  */
+import { lazyLabels } from '@/i18n';
+
 export type Role = 'owner' | 'admin' | 'member' | 'viewer';
 
-export const ROLE_LABEL: Record<Role, string> = {
-  owner: 'Propietario',
-  admin: 'Administrador',
-  member: 'Miembro',
-  viewer: 'Observador',
-};
+export const ROLE_LABEL: Record<Role, string> = lazyLabels(['owner', 'admin', 'member', 'viewer'], (r) => `roles.${r}`);
 
 /** Fila 8: el admin invita member o viewer; el owner, cualquier rol. */
 export function invitableRoles(mine: Role): Role[] {

@@ -1,11 +1,12 @@
+import { t } from '@/i18n';
 import { Activity, EyeOff, ShieldCheck, Sparkles } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 const PROMISES = [
-  { icon: Activity, text: 'Tu día dibujado como un pulso: foco, pausas e IA de un vistazo.' },
-  { icon: EyeOff, text: 'Sin capturas ni teclas. Los títulos de ventana nunca salen de tu equipo.' },
-  { icon: ShieldCheck, text: 'Nada se comparte sin tu consentimiento, y puedes pausar cuando quieras.' },
-  { icon: Sparkles, text: 'Reportes con IA que solo citan cifras reales.' },
+  { icon: Activity, key: 'pulse' as const },
+  { icon: EyeOff, key: 'private' as const },
+  { icon: ShieldCheck, key: 'consent' as const },
+  { icon: Sparkles, key: 'ai' as const },
 ];
 
 /** Latido decorativo: picos altos (foco), bajos (distracción) y línea base (pausa). */
@@ -51,18 +52,18 @@ export function AuthLayout({
         <div className="flex flex-col gap-6">
           <Heartbeat className="w-full max-w-content text-accent" />
           <p className="max-w-prose font-display text-2xl font-semibold tracking-tight text-fg">
-            Entiende cómo trabaja tu equipo con IA, sin vigilarlo.
+            {t('auth.promise')}
           </p>
           <ul className="flex flex-col gap-4">
-            {PROMISES.map(({ icon: Icon, text }) => (
-              <li key={text} className="flex max-w-prose items-start gap-3 text-fg">
+            {PROMISES.map(({ icon: Icon, key }) => (
+              <li key={key} className="flex max-w-prose items-start gap-3 text-fg">
                 <Icon size={20} aria-hidden="true" className="mt-1 shrink-0 text-accent-text" />
-                <span>{text}</span>
+                <span>{t(`auth.promises.${key}`)}</span>
               </li>
             ))}
           </ul>
         </div>
-        <p className="text-sm text-fg-muted">Tus datos se quedan en tu equipo hasta que aceptas compartirlos.</p>
+        <p className="text-sm text-fg-muted">{t('auth.dataStays')}</p>
       </aside>
 
       <main className="relative flex flex-1 items-center justify-center overflow-y-auto p-4 md:p-8">

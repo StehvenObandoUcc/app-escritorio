@@ -91,6 +91,8 @@ export const SettingsSchema = z.object({
   idleMinutes: z.number().int().min(IDLE_MINUTES_MIN).max(IDLE_MINUTES_MAX),
   /** Procesos cuyo nombre y título no se registran */
   hiddenApps: z.array(z.string()),
+  /** Idioma de la interfaz y de las notificaciones de Windows (ADR-0015). */
+  language: z.enum(['es', 'en']).default('es'),
 });
 export type Settings = z.infer<typeof SettingsSchema>;
 export type SettingsPatch = Partial<Settings>;
@@ -243,4 +245,13 @@ export interface Bridge {
   notificationsStatus(): Promise<NotificationsStatus>;
   /** Avisos de sitio no permitido, para mostrarlos en cualquier pantalla (ADR-0012). Devuelve cómo dejar de escuchar. */
   onNotAllowedAlert(listener: (alert: NotAllowedAlert) => void): () => void;
+
+  // ---- F3 ----
+
+  /** Copia local de las tareas del equipo y la cuenta activos, para verlas sin conexión (PT-09). Máx. 2 MB. */
+  tasksCachePut(json: string): Promise<void>;
+  /** `null` si no hay copia (o no hay equipo o cuenta activos). La interfaz valida el contenido. */
+  tasksCacheGet(): Promise<string | null>;
+  /** Abre un enlace `https://` en el navegador del sistema (ADR-0017). Rust rechaza cualquier otro esquema. */
+  openExternal(url: string): Promise<void>;
 }

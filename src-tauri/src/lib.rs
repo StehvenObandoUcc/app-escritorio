@@ -3,6 +3,7 @@ pub mod classifier;
 pub mod commands;
 pub mod crypto;
 pub mod instance;
+pub mod links;
 pub mod secrets;
 pub mod sensor;
 pub mod store;
@@ -43,11 +44,22 @@ fn notify_not_allowed(handle: &AppHandle, alert: &tracker::Alert) {
   if let Err(e) = handle.emit(ALERT_EVENT, payload) {
     log::error!("aviso: no se pudo avisar a la interfaz: {e}");
   }
+  // ADR-0015: la notificación sale en el idioma elegido en Ajustes.
+  let (title, body) = match alert.language.as_str() {
+    "en" => (
+      format!("Site not allowed: {}", alert.domain),
+      "Your team marked this site as not allowed. Pulso does not block it: the time counts as distraction.",
+    ),
+    _ => (
+      format!("Sitio no permitido: {}", alert.domain),
+      "Tu equipo marcó este sitio como no permitido. Pulso no lo bloquea: el tiempo cuenta como distracción.",
+    ),
+  };
   let shown = handle
     .notification()
     .builder()
-    .title(format!("Sitio no permitido: {}", alert.domain))
-    .body("Tu equipo marcó este sitio como no permitido. Pulso no lo bloquea: el tiempo cuenta como distracción.")
+    .title(title)
+    .body(body)
     .sound("Default")
     .show();
   if let Err(e) = shown {
@@ -124,6 +136,8 @@ pub fn run() {
     )
     // Avisos de sitio no permitido (ADR-0010): se usan solo desde Rust, sin permisos para la interfaz.
     .plugin(tauri_plugin_notification::init())
+    // ADR-0017: solo lo usa el comando open_external, que valida https; la interfaz no tiene sus permisos.
+    .plugin(tauri_plugin_opener::init())
     .setup(|app| {
       let dir = app.path().app_data_dir()?;
       std::fs::create_dir_all(&dir)?;
@@ -166,6 +180,9 @@ pub fn run() {
       commands::team_policy_set,
       commands::installed_apps,
       commands::notifications_status,
+      commands::tasks_cache_put,
+      commands::tasks_cache_get,
+      commands::open_external,
     ])
     .build(context)
     .expect("error while building tauri application");

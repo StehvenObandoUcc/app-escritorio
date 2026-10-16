@@ -1,21 +1,22 @@
+import { errorMessage, formatDate as formatIntlDate, t } from '@/i18n';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ShieldCheck, UserPlus } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { useSession } from '@/app/session';
+import { useAction } from '@/app/useAction';
 import type { MyInvitation, MyTeam } from '@/cloud/contract';
 import { CONSENT_VERSION } from '@/lib/consent';
+import { fieldErrors, forms } from '@/lib/forms';
+import { LIMITS } from '@/lib/limits';
+import { useForm } from '@/lib/useForm';
 import { canSeeMembers, invitableRoles, ROLE_LABEL, type Role } from '@/lib/permissions';
 import { Badge, Button, Heading, Select, Surface } from '@/ui/atoms';
-import { EmptyState, FormField, SyncStatus } from '@/ui/molecules';
+import { ConfirmDialog, EmptyState, FormField, SegmentedControl, SyncStatus } from '@/ui/molecules';
 import { ConsentPanel, MemberList } from '@/ui/organisms';
 import { PageLayout } from '@/ui/templates';
 import { SitiosYPoliticas } from './SitiosYPoliticas';
 
-const describe = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause));
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-/** Código de invitación (ADR-0008): XXXX-XXXX; el guion es opcional al escribirlo. */
-const CODE = /^[A-Z2-9]{4}-?[A-Z2-9]{4}$/;
 const withDash = (c: string) => (c.includes('-') ? c : `${c.slice(0, 4)}-${c.slice(4)}`);
 
 /** Copia al portapapeles; si no se puede, no pasa nada (el código sigue a la vista). */
@@ -27,50 +28,30 @@ const copy = async (text: string) => {
     return false;
   }
 };
-const formatDate = (iso: string) => new Date(iso).toLocaleDateString('es-CO', { day: 'numeric', month: 'long' });
-
-/** Ejecuta una acción con estado de «ocupado» y error legible. */
-function useAction() {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const run = async (action: () => Promise<void>) => {
-    setBusy(true);
-    setError(null);
-    try {
-      await action();
-      return true;
-    } catch (cause) {
-      setError(describe(cause));
-      return false;
-    } finally {
-      setBusy(false);
-    }
-  };
-  return { busy, error, setError, run };
-}
+const formatDate = (iso: string) => formatIntlDate(iso, { day: 'numeric', month: 'long' });
 
 /** Equipo: invitaciones recibidas, crear equipo, consentimiento, miembros e invitaciones (F2). */
 export function EquipoPage() {
   const session = useSession();
   const { cloud, user, teams, teamsLoading, teamsError, activeTeam } = session;
-  const sampleTag = cloud.source === 'mock' && <Badge tone="accent">Datos de ejemplo</Badge>;
+  const sampleTag = cloud.source === 'mock' && <Badge tone="accent">{t('common.sample')}</Badge>;
 
   // La app solo se muestra con sesión (Gate en App.tsx); esto cubre el instante en que se cierra.
   if (!user) return null;
 
   return (
     <PageLayout
-      title="Equipo"
-      subtitle={activeTeam ? activeTeam.name : 'Crea un equipo o acepta una invitación'}
+      title={t('nav.team')}
+      subtitle={activeTeam ? activeTeam.name : t('team.subtitleNone')}
       actions={
         <div className="flex flex-wrap items-center gap-2">
           {sampleTag}
           {teams.length > 1 && activeTeam && (
             <Select
-              aria-label="Equipo activo"
+              aria-label={t('nav.activeTeam')}
               value={activeTeam.id}
               onChange={(e) => session.selectTeam(e.target.value)}
-              options={teams.map((t) => ({ value: t.id, label: t.name }))}
+              options={teams.map((x) => ({ value: x.id, label: x.name }))}
             />
           )}
         </div>
@@ -79,13 +60,13 @@ export function EquipoPage() {
       <MyInvitations />
       {teamsLoading ? (
         <p role="status" className="text-fg-muted">
-          Cargando tus equipos…
+          {t('common.loading')}
         </p>
       ) : teamsError ? (
         <EmptyState
-          title="No se pudieron leer tus equipos"
-          description={`${teamsError} Pulso sigue registrando y subirá tus datos cuando vuelva la conexión.`}
-          action={<Button onClick={() => void session.refresh()}>Reintentar</Button>}
+          title={t('team.loadError')}
+          description={t('team.loadErrorHint', { error: teamsError })}
+          action={<Button onClick={() => void session.refresh()}>{t('team.retry')}</Button>}
         />
       ) : activeTeam ? (
         <TeamView team={activeTeam} key={activeTeam.id} />
@@ -116,17 +97,18 @@ function MyInvitations() {
     return (
       <ConsentPanel
         teamName={open.teamName}
-        acceptLabel="Aceptar y unirme"
+        acceptLabel={t('team.acceptJoin')}
         busy={action.busy}
         error={action.error}
         onAccept={() => {
-          const clean = code.trim().toUpperCase();
-          if (!CODE.test(clean)) {
-            action.setError('Escribe el código de 8 caracteres que te dio quien te invitó, por ejemplo K7PQ-4XMZ.');
+          const check = fieldErrors(forms.invitationCode(), { code });
+          if (check.errors) {
+            action.setError(check.errors.code ?? null);
+            document.querySelector<HTMLInputElement>('input[name="invitationCode"]')?.focus();
             return;
           }
           void action.run(async () => {
-            const teamId = await cloud.acceptInvitation(open.id, withDash(clean), CONSENT_VERSION);
+            const teamId = await cloud.acceptInvitation(open.id, withDash(check.data.code), CONSENT_VERSION);
             selectTeam(teamId);
             setCode('');
             await done();
@@ -138,33 +120,35 @@ function MyInvitations() {
               await cloud.declineInvitation(open.id);
               await done();
             })}>
-              Rechazar invitación
+              {t('team.decline')}
             </Button>
             <Button variant="ghost" disabled={action.busy} onClick={() => setOpen(null)}>
-              Volver
+              {t('team.back')}
             </Button>
           </>
         }
       >
         <FormField
-          label="Código de invitación"
+          name="invitationCode"
+          label={t('team.code')}
+          autoFocus
           value={code}
           onChange={(e) => setCode(e.target.value.toUpperCase())}
           maxLength={9}
           autoComplete="off"
           className="font-display tracking-widest"
-          hint="Te lo da quien te invitó, en persona o por mensaje. Tiene la forma XXXX-XXXX."
+          hint={t('team.codeHint')}
         />
       </ConsentPanel>
     );
   }
 
   return (
-    <Surface as="section" aria-label="Invitaciones recibidas" className="flex flex-col gap-3">
-      <Heading level={2}>Invitaciones para ti</Heading>
+    <Surface as="section" aria-label={t('team.received')} className="flex flex-col gap-3">
+      <Heading level={2}>{t('team.forYou')}</Heading>
       {query.error && (
         <p role="alert" className="text-sm text-danger">
-          {describe(query.error)}
+          {errorMessage(query.error)}
         </p>
       )}
       <ul className="flex flex-col divide-y divide-line">
@@ -173,11 +157,11 @@ function MyInvitations() {
             <div className="min-w-0 flex-1">
               <p className="truncate font-medium text-fg">{inv.teamName}</p>
               <p className="text-sm text-fg-muted">
-                {inv.invitedByName ? `${inv.invitedByName} te invitó` : 'Te invitaron'} como {ROLE_LABEL[inv.role]} · vence el {formatDate(inv.expiresAt)}
+                {inv.invitedByName ? t('team.invitedBy', { name: inv.invitedByName }) : t('team.invited')} {t('team.asRole', { role: ROLE_LABEL[inv.role], date: formatDate(inv.expiresAt) })}
               </p>
             </div>
             <Button variant="primary" size="sm" onClick={() => setOpen(inv)}>
-              Ver y responder
+              {t('team.viewRespond')}
             </Button>
           </li>
         ))}
@@ -189,37 +173,34 @@ function MyInvitations() {
 function CreateTeam({ first = false, onDone }: { first?: boolean; onDone?: () => void }) {
   const { cloud, refresh, selectTeam } = useSession();
   const [name, setName] = useState('');
-  const action = useAction();
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    const clean = name.trim();
-    if (clean.length < 2 || clean.length > 60) {
-      action.setError('El nombre del equipo debe tener entre 2 y 60 caracteres.');
-      return;
-    }
-    void action.run(async () => {
-      const id = await cloud.createTeam(clean);
-      selectTeam(id);
-      await refresh();
-      setName('');
-      onDone?.();
-    });
-  };
+  const { ref, errors, formError, busy, submit: send, onKeyDown } = useForm(forms.team, onDone);
+  const submit = (e: FormEvent) =>
+    void send(
+      { name },
+      async (data) => {
+        const id = await cloud.createTeam(data.name);
+        selectTeam(id);
+        await refresh();
+        setName('');
+        onDone?.();
+      },
+      e,
+    );
   return (
-    <Surface as="section" aria-label="Crear equipo">
-      <form onSubmit={submit} className="flex max-w-prose flex-col gap-4" noValidate>
+    <Surface as="section" aria-label={t('team.create')}>
+      <form ref={ref} onSubmit={submit} onKeyDown={onKeyDown} className="flex max-w-prose flex-col gap-4" noValidate>
         <div>
-          <Heading level={2}>{first ? 'Crea tu primer equipo' : 'Crear otro equipo'}</Heading>
-          <p className="mt-1 text-sm text-fg-muted">Serás su propietario. Después podrás invitar a otras personas.</p>
+          <Heading level={2}>{first ? t('team.createFirst') : t('team.createAnother')}</Heading>
+          <p className="mt-1 text-sm text-fg-muted">{t('team.createHint')}</p>
         </div>
-        <FormField label="Nombre del equipo" value={name} onChange={(e) => setName(e.target.value)} error={action.error ?? undefined} />
+        <FormField name="name" autoFocus={!first} label={t('team.name')} maxLength={LIMITS.teamName.max} value={name} onChange={(e) => setName(e.target.value)} error={errors.name ?? formError ?? undefined} />
         <div className="flex flex-wrap gap-2">
-          <Button type="submit" variant="primary" disabled={action.busy}>
-            Crear equipo
+          <Button type="submit" variant="primary" disabled={busy}>
+            {t('team.create')}
           </Button>
           {onDone && (
             <Button variant="ghost" onClick={onDone}>
-              Cancelar
+              {t('common.cancel')}
             </Button>
           )}
         </div>
@@ -228,17 +209,20 @@ function CreateTeam({ first = false, onDone }: { first?: boolean; onDone?: () =>
   );
 }
 
+type TeamTab = 'members' | 'sites' | 'general';
+
 function TeamView({ team }: { team: MyTeam }) {
   const { cloud, refresh, sync, syncNow } = useSession();
   const consent = useAction();
   const [creating, setCreating] = useState(false);
+  const [tab, setTab] = useState<TeamTab>('members');
 
   // Sin consentimiento, o con el de una versión anterior (ADR-0009), se pide antes de subir nada.
   if (!team.consentAt || team.consentVersion !== CONSENT_VERSION) {
     return (
       <ConsentPanel
         teamName={team.name}
-        acceptLabel={team.consentAt ? 'Aceptar la versión nueva' : 'Aceptar y empezar a compartir'}
+        acceptLabel={team.consentAt ? t('team.acceptNewVersion') : t('team.acceptStart')}
         busy={consent.busy}
         error={consent.error}
         onAccept={() =>
@@ -251,35 +235,52 @@ function TeamView({ team }: { team: MyTeam }) {
     );
   }
 
+  const manager = team.role === 'owner' || team.role === 'admin';
+  const tabs: { value: TeamTab; label: string }[] = [
+    { value: 'members', label: t('team.tabs.members') },
+    ...(manager ? [{ value: 'sites' as TeamTab, label: t('sites.title') }] : []),
+    { value: 'general', label: t('team.tabs.general') },
+  ];
+
+  // D2: la pantalla se divide en pestañas para no ser una lista larga.
   return (
     <>
-      <Surface as="section" aria-label="Sincronización" className="flex flex-wrap items-center justify-between gap-3">
-        <SyncStatus phase={sync.phase} message={sync.message} lastSyncedAt={sync.lastSyncedAt} />
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" onClick={syncNow} disabled={sync.phase === 'syncing'}>
-            Sincronizar ahora
-          </Button>
-          <Link
-            to="/equipo/privacidad"
-            className="inline-flex h-control-sm items-center gap-2 rounded-md px-3 text-sm font-medium text-fg hover:bg-sunken"
-          >
-            <ShieldCheck size={16} aria-hidden="true" />
-            Qué se mide y quién lo ve
-          </Link>
-        </div>
-      </Surface>
-      <Members team={team} />
-      {invitableRoles(team.role).length > 0 && <Invitations team={team} />}
-      {(team.role === 'owner' || team.role === 'admin') && <SitiosYPoliticas team={team} />}
-      <LeaveTeam team={team} />
-      {creating ? (
-        <CreateTeam onDone={() => setCreating(false)} />
-      ) : (
-        <div>
-          <Button variant="ghost" onClick={() => setCreating(true)}>
-            Crear otro equipo
-          </Button>
-        </div>
+      <SegmentedControl label={t('team.tabs.label')} options={tabs} value={tab} onChange={setTab} />
+      {tab === 'members' && (
+        <>
+          <Members team={team} />
+          {invitableRoles(team.role).length > 0 && <Invitations team={team} />}
+        </>
+      )}
+      {tab === 'sites' && manager && <SitiosYPoliticas team={team} />}
+      {tab === 'general' && (
+        <>
+          <Surface as="section" aria-label={t('team.sync')} className="flex flex-wrap items-center justify-between gap-3">
+            <SyncStatus phase={sync.phase} message={sync.message} lastSyncedAt={sync.lastSyncedAt} />
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" onClick={syncNow} disabled={sync.phase === 'syncing'}>
+                {t('team.syncNow')}
+              </Button>
+              <Link
+                to="/equipo/privacidad"
+                className="inline-flex h-control-sm items-center gap-2 rounded-md px-3 text-sm font-medium text-fg hover:bg-sunken"
+              >
+                <ShieldCheck size={16} aria-hidden="true" />
+                {t('privacy.title')}
+              </Link>
+            </div>
+          </Surface>
+          <LeaveTeam team={team} />
+          {creating ? (
+            <CreateTeam onDone={() => setCreating(false)} />
+          ) : (
+            <div>
+              <Button variant="ghost" onClick={() => setCreating(true)}>
+                {t('team.createAnother')}
+              </Button>
+            </div>
+          )}
+        </>
       )}
     </>
   );
@@ -298,9 +299,9 @@ function Members({ team }: { team: MyTeam }) {
 
   if (!canSeeMembers(team.role)) {
     return (
-      <Surface as="section" aria-label="Miembros">
-        <Heading level={2}>Miembros</Heading>
-        <p className="mt-1 text-fg-muted">Como observador ves los totales del equipo, pero no la lista de miembros.</p>
+      <Surface as="section" aria-label={t('team.members')}>
+        <Heading level={2}>{t('team.members')}</Heading>
+        <p className="mt-1 text-fg-muted">{t('team.viewerMembers')}</p>
       </Surface>
     );
   }
@@ -310,18 +311,18 @@ function Members({ team }: { team: MyTeam }) {
   const me = user?.id ?? '';
 
   return (
-    <Surface as="section" aria-label="Miembros" className="flex flex-col gap-2">
+    <Surface as="section" aria-label={t('team.members')} className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Heading level={2}>Miembros</Heading>
-        <Badge>Tu rol: {ROLE_LABEL[team.role]}</Badge>
+        <Heading level={2}>{t('team.members')}</Heading>
+        <Badge>{t('team.yourRole', { role: ROLE_LABEL[team.role] })}</Badge>
       </div>
       {query.isPending ? (
         <p role="status" className="text-fg-muted">
-          Cargando miembros…
+          {t('common.loading')}
         </p>
       ) : query.error ? (
         <p role="alert" className="text-sm text-danger">
-          No se pudo leer la lista: {describe(query.error)}
+          {t('team.membersError', { error: errorMessage(query.error) })}
         </p>
       ) : (
         <MemberList
@@ -336,38 +337,36 @@ function Members({ team }: { team: MyTeam }) {
           onRemove={(userId, name) => setRemoving({ userId, name })}
         />
       )}
-      {removing && (
-        <div role="alertdialog" aria-label="Confirmar expulsión" className="flex flex-col gap-2 rounded-md bg-danger-soft p-3">
-          <p className="text-fg">
-            ¿Expulsar a {removing.name}? Se borrará su actividad en este equipo; su tiempo registrado se conserva como «Exmiembro».
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="danger" disabled={action.busy} onClick={() => void action.run(async () => {
-              await cloud.removeMember(team.id, removing.userId);
-              setRemoving(null);
-              await reload();
-            })}>
-              Expulsar
-            </Button>
-            <Button variant="ghost" onClick={() => setRemoving(null)}>
-              Cancelar
-            </Button>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={removing !== null}
+        title={t('team.confirmRemove')}
+        message={removing ? t('team.removeQuestion', { name: removing.name }) : ''}
+        confirmLabel={t('team.remove')}
+        danger
+        busy={action.busy}
+        onCancel={() => setRemoving(null)}
+        onConfirm={() =>
+          void action.run(async () => {
+            if (!removing) return;
+            await cloud.removeMember(team.id, removing.userId);
+            setRemoving(null);
+            await reload();
+          })
+        }
+      />
       {team.role === 'owner' && owners > 1 && (
         <div>
           <Button variant="ghost" disabled={action.busy} onClick={() => void action.run(async () => {
             await cloud.setMemberRole(team.id, me, 'admin');
             await reload();
           })}>
-            Dejar de ser propietario
+            {t('team.stopOwning')}
           </Button>
         </div>
       )}
       {team.role === 'owner' && owners === 1 && members.length > 1 && (
         <p className="text-sm text-fg-muted">
-          Para ceder la propiedad, nombra a otra persona como Propietario y después deja de serlo tú.
+          {t('team.transferHint')}
         </p>
       )}
       {action.error && (
@@ -388,64 +387,62 @@ function Invitations({ team }: { team: MyTeam }) {
   const [created, setCreated] = useState<{ email: string; code: string } | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const action = useAction();
+  const { ref, errors, formError, busy, submit: send, onKeyDown } = useForm(forms.invite);
   const query = useQuery({ queryKey: ['invitations', team.id], queryFn: () => cloud.teamInvitations(team.id) });
   const reload = () => queryClient.invalidateQueries({ queryKey: ['invitations', team.id] });
 
   const submit = (e: FormEvent) => {
-    e.preventDefault();
     setCreated(null);
-    const mail = email.trim().toLowerCase();
-    if (!EMAIL.test(mail)) {
-      action.setError('Escribe un correo válido, por ejemplo nombre@empresa.com.');
-      return;
-    }
-    void action.run(async () => {
-      const { code } = await cloud.invite(team.id, mail, role);
-      setEmail('');
-      setCreated({ email: mail, code });
-      await reload();
-    });
+    void send(
+      { email },
+      async (data) => {
+        const mail = data.email.toLowerCase();
+        const { code } = await cloud.invite(team.id, mail, role);
+        setEmail('');
+        setCreated({ email: mail, code });
+        await reload();
+      },
+      e,
+    );
   };
 
   return (
-    <Surface as="section" aria-label="Invitar personas" className="flex flex-col gap-4">
-      <form onSubmit={submit} className="flex flex-col gap-3" noValidate>
+    <Surface as="section" aria-label={t('team.invite')} className="flex flex-col gap-4">
+      <form ref={ref} onSubmit={submit} onKeyDown={onKeyDown} className="flex flex-col gap-3" noValidate>
         <div>
-          <Heading level={2}>Invitar personas</Heading>
+          <Heading level={2}>{t('team.invite')}</Heading>
           <p className="mt-1 text-sm text-fg-muted">
-            Pulso no envía correos: la persona ve la invitación al entrar con ese correo y se une con el código que tú le compartes. Vence a
-            los 7 días.
+            {t('team.inviteHint')}
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
           <div className="min-w-0 flex-1">
-            <FormField label="Correo" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <FormField name="email" label={t('access.fields.email')} type="email" maxLength={LIMITS.email.max} value={email} error={errors.email} onChange={(e) => setEmail(e.target.value)} />
           </div>
           <Select
-            aria-label="Rol"
+            aria-label={t('team.role')}
             value={role}
             onChange={(e) => setRole(e.target.value as Role)}
             options={roles.map((r) => ({ value: r, label: ROLE_LABEL[r] }))}
           />
-          <Button type="submit" variant="primary" icon={<UserPlus size={16} aria-hidden="true" />} disabled={action.busy}>
-            Invitar
+          <Button type="submit" variant="primary" icon={<UserPlus size={16} aria-hidden="true" />} disabled={busy}>
+            {t('team.inviteButton')}
           </Button>
         </div>
-        {action.error && (
+        {(formError ?? action.error) && (
           <p role="alert" className="text-sm text-danger">
-            {action.error}
+            {formError ?? action.error}
           </p>
         )}
         {created && (
           <div role="status" className="flex flex-col gap-2 rounded-md bg-accent-soft p-3">
             <p className="text-fg">
-              Invitación creada para <strong className="break-all">{created.email}</strong>. Compártele este código en persona o por
-              mensaje:
+              {t('team.createdFor')} <strong className="break-all">{created.email}</strong>. {t('team.shareCode')}
             </p>
             <div className="flex flex-wrap items-center gap-3">
               <span className="font-display text-2xl font-semibold tracking-widest text-fg">{created.code}</span>
               <Button size="sm" onClick={() => void copy(created.code).then((ok) => setCopied(ok ? created.code : null))}>
-                {copied === created.code ? 'Copiado' : 'Copiar código'}
+                {copied === created.code ? t('team.copied') : t('team.copy')}
               </Button>
             </div>
           </div>
@@ -453,23 +450,23 @@ function Invitations({ team }: { team: MyTeam }) {
       </form>
       {(query.data ?? []).length > 0 && (
         <div>
-          <Heading level={3}>Pendientes</Heading>
+          <Heading level={3}>{t('team.pending')}</Heading>
           <ul className="flex flex-col divide-y divide-line">
             {(query.data ?? []).map((inv) => (
               <li key={inv.id} className="flex flex-wrap items-center gap-3 py-2">
                 <p className="min-w-0 flex-1 truncate text-fg">{inv.email}</p>
                 {inv.code && (
-                  <span className="font-display text-sm font-semibold tracking-widest text-fg" aria-label={`Código ${inv.code}`}>
+                  <span className="font-display text-sm font-semibold tracking-widest text-fg" aria-label={t('team.codeOf', { code: inv.code })}>
                     {inv.code}
                   </span>
                 )}
                 <Badge>{ROLE_LABEL[inv.role]}</Badge>
-                <span className="text-sm text-fg-muted">vence el {formatDate(inv.expiresAt)}</span>
+                <span className="text-sm text-fg-muted">{t('team.expires', { date: formatDate(inv.expiresAt) })}</span>
                 <Button size="sm" variant="ghost" disabled={action.busy} onClick={() => void action.run(async () => {
                   await cloud.revokeInvitation(inv.id);
                   await reload();
                 })}>
-                  Revocar
+                  {t('team.revoke')}
                 </Button>
               </li>
             ))}
@@ -485,29 +482,31 @@ function LeaveTeam({ team }: { team: MyTeam }) {
   const [confirming, setConfirming] = useState(false);
   const action = useAction();
   return (
-    <Surface as="section" aria-label="Salir del equipo" className="flex flex-col gap-2">
-      <Heading level={2}>Salir del equipo</Heading>
+    <Surface as="section" aria-label={t('team.leave')} className="flex flex-col gap-2">
+      <Heading level={2}>{t('team.leave')}</Heading>
       <p className="text-fg-muted">
-        Al salir se borra tu actividad en {team.name}; tu tiempo registrado se conserva como «Exmiembro». Lo que registres después ya no se compartirá con este equipo.
+        {t('team.leaveHint', { team: team.name })}
       </p>
-      {confirming ? (
-        <div className="flex flex-wrap gap-2">
-          <Button variant="danger" disabled={action.busy} onClick={() => void action.run(async () => {
+      <div>
+        <Button onClick={() => setConfirming(true)}>{t('team.leave')}</Button>
+      </div>
+      <ConfirmDialog
+        open={confirming}
+        title={t('team.leave')}
+        message={t('team.leaveHint', { team: team.name })}
+        confirmLabel={t('team.leaveConfirm', { team: team.name })}
+        danger
+        busy={action.busy}
+        error={action.error}
+        onCancel={() => setConfirming(false)}
+        onConfirm={() =>
+          void action.run(async () => {
             await cloud.leaveTeam(team.id);
             setConfirming(false);
             await refresh();
-          })}>
-            Sí, salir de {team.name}
-          </Button>
-          <Button variant="ghost" onClick={() => setConfirming(false)}>
-            Cancelar
-          </Button>
-        </div>
-      ) : (
-        <div>
-          <Button onClick={() => setConfirming(true)}>Salir del equipo</Button>
-        </div>
-      )}
+          })
+        }
+      />
       {action.error && (
         <p role="alert" className="text-sm text-danger">
           {action.error}

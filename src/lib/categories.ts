@@ -1,4 +1,5 @@
 import type { Category } from '@/bridge/contract';
+import { t } from '@/i18n';
 
 /**
  * Presentación de cada categoría. Único lugar donde una categoría se asocia a
@@ -14,13 +15,13 @@ export interface CategoryStyle {
 }
 
 export const CATEGORY_STYLE: Record<Category, CategoryStyle> = {
-  productive: { label: 'Productivo', fill: 'bg-cat-productive', height: 'h-full' },
-  ai: { label: 'Con IA', fill: 'bg-cat-ai', height: 'h-full' },
-  neutral: { label: 'Neutro', fill: 'bg-cat-neutral', height: 'h-3/5' },
-  distraction: { label: 'Distracción', fill: 'bg-cat-distraction', height: 'h-2/5' },
-  break: { label: 'Descanso', fill: 'bg-cat-break', height: 'h-1/5' },
-  idle: { label: 'Sin actividad', fill: 'bg-cat-idle', height: 'h-1' },
-  paused: { label: 'En pausa', fill: 'pattern-paused', height: 'h-1/5' },
+  productive: { get label() { return t('categories.productive'); }, fill: 'bg-cat-productive', height: 'h-full' },
+  ai: { get label() { return t('categories.ai'); }, fill: 'bg-cat-ai', height: 'h-full' },
+  neutral: { get label() { return t('categories.neutral'); }, fill: 'bg-cat-neutral', height: 'h-3/5' },
+  distraction: { get label() { return t('categories.distraction'); }, fill: 'bg-cat-distraction', height: 'h-2/5' },
+  break: { get label() { return t('categories.break'); }, fill: 'bg-cat-break', height: 'h-1/5' },
+  idle: { get label() { return t('categories.idle'); }, fill: 'bg-cat-idle', height: 'h-1' },
+  paused: { get label() { return t('categories.paused'); }, fill: 'pattern-paused', height: 'h-1/5' },
 };
 
 /** Categorías que cuentan como tiempo de trabajo en los totales */

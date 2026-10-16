@@ -74,9 +74,10 @@ La interfaz muestra la etiqueta "Datos de ejemplo" siempre que usa el puente sim
 - Capas y reglas: `docs/DISENO.md`. ESLint impide que una capa importe de otra superior.
 - Solo `src/pages`, `src/app` y `src/dev` usan el puente; los componentes de `src/ui` reciben datos por props.
 - Todo dato que llega del puente o de Supabase se valida con zod antes de usarse.
+- Textos en español e inglés con `src/i18n` (ADR-0015): ningún texto visible escrito a mano en JSX (`npm run check:i18n`).
 - Igual que el puente, Supabase se usa solo a través de `src/cloud` (contrato `Cloud`: implementación real y simulada). Las páginas no llaman a `supabase-js` directamente.
 - Sin sesión no se entra a la app (F2): se muestra solo la pantalla de acceso (registro, inicio de sesión y recuperar contraseña), sin navegación. Cerrar sesión está en *Ajustes*. El sensor sigue registrando en el equipo; nada se sube sin sesión ni consentimiento.
-- Rutas (HashRouter), con sesión: `/mi-dia`, `/tareas`, `/equipo`, `/equipo/privacidad` (qué se mide y quién lo ve; F2), `/reportes`, `/ajustes`, `/dev/galeria` (solo desarrollo).
+- Rutas (HashRouter), con sesión: `/mi-dia`, `/tareas` (*Mis tareas*, ADR-0014), `/proyectos`, `/proyectos/:id` y `/proyectos/:id/tareas/:tarea` (F3), `/equipo`, `/equipo/privacidad` (qué se mide y quién lo ve; F2), `/reportes`, `/ajustes`, `/dev/galeria` (solo desarrollo).
 
 ## 6. Núcleo Rust: módulos y comandos (lista cerrada)
 
@@ -101,7 +102,7 @@ Comandos (nombres exactos; `src/bridge/contract.ts` es su espejo en TypeScript):
 | F1 | `privacy_pause(minutes)` · `privacy_resume()` | `SensorStatus` |
 | F1 | `time_entry_add(start, end, task_id?)` · `time_entry_update(id, start, end, task_id?)` · `time_entry_delete(id)` | entrada (`add`) · nada (`update`, `delete`) |
 | F1 | `time_entries(date)` (ADR-0005) | entradas de tiempo del día local |
-| F1 | `settings_get()` · `settings_set(patch)` | ajustes locales (umbral de inactividad, ocultar apps) |
+| F1 | `settings_get()` · `settings_set(patch)` | ajustes locales (umbral de inactividad, ocultar apps, idioma `es`/`en` desde F3, ADR-0015) |
 | F2 | `session_get()` · `session_set(json)` · `session_clear()` | sesión de Supabase |
 | F2 | `active_team_set(team_id?, user_id?)` (ADR-0007, ADR-0013) | — (equipo y cuenta de las filas nuevas) |
 | F2 | `sync_pending(limit)` | bloques, entradas y cierres del equipo activo sin subir, **sin títulos** |
@@ -110,7 +111,8 @@ Comandos (nombres exactos; `src/bridge/contract.ts` es su espejo en TypeScript):
 | F2 | `team_policy_set(policy)` (ADR-0009, ADR-0010) | — (política del equipo: apps ocultas y avisos de sitio no permitido) |
 | F2 | `installed_apps()` (ADR-0010) | apps instaladas y abiertas para elegir cuáles ocultar; solo local |
 | F2 | `notifications_status()` (ADR-0011) | `{ windowsToastsEnabled }`: si Windows muestra notificaciones de apps |
-| F3 | `tasks_cache_put(json)` · `tasks_cache_get()` | copia local de tareas |
+| F3 | `open_external(url)` (ADR-0017) | — (abre un enlace `https://` en el navegador del sistema) |
+| F3 | `tasks_cache_put(json)` · `tasks_cache_get()` | copia local de tareas del equipo y la cuenta activos (máx. 2 MB); `tasks_cache_get` devuelve `null` si no hay |
 | F4 | `ai_config_set(base_url, model, key)` · `ai_config_get()` · `ai_config_clear()` | `ai_config_get` devuelve `{base_url, model, has_key}`, **nunca la clave** |
 | F4 | `ai_chat(messages)` | texto de la respuesta |
 | F5 | `export_my_data(path)` | ruta del archivo |
@@ -120,7 +122,7 @@ Agregar un comando exige actualizar esta tabla, `contract.ts` y `mock.ts` en el 
 Seguridad de Tauri:
 - `src-tauri/capabilities/default.json` solo contiene lo necesario. Prohibidos los plugins `shell`, `fs` y `http` expuestos a la interfaz.
 - La interfaz no carga páginas remotas.
-- La política CSP se activa y se prueba en F6 (objetivo: `default-src 'self'`; conexiones solo a Supabase y al canal interno de Tauri).
+- La política CSP está activa desde F3 (ADR-0017): `default-src 'self'`; conexiones solo a Supabase y al canal interno de Tauri. F6 la comprueba con la app compilada.
 
 Presupuesto de rendimiento (se mide en F1 y F6): RAM en reposo < 120 MB, CPU media < 1 %, inicio < 2 s, instalador < 20 MB.
 
@@ -139,8 +141,9 @@ Presupuesto de rendimiento (se mide en F1 y F6): RAM en reposo < 120 MB, CPU med
 | `activity_blocks` | inicio, fin, app, categoría, herramienta de IA, tipo de uso de IA, dominio del sitio (ADR-0009). **Sin títulos ni URL.** | F2 ✔ |
 | `time_entries` | inicio, fin, tarea opcional, origen (`timer`/`manual`) | F2 ✔ |
 | `classification_rules` | prioridad, tipo (`process`/`title`/`domain`), patrón, categoría, `not_allowed` (sitio no permitido: se marca, no se bloquea) | F2 ✔ |
-| `projects`, `project_members` | proyecto y rol de proyecto (`lead`/`contributor`) | F3 |
-| `tasks` | título, descripción, responsable, estado (`todo`/`doing`/`done`), fecha límite, etiquetas, estimación | F3 |
+| `projects`, `project_members` | proyecto (archivable) y rol de proyecto (`lead`/`contributor`) | F3 (migración `20261008000001`) |
+| `tasks` | título, descripción, tipo, tarea madre (un nivel), responsable, estado (`todo`/`doing`/`review`/`done`), fecha límite, etiquetas, estimación, inicio y fin; `time_entries.task_id` apunta aquí | F3 (`20261008000001`, v2 en `20261008000002`, ADR-0014) |
+| `task_collaborators`, `task_criteria`, `task_reviews`, `task_attachments`, `task_events` | apoyos, criterios de aceptación, revisiones con formulario y evidencia (Storage `task-evidence`) e historial | F3 (`20261008000002`) |
 | `report_runs` | alcance, periodo, hechos, narrativa, modo de IA, resultado de la validación | F4 |
 | `ai_usage` | contador diario de la IA gratuita | F4 |
 
@@ -153,7 +156,7 @@ Reglas de toda migración (ya aplicadas en la primera, que sirve de modelo):
 
 ### 7.2 En el equipo (SQLite, solo Rust)
 
-`activity_blocks_local` (con `title_enc`, `team_id`, `user_id` y `synced_at`), `time_entries_local` (con `team_id` y `user_id`), `app_closures_local` (con `user_id`), `tasks_cache`, `kv_settings` (ajustes, equipo activo, reglas del equipo y la sesión cifrada).
+`activity_blocks_local` (con `title_enc`, `team_id`, `user_id` y `synced_at`), `time_entries_local` (con `team_id` y `user_id`), `app_closures_local` (con `user_id`), `tasks_cache` (JSON por cuenta y equipo, F3), `kv_settings` (ajustes, equipo activo, reglas del equipo y la sesión cifrada).
 
 ### 7.3 Sincronización (TypeScript)
 

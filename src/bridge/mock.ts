@@ -101,10 +101,14 @@ export function createMockBridge(now: () => Date = () => new Date()): Bridge {
     timer: { running: false, startedAt: null, taskId: null },
   };
   let entries: TimeEntry[] = [];
-  let settings: Settings = { idleMinutes: 5, hiddenApps: [] };
+  let settings: Settings = { idleMinutes: 5, hiddenApps: [], language: 'es' };
   // F2: la sesión vive en memoria (en la app real, Rust la guarda cifrada).
   let session: string | null = null;
   let activeTeam: string | null = null;
+  let activeUser: string | null = null;
+  /** Copia de tareas por equipo y cuenta, como en Rust (ADR-0013). */
+  const tasksCache = new Map<string, string>();
+  const cacheKey = () => (activeTeam && activeUser ? `${activeTeam}|${activeUser}` : null);
   const entryTeam = new Map<string, string | null>();
   const synced = new Set<string>();
   const track = (id: string) => {
@@ -203,8 +207,9 @@ export function createMockBridge(now: () => Date = () => new Date()): Bridge {
     sessionClear: async () => {
       session = null;
     },
-    activeTeamSet: async (teamId) => {
+    activeTeamSet: async (teamId, userId) => {
       activeTeam = teamId;
+      activeUser = userId;
     },
     // Solo las entradas creadas con un equipo activo quedan pendientes; los bloques de ejemplo no se suben.
     syncPending: async (limit) => {
@@ -235,5 +240,18 @@ export function createMockBridge(now: () => Date = () => new Date()): Bridge {
       { process: 'keepass', label: 'KeePass Password Safe', source: 'installed' },
       { process: 'spotify', label: 'Spotify', source: 'installed' },
     ],
+    tasksCachePut: async (json) => {
+      const key = cacheKey();
+      if (key) tasksCache.set(key, json);
+    },
+    // En el navegador de desarrollo basta con una pestaña nueva; la app real usa el plugin opener (ADR-0017).
+    openExternal: async (url) => {
+      if (!/^https:\/\//.test(url)) throw new Error('Solo se abren enlaces https://.');
+      window.open(url, '_blank', 'noopener,noreferrer');
+    },
+    tasksCacheGet: async () => {
+      const key = cacheKey();
+      return (key && tasksCache.get(key)) ?? null;
+    },
   };
 }
