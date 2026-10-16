@@ -298,3 +298,8 @@ Decisiones abiertas:
 - **Decisiones de producto (13 oct):** reglas por app solo para lo nuevo; *Mi semana/Mi mes* sin desglose por app; exportar mis datos a *Descargas* (ADR-0023).
 - **Riesgo aceptado:** con exactamente 2 miembros, quien solo ve totales podría deducir las cifras del otro restando las suyas (misma regla de mínimo 2 que F4).
 - **Límite aceptado:** el tope diario de pausa se aplica en la interfaz, no en Rust (F7).
+
+### 9.3 Pendientes para F6 (anotados durante la validación real)
+| # | Prioridad | Pendiente |
+|---|---|---|
+| F6-1 | P2 | **Formato de fecha y hora de los campos nativos.** En *Mi día → Registro de tiempo*, `<input type="date">` muestra `10/15/2026` y la hora `--:-- --` (formato de EE. UU.) con la app en español. En F1 se arregló con `--lang=es-CO` en `additionalBrowserArgs` (`2bd0ca8`), pero se quitó el 7 oct (`2e7f541`) para que la app pudiera cambiar a inglés; `document.documentElement.lang` no cambia el formato de los campos nativos de WebView2. Visto el 15 oct; no se toca antes del congelamiento. |
