@@ -29,7 +29,7 @@ Lo que las pruebas automáticas no pueden comprobar: Supabase real (`pulso-dev`)
 
 | # | Quién | Qué hacer | Resultado esperado | Resultado |
 |---|---|---|---|---|
-| 1.1 | Tú | Trabaja 5 minutos con dos apps y abre *Mi día* → *Detalle* | Aparecen los bloques con su categoría y duración; el temporizador arranca y se detiene | |
+| 1.1 | Tú | Trabaja 5 minutos con dos apps y abre *Mi día* → *Detalle* | Aparecen los bloques con su categoría y duración; el temporizador arranca y se detiene || OK (15 oct). Solo cuenta con teclado o ratón activos; sin ellos, pasado el umbral, es inactividad (esperado) |
 | 1.2 | Tú | Abre ChatGPT o Claude en el navegador durante 2 minutos y vuelve a *Mi día* → *Detalle* | El bloque sale como IA, con la herramienta y un selector «Tipo de uso de IA» | |
 
 ## F2 · Cuentas, equipos y sincronización
@@ -37,8 +37,8 @@ Lo que las pruebas automáticas no pueden comprobar: Supabase real (`pulso-dev`)
 | # | Quién | Qué hacer | Resultado esperado | Resultado |
 |---|---|---|---|---|
 | 2.1 | Tú | Mira el indicador de subida (abajo en el menú) con red | Pasa a «Al día» en menos de un minuto; nunca «Error» (el error del 8 oct quedó corregido en `e89558e`) | |
-| 2.2 | Tú | Entra a un sitio marcado «no permitido» por el equipo (ADR-0012) | Aparece el aviso dentro de Pulso en cualquier pantalla, además de la notificación | |
-| 2.3 | Tú | Mira Pulso durante 1 minuto y luego *Mi día* | Pulso no aparece como un bloque propio | |
+| 2.2 | Tú | Entra a un sitio marcado «no permitido» por el equipo (ADR-0012) | Aparece el aviso dentro de Pulso en cualquier pantalla, además de la notificación || OK (15 oct, youtube.com) |
+| 2.3 | Tú | Mira Pulso durante 1 minuto y luego *Mi día* | Pulso no aparece como un bloque propio || OK (15 oct) |
 | 2.4 | Tú | Con A: invita a C como viewer; con C: acepta con el código; con A: cambia un rol. En el panel de Supabase → *Table Editor* → `audit_log` | Todo funciona igual que en F2 (la corrección de permisos de F4 no rompió nada) y `audit_log` tiene las filas de la invitación y el cambio de rol | |
 
 ## F3 · Proyectos y tareas
