@@ -27,7 +27,7 @@ obliga a cambiar la migración y su prueba en el mismo cambio.
 | 10 | Registrar y editar tiempo propio | S | S | S | S | — | F2 |
 | 11 | Editar el tiempo de otra persona | — | — | — | — | — | F2 |
 | 12 | Ver la propia actividad con títulos (solo local) | S | S | S | S | — | F1 |
-| 13 | Ver actividad agregada por miembro (categorías, apps, sitios por dominio, horas) | ✔ | ✔ | P (solo tiempo de sus proyectos) | — | — | F2 · «P» en F3 (`project_time_summary`) |
+| 13 | Ver actividad agregada por miembro (categorías, apps, sitios por dominio, horas) | ✔ | ✔ | P (solo horas de temporizador en sus proyectos; sin apps, sitios ni categorías; spec F5, D-5) | — | — | F2 · «P» en F3 (`project_time_summary`) |
 | 14 | Ver uso de IA por miembro | ✔ | ✔ | P | — | — | F2 · «P» en F5: horas de IA solapadas con sus temporizadores en tareas de sus proyectos (los bloques no llevan proyecto; spec F3, D-13; spec F5, D-5) |
 | 15 | Ver totales del equipo sin nombres | ✔ | ✔ | ✔ | ✔ | ✔ | F5 |
 | 16 | Crear o archivar proyectos | ✔ | ✔ | — | — | — | F3 ✔ |
