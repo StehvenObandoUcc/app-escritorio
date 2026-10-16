@@ -1,21 +1,22 @@
+import { t } from '@/i18n';
 import { CONSENT_POINTS, CONSENT_VERSION } from '@/lib/consent';
 import { describeMark, VISIBILITY } from '@/lib/privacy';
 import { Heading, Surface } from '@/ui/atoms';
 import { PageLayout } from '@/ui/templates';
 
 const COLUMNS = [
-  { key: 'owner', label: 'Propietario' },
-  { key: 'admin', label: 'Administrador' },
-  { key: 'lead', label: 'Líder de proyecto' },
-  { key: 'member', label: 'Miembro' },
-  { key: 'viewer', label: 'Observador' },
+  { key: 'owner', label: () => t('roles.owner') },
+  { key: 'admin', label: () => t('roles.admin') },
+  { key: 'lead', label: () => t('privacy.lead') },
+  { key: 'member', label: () => t('roles.member') },
+  { key: 'viewer', label: () => t('roles.viewer') },
 ] as const;
 
 /** «Qué se mide y quién lo ve» (PS-01). Las filas repiten docs/ROLES.md (comprobado en privacy.test.ts). */
 export function PrivacidadPage() {
   return (
-    <PageLayout title="Qué se mide y quién lo ve" subtitle={`Consentimiento versión ${CONSENT_VERSION}`}>
-      <Surface as="section" aria-label="Qué se mide">
+    <PageLayout title={t('privacy.title')} subtitle={t('privacy.version', { version: CONSENT_VERSION })}>
+      <Surface as="section" aria-label={t('consent.measured.title')}>
         <dl className="flex flex-col gap-3">
           {CONSENT_POINTS.map((p) => (
             <div key={p.title}>
@@ -25,10 +26,10 @@ export function PrivacidadPage() {
           ))}
         </dl>
       </Surface>
-      <Surface as="section" aria-label="Quién ve cada dato" padding="flush">
+      <Surface as="section" aria-label={t('privacy.whoSees')} padding="flush">
         <div className="p-4 md:p-5">
-          <Heading level={2}>Quién ve cada dato</Heading>
-          <p className="mt-1 text-sm text-fg-muted">Lo aplica la base de datos, no solo la app: cada celda tiene su prueba.</p>
+          <Heading level={2}>{t('privacy.whoSees')}</Heading>
+          <p className="mt-1 text-sm text-fg-muted">{t('privacy.enforced')}</p>
         </div>
         {/* En ventanas estrechas, una tarjeta por dato; desde 1024 px, tabla. */}
         <ul className="flex flex-col divide-y divide-line border-t border-line lg:hidden">
@@ -38,7 +39,7 @@ export function PrivacidadPage() {
               <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                 {COLUMNS.map((c) => (
                   <div key={c.key} className="contents">
-                    <dt className="text-fg-muted">{c.label}</dt>
+                    <dt className="text-fg-muted">{c.label()}</dt>
                     <dd className="text-fg">{describeMark(v[c.key])}</dd>
                   </div>
                 ))}
@@ -50,11 +51,11 @@ export function PrivacidadPage() {
           <thead>
             <tr className="text-left text-fg-muted">
               <th scope="col" className="p-3 font-medium">
-                Dato
+                {t('privacy.data')}
               </th>
               {COLUMNS.map((c) => (
                 <th key={c.key} scope="col" className="p-3 font-medium">
-                  {c.label}
+                  {c.label()}
                 </th>
               ))}
             </tr>

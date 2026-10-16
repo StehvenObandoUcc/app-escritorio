@@ -9,6 +9,7 @@
  * Los cierres de Pulso (A-1) se suben solo si empezaron dentro de la jornada del equipo, en la zona
  * horaria de la persona; los demás se marcan como atendidos y no salen del equipo.
  */
+import { errorMessage, t } from '@/i18n';
 import type { Bridge, SyncBatch, SyncKind } from '@/bridge/contract';
 import { CloudError, type Cloud } from '@/cloud/contract';
 import { isWithinWorkday, type WorkdayWindow } from '@/lib/workday';
@@ -107,7 +108,7 @@ export class SyncEngine {
     }
     this.clearRetry();
     if (!this.isOnline()) {
-      this.fail(new CloudError('Sin conexión. Se subirá al volver la red.', 'network'));
+      this.fail(new CloudError(t('sync.offline'), 'network'));
       return;
     }
     this.set({ phase: 'syncing', message: null });
@@ -167,9 +168,9 @@ export class SyncEngine {
     const network = err?.kind === 'network';
     const message = err
       ? err.kind === 'forbidden'
-        ? 'El servidor no aceptó tus datos. Revisa en Equipo que sigas en el equipo y hayas aceptado el consentimiento.'
+        ? t('sync.forbidden')
         : err.message
-      : `No se pudo sincronizar: ${cause instanceof Error ? cause.message : String(cause)}`;
+      : t('sync.failed', { error: errorMessage(cause) });
     this.set({ phase: network ? 'pending' : 'error', message });
     this.cancelRetry = this.setTimer(() => void this.syncNow(), SyncEngine.retryDelay(this.failures));
   }

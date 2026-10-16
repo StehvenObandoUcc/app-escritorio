@@ -80,6 +80,7 @@ Están aprobadas pero aún no instaladas. Quien las instale anota aquí la versi
 | `uuid`, `chrono` | F1 | Identificadores y fechas (`chrono` con la feature `serde`, ADR-0013) | 1.27.0 · 0.4.45 |
 | `reqwest` (TLS con rustls) | F4 | Llamada a la IA con clave propia | pendiente |
 | `tauri-plugin-notification` | F2 (adelantado, ADR-0010) | Avisos del sistema; se usa solo desde Rust | 2.5.1 |
+| `tauri-plugin-opener` | F3 (ADR-0017) | Abrir enlaces `https://` de la evidencia en el navegador; solo desde Rust (`open_external`) | 2.7.0 |
 | `tauri-plugin-autostart` | F6 | Abrir con el sistema | pendiente |
 
 Los crates se agregan con `cargo add <nombre>` dentro de `src-tauri`, que toma la última versión estable; no se escribe la versión de memoria.

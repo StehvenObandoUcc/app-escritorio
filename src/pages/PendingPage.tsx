@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { EmptyState } from '@/ui/molecules';
 import { PageLayout } from '@/ui/templates';
 
@@ -5,7 +6,7 @@ import { PageLayout } from '@/ui/templates';
 export function PendingPage({ title, phase, what }: { title: string; phase: string; what: string }) {
   return (
     <PageLayout title={title}>
-      <EmptyState title={`Llega en la fase ${phase}`} description={what} />
+      <EmptyState title={t('app.comesIn', { phase })} description={what} />
     </PageLayout>
   );
 }

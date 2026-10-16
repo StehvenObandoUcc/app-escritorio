@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { useId, useState, type ReactNode } from 'react';
 import { CONSENT_POINTS, CONSENT_VERSION } from '@/lib/consent';
 import { Button, Heading, Surface } from '@/ui/atoms';
@@ -29,10 +30,10 @@ export function ConsentPanel({
   const [agreed, setAgreed] = useState(false);
   const checkId = useId();
   return (
-    <Surface as="section" aria-label={`Consentimiento para ${teamName}`} className="flex flex-col gap-4">
+    <Surface as="section" aria-label={t('consentPanel.label', { team: teamName })} className="flex flex-col gap-4">
       <div>
-        <Heading level={2}>Antes de compartir datos con {teamName}</Heading>
-        <p className="mt-1 text-sm text-fg-muted">Versión {CONSENT_VERSION}. Sin tu consentimiento, nada sale de tu equipo.</p>
+        <Heading level={2}>{t('consentPanel.title', { team: teamName })}</Heading>
+        <p className="mt-1 text-sm text-fg-muted">{t('consentPanel.version', { version: CONSENT_VERSION })}</p>
       </div>
       <dl className="flex flex-col gap-3">
         {CONSENT_POINTS.map((p) => (
@@ -51,7 +52,7 @@ export function ConsentPanel({
           checked={agreed}
           onChange={(e) => setAgreed(e.target.checked)}
         />
-        <span>Leí qué se mide y quién lo ve, y acepto compartir estos datos con {teamName}.</span>
+        <span>{t('consentPanel.agree', { team: teamName })}</span>
       </label>
       {error && (
         <p role="alert" className="text-sm text-danger">

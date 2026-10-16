@@ -34,3 +34,25 @@ $$;
 grant usage on schema auth to anon, authenticated, service_role;
 grant execute on function auth.uid(), auth.jwt() to anon, authenticated, service_role;
 grant usage on schema public to anon, authenticated, service_role;
+
+-- Storage mínimo (ADR-0014): buckets y objetos con RLS, como en Supabase.
+create schema storage;
+create table storage.buckets (
+  id text primary key,
+  name text not null,
+  public boolean not null default false,
+  file_size_limit bigint,
+  allowed_mime_types text[]
+);
+create table storage.objects (
+  id uuid primary key default gen_random_uuid(),
+  bucket_id text references storage.buckets (id),
+  name text not null,
+  owner uuid default auth.uid(),
+  -- Storage guarda aquí el tamaño y el tipo del archivo subido.
+  metadata jsonb,
+  created_at timestamptz not null default now()
+);
+alter table storage.objects enable row level security;
+grant usage on schema storage to anon, authenticated, service_role;
+grant select, insert on storage.objects to authenticated;
