@@ -139,7 +139,7 @@ describe('ai-trial', () => {
     const s = setup();
     const deps: TrialDeps = {
       ...s.deps,
-      user: { ...s.deps.user, rpc: async (fn, args) => (fn === 'save_report' ? { data: null, error: { message: 'cambiaron', code: '40001' } } : s.deps.user.rpc(fn, args)) },
+      user: { ...s.deps.user, rpc: async (fn, args) => (fn === 'save_report' ? { data: null, error: { message: 'cambiaron', code: 'PT409' } } : s.deps.user.rpc(fn, args)) },
     };
     expect(await handleTrial(REQUEST, deps)).toMatchObject({ status: 409, body: { reason: 'changed' } });
     expect(s.rpcNames(s.service)).toEqual([]);
