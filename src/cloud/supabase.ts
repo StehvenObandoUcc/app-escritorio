@@ -2,7 +2,7 @@
  * Nube real: Supabase (Auth + Postgres con RLS + funciones SQL de supabase/migrations).
  * La sesión no va al almacenamiento del navegador: se guarda con el puente (Rust la cifra, PS-08).
  */
-import { createClient, FunctionsHttpError, type SupabaseClient, type SupportedStorage, type User } from '@supabase/supabase-js';
+import { createClient, FunctionsFetchError, FunctionsHttpError, type SupabaseClient, type SupportedStorage, type User } from '@supabase/supabase-js';
 import { z } from 'zod';
 import type { Bridge, SyncBlock, SyncClosure, SyncEntry, TeamRule } from '@/bridge/contract';
 import { t, type TKey } from '@/i18n';
@@ -780,8 +780,11 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
         body: { team: req.teamId, scope: req.scope, subject: req.subjectId, period: req.period, language },
       });
       if (error) {
-        // Sin respuesta de la función (red): como cualquier otro fallo de red.
-        if (!(error instanceof FunctionsHttpError)) throw toCloudError({ message: error.message });
+        // Sin respuesta de la función: red → mensaje de red; pasarela (p. ej. «upstream request timeout») u otro → 'provider'.
+        if (!(error instanceof FunctionsHttpError)) {
+          if (error instanceof FunctionsFetchError) throw new CloudError(t('cloud.offline'), 'network');
+          throw new TrialError('provider', error.message);
+        }
         const body = z
           .object({ reason: z.string(), message: z.string().optional() })
           .safeParse(await (error.context as Response).json().catch(() => null));
