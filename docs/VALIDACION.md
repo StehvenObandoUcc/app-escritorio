@@ -1,4 +1,4 @@
-# Validación en real (F1 a F4)
+# Validación en real (F1 a F5)
 
 Lo que las pruebas automáticas no pueden comprobar: Supabase real (`pulso-dev`), la Edge Function, proveedores de IA de verdad y la app de escritorio. Se hace **en orden**: cada bloque supone que el anterior pasó.
 
@@ -95,7 +95,27 @@ node scripts/f4-validar-nube.mjs
 | 4.20 | Tú | Con `PULSO_AI_BASE_URL`, `PULSO_AI_MODEL` y `PULSO_AI_KEY`: `node scripts/f4-reportes-reales.mjs` | `Plantilla: N de 20 (meta: 3 o menos) → CUMPLE` (AC-13b) | |
 | 4.21 | Tú | Abre `/dev/galeria` (solo con `npm run dev`), sección «Reportes (F4)», en ventana estrecha, media y ancha, en tema claro y oscuro; recorre *Reportes* solo con el teclado | Se ve bien en los seis casos y todo se alcanza con flechas, Enter y Esc (AC-31) | |
 
+## F5 · Tableros y privacidad (puerta G5)
+
+Cuentas: A = owner, B = member y C = viewer (las de arriba). Faltan dos, del mismo equipo: **D = admin** (con A, *Equipo* → *Miembros*, cambia su rol a «Administrador») y **E = lead** (cuenta member; con A o D, abre un proyecto → miembros del proyecto y dale el rol «Líder»; ponle además una tarea en curso y tiempo en ella). Para que haya datos, A, B, D y E trabajan un rato con apps y temporizador y esperan a «Al día» (indicador abajo en el menú). Hacen falta al menos 2 miembros sin contar al viewer, o member y viewer verán el aviso «Hacen falta al menos 2 miembros» (AC-4).
+
+| # | Quién | Qué hacer | Resultado esperado | Resultado |
+|---|---|---|---|---|
+| 5.1 | Tú | Con A (owner): abre *Tablero* y recorre los periodos (Hoy, Esta semana, Este mes, Semana pasada, Mes pasado) | Ve «Totales del equipo», «Horas por día», «Uso de IA del equipo», «Presencia», «Personas» (horas activas, productivas, IA, «Capacidad usada» y tareas en curso de cada persona, con «Solo categorías» junto a quien ocultó sus apps) y «Apps más usadas». «Presencia» lista a todos menos al viewer y solo dice el estado, nunca app ni sitio. No ve «Tus proyectos» (AC-1, AC-6, AC-14) | |
+| 5.2 | Tú | Con D (admin): repite 5.1 | Ve exactamente lo mismo que A: totales, «Personas», «Capacidad usada», «Apps más usadas» y «Presencia» de todos (AC-1, AC-6) | |
+| 5.3 | Tú | Con E (lead): abre *Tablero* | Ve «Totales del equipo» sin nombres y «Tus proyectos» (solo las personas de sus proyectos, con «Horas en tus proyectos», «IA en tus proyectos» y tareas en curso). «Presencia» solo con las personas de sus proyectos. NO ve «Personas», «Capacidad usada» ni «Apps más usadas», ni categorías ni apps por persona, ni a nadie ajeno a sus proyectos (AC-2, AC-6) | |
+| 5.4 | Tú | Con B (member): abre *Tablero*. Con A, en *Equipo* → *General* → «Ajustes del equipo», apaga «Los miembros pueden ver quién está activo» y guarda; B recarga *Tablero*. Luego A lo enciende y B recarga | Siempre ve «Totales del equipo», «Horas por día» y «Uso de IA del equipo», sin ningún nombre de persona. NO ve «Personas», «Tus proyectos» ni «Apps más usadas». «Presencia» no aparece con el interruptor apagado (la app no la pide; sin texto de error) y muestra a todos (solo estado) con él encendido (AC-3, AC-6) | |
+| 5.5 | Tú | Con C (viewer): abre *Tablero* | Ve «Totales del equipo», «Horas por día» y «Uso de IA del equipo», sin ningún nombre de persona. NO ve «Presencia», «Personas», «Tus proyectos» ni «Apps más usadas» (AC-3, AC-6) | |
+| 5.6 | Tú | Con un equipo de prueba que tenga solo owner + viewer (o con el equipo cuando B, D y E aún no hayan entrado): abre *Tablero* con C y con A | C ve «Hacen falta al menos 2 miembros» y ninguna cifra; A sí ve los totales (AC-4, AC-14) | |
+| 5.7 | Tú | Con A, D, E, B y C: *Tablero* → «Imprimir / PDF» (vista previa de impresión) | El PDF solo trae el tablero de ese rol, sin menú ni controles (AC-17) | |
+| 5.8 | Tú | Elige un día y un miembro (por ejemplo B). Espera a «Al día» en B y en A. Con B: *Mi día* → Día de ese día y anota horas activas, productivas y tiempo de IA. Con A: *Tablero* → Hoy (o el periodo que cubra solo ese día) → «Personas» y compara con la fila de B. Repite con otro miembro | Horas activas, «Productivas» y tiempo de IA de la fila de B (la tabla «Personas» no muestra neutral ni distracción) en el tablero coinciden con *Mi día* de B, al minuto (confirmar margen: la spec no define uno; el tablero redondea a 1 decimal). Si no coinciden, anota la diferencia y si B tenía datos sin subir (AC-1) | |
+| 5.9 | Tú | Mismo día: compara «Totales del equipo» del tablero con la suma de *Mi día* de todos los miembros sin viewer | Horas activas y de IA del equipo = suma de las de cada persona (mismo margen que 5.8, confirmar margen) (AC-1) | |
+| 5.10 | Tú | Con B: *Ajustes* → *Mi privacidad* → apaga «Compartir los nombres de mis apps con el equipo» y confirma con «Sí, dejar de compartir». Trabaja 5 minutos con otra app y espera a «Al día» | La opción queda apagada y explica que el equipo ve solo categorías (AC-24) | |
+| 5.11 | Tú | Con A: *Tablero* → «Personas» y «Apps más usadas» | Junto a B aparece «Solo categorías»; B suma sus horas por categoría, pero ninguna app suya (ni las ya subidas ni las nuevas) sale en «Apps más usadas» (AC-9) | |
+| 5.12 | Tú | Con B: vuelve a encender «Compartir los nombres de mis apps con el equipo», trabaja 5 minutos con una app y espera a «Al día». Con A: mira *Tablero* | «Solo categorías» desaparece junto a B y las apps nuevas vuelven a verse; las ya ocultas siguen sin nombre (encender solo afecta a lo nuevo) (AC-9) | |
+| 5.13 | Tú | Con A: *Equipo* → *Auditoría* (también con D). Luego con B, E y C mira *Equipo* | Hay filas «Cambió los ajustes del equipo» (de 5.4) y «Cambió si comparte los nombres de sus apps» (de 5.10 y 5.12), con quién y cuándo. A y D ven la pestaña; B, E y C no (AC-9, AC-10, AC-22) | |
+
 ## Fuera de esta lista
 
 - G0: los informes S-2 y S-4 siguen pendientes (docs/PLAN.md).
-- F5 no ha empezado.
+- F6 (instalador, pulso-demo, revisión de seguridad): ver docs/PLAN.md §3 y §9.3.
