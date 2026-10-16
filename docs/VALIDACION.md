@@ -30,25 +30,25 @@ Lo que las pruebas automáticas no pueden comprobar: Supabase real (`pulso-dev`)
 | # | Quién | Qué hacer | Resultado esperado | Resultado |
 |---|---|---|---|---|
 | 1.1 | Tú | Trabaja 5 minutos con dos apps y abre *Mi día* → *Detalle* | Aparecen los bloques con su categoría y duración; el temporizador arranca y se detiene || OK (15 oct). Solo cuenta con teclado o ratón activos; sin ellos, pasado el umbral, es inactividad (esperado) |
-| 1.2 | Tú | Abre ChatGPT o Claude en el navegador durante 2 minutos y vuelve a *Mi día* → *Detalle* | El bloque sale como IA, con la herramienta y un selector «Tipo de uso de IA» | |
+| 1.2 | Tú | Abre ChatGPT o Claude en el navegador durante 2 minutos y vuelve a *Mi día* → *Detalle* | El bloque sale como IA, con la herramienta y un selector «Tipo de uso de IA» | OK (16 oct). Sale como IA con «Sin etiquetar» hasta elegir el tipo |
 
 ## F2 · Cuentas, equipos y sincronización
 
 | # | Quién | Qué hacer | Resultado esperado | Resultado |
 |---|---|---|---|---|
-| 2.1 | Tú | Mira el indicador de subida (abajo en el menú) con red | Pasa a «Al día» en menos de un minuto; nunca «Error» (el error del 8 oct quedó corregido en `e89558e`) | |
+| 2.1 | Tú | Mira el indicador de subida (abajo en el menú) con red | Pasa a «Al día» en menos de un minuto; nunca «Error» (el error del 8 oct quedó corregido en `e89558e`) | OK (16 oct) |
 | 2.2 | Tú | Entra a un sitio marcado «no permitido» por el equipo (ADR-0012) | Aparece el aviso dentro de Pulso en cualquier pantalla, además de la notificación || OK (15 oct, youtube.com) |
 | 2.3 | Tú | Mira Pulso durante 1 minuto y luego *Mi día* | Pulso no aparece como un bloque propio || OK (15 oct) |
-| 2.4 | Tú | Con A: invita a C como viewer; con C: acepta con el código; con A: cambia un rol. En el panel de Supabase → *Table Editor* → `audit_log` | Todo funciona igual que en F2 (la corrección de permisos de F4 no rompió nada) y `audit_log` tiene las filas de la invitación y el cambio de rol | |
+| 2.4 | Tú | Con A: invita a C como viewer; con C: acepta con el código; con A: cambia un rol. En el panel de Supabase → *Table Editor* → `audit_log` | Todo funciona igual que en F2 (la corrección de permisos de F4 no rompió nada) y `audit_log` tiene las filas de la invitación y el cambio de rol | OK (16 oct) |
 
 ## F3 · Proyectos y tareas
 
 | # | Quién | Qué hacer | Resultado esperado | Resultado |
 |---|---|---|---|---|
-| 3.1 | Tú | Con A: crea una tarea para B con evidencia «Hoja de cálculo». Con B: tómala, empiézala y envíala con un XLSX. Con A: pide cambios; con B: reenvíala; con A: apruébala | Cada paso funciona y el historial de la tarea lo muestra (regresión tras cerrar funciones internas) | |
-| 3.2 | Tú | Con una cuenta del proyecto, abre el archivo de evidencia de 3.1 y copia la dirección que se abre en el navegador | El archivo abre en el navegador del sistema | |
-| 3.3 | Tú | Con una cuenta **fuera del proyecto**: `$env:PULSO_EVIDENCE_URL='<dirección>'; node scripts/f3-evidencia-ajena.mjs` | `BLOQUEADO` al descargar y al pedir enlace, y `CUMPLE`. Pasados 60 s, el enlace compartido también `BLOQUEADO` | |
-| 3.4 | Tú | Recorre *Proyectos*, una tarea y *Ajustes* con la app real | Ninguna pantalla en blanco ni errores de CSP | |
+| 3.1 | Tú | Con A: crea una tarea para B con evidencia «Hoja de cálculo». Con B: tómala, empiézala y envíala con un XLSX. Con A: pide cambios; con B: reenvíala; con A: apruébala | Cada paso funciona y el historial de la tarea lo muestra (regresión tras cerrar funciones internas) | OK (16 oct). B no recibe aviso cuando A pide cambios (P2, F6) |
+| 3.2 | Tú | Con una cuenta del proyecto, abre el archivo de evidencia de 3.1 y copia la dirección que se abre en el navegador | El archivo abre en el navegador del sistema | OK (16 oct) |
+| 3.3 | Tú | Con una cuenta **fuera del proyecto**: `$env:PULSO_EVIDENCE_URL='<dirección>'; node scripts/f3-evidencia-ajena.mjs` | `BLOQUEADO` al descargar y al pedir enlace, y `CUMPLE`. Pasados 60 s, el enlace compartido también `BLOQUEADO` | OK (16 oct) |
+| 3.4 | Tú | Recorre *Proyectos*, una tarea y *Ajustes* con la app real | Ninguna pantalla en blanco ni errores de CSP | OK (16 oct) |
 
 ## F4 · IA y reportes (puerta G4)
 
@@ -73,22 +73,22 @@ node scripts/f4-validar-nube.mjs
 
 | # | Quién | Qué hacer | Resultado esperado | Resultado |
 |---|---|---|---|---|
-| 4.1 | Tú | *Mi día* → *Detalle*: etiqueta un bloque de IA como «Código»; espera a «Al día» | La etiqueta se queda al recargar | |
-| 4.2 | Tú | Con B: *Reportes* → Mi trabajo · Hoy · Gratis → Generar | Sale el reporte con cifras, «Datos hasta HH:MM», «Validado en el servidor» (en Supabase, `report_runs.validated_by = server`) y el texto marcado como redactado por IA. En las cifras aparece «Tiempo de IA por tipo de uso · Código» (AC-29) || Servidor OK (15 oct, script); falta lo visual |
-| 4.3 | Tú | Repite 4.2 sin cambiar nada | «Ya había un reporte con los mismos datos…» y el historial no crece || Servidor OK (15 oct, script); falta lo visual |
-| 4.4 | Tú | Con B: genera en Gratis otros reportes **distintos** (ayer, esta semana, la semana pasada; hoy en inglés) esperando 30 s entre uno y otro, hasta el sexto | El sexto muestra «Usaste tus 5 reportes gratis de hoy…» (AC-14) || Servidor OK (15 oct, script: 429 user_limit); falta ver el texto del aviso |
-| 4.5 | Tú | Con B: mira la lista «Sobre» | No aparece «Todo el equipo» (un member no genera el reporte de equipo) || Servidor OK (15 oct, script); falta lo visual |
-| 4.6 | Tú | Con A (owner): genera «Todo el equipo» · Ayer | Sale con totales del grupo, sin nombres; en Supabase → `audit_log` hay una fila `report_generated` (AC-27) || Servidor OK (15 oct, script) |
-| 4.7 | Tú | Con C (viewer): abre *Reportes* | Ve el reporte de equipo de 4.6 en el historial; no ve el formulario ni reportes personales || Servidor OK (15 oct, script); falta lo visual |
-| 4.8 | Tú | `npx supabase@2.119.0 secrets set AI_TRIAL_ENABLED=false`; genera un reporte gratis nuevo; luego vuelve a `true` | «El modo Gratis está apagado en este momento…» | |
-| 4.9 | Tú | *Ajustes → IA*: proveedor, modelo y clave válidos → Guardar → Probar conexión | «Conexión correcta: el proveedor respondió.» | |
-| 4.10 | Tú | Cambia la clave por una inválida → Probar conexión. Luego un modelo inexistente. Luego sin red | Mensajes claros: clave no válida, modelo no encontrado, sin conexión (AC-18) | |
-| 4.11 | Tú | Escribe `http://api.ejemplo.com/v1` como URL y guarda | Se rechaza: debe empezar por https:// (AC-20) | |
+| 4.1 | Tú | *Mi día* → *Detalle*: etiqueta un bloque de IA como «Código»; espera a «Al día» | La etiqueta se queda al recargar | OK (16 oct) |
+| 4.2 | Tú | Con B: *Reportes* → Mi trabajo · Hoy · Gratis → Generar | Sale el reporte con cifras, «Datos hasta HH:MM», «Validado en el servidor» (en Supabase, `report_runs.validated_by = server`) y el texto marcado como redactado por IA. En las cifras aparece «Tiempo de IA por tipo de uso · Código» (AC-29) || OK (16 oct, servidor y pantalla) |
+| 4.3 | Tú | Repite 4.2 sin cambiar nada | «Ya había un reporte con los mismos datos…» y el historial no crece || OK (16 oct) |
+| 4.4 | Tú | Con B: genera en Gratis otros reportes **distintos** (ayer, esta semana, la semana pasada; hoy en inglés) esperando 30 s entre uno y otro, hasta el sexto | El sexto muestra «Usaste tus 5 reportes gratis de hoy…» (AC-14) || OK (16 oct) |
+| 4.5 | Tú | Con B: mira la lista «Sobre» | No aparece «Todo el equipo» (un member no genera el reporte de equipo) || OK (16 oct) |
+| 4.6 | Tú | Con A (owner): genera «Todo el equipo» · Ayer | Sale con totales del grupo, sin nombres; en Supabase → `audit_log` hay una fila `report_generated` (AC-27) || OK (16 oct) |
+| 4.7 | Tú | Con C (viewer): abre *Reportes* | Ve el reporte de equipo de 4.6 en el historial; no ve el formulario ni reportes personales || OK (16 oct) |
+| 4.8 | Tú | `npx supabase@2.119.0 secrets set AI_TRIAL_ENABLED=false`; genera un reporte gratis nuevo; luego vuelve a `true` | «El modo Gratis está apagado en este momento…» | OK (16 oct) |
+| 4.9 | Tú | *Ajustes → IA*: proveedor, modelo y clave válidos → Guardar → Probar conexión | «Conexión correcta: el proveedor respondió.» | OK (16 oct) |
+| 4.10 | Tú | Cambia la clave por una inválida → Probar conexión. Luego un modelo inexistente. Luego sin red | Mensajes claros: clave no válida, modelo no encontrado, sin conexión (AC-18) | OK (16 oct) |
+| 4.11 | Tú | Escribe `http://api.ejemplo.com/v1` como URL y guarda | Se rechaza: debe empezar por https:// (AC-20) | OK (16 oct) |
 | 4.12 | Agente | Tras 4.9, busca la clave en `%APPDATA%\co.pulso.desktop\pulso.db` (tabla `kv_settings`) y en el almacenamiento del WebView | No aparece en ningún lado; solo en el Administrador de credenciales de Windows (`pulso` / `ai-key`) (AC-19) | |
-| 4.13 | Tú | *Reportes* → Mi proveedor de IA · Ayer → Generar | Reporte en modo «Mi proveedor de IA», validado en este equipo | |
+| 4.13 | Tú | *Reportes* → Mi proveedor de IA · Ayer → Generar | Reporte en modo «Mi proveedor de IA», validado en este equipo | OK (16 oct) |
 | 4.14 | Tú | *Reportes* → Manual: copia el prompt, pégalo en ChatGPT o Gemini; pega primero un texto cualquiera y luego la respuesta real | El texto cualquiera se rechaza con el motivo; la respuesta real produce el reporte (AC-21) | |
-| 4.15 | Tú | En un reporte: Markdown, JSON, CSV y PDF (imprimir → Microsoft Print to PDF) | Los tres archivos quedan en *Descargas* y abren bien; el PDF solo trae el reporte, sin el menú (AC-26) | |
-| 4.16 | Tú | Cambia la app a inglés y genera un reporte nuevo | Pantalla y texto de la IA en inglés (AC-30) | |
+| 4.15 | Tú | En un reporte: Markdown, JSON, CSV y PDF (imprimir → Microsoft Print to PDF) | Los tres archivos quedan en *Descargas* y abren bien; el PDF solo trae el reporte, sin el menú (AC-26) | OK (16 oct) |
+| 4.16 | Tú | Cambia la app a inglés y genera un reporte nuevo | Pantalla y texto de la IA en inglés (AC-30) | OK (16 oct) |
 | 4.17 | Tú | Mañana: abre *Reportes* | Los reportes de hoy siguen en el historial y se abren igual (AC-25) | |
 | 4.18 | Tú | Con una cuenta de prueba que tenga un reporte personal: *Equipo* → Salir del equipo; vuelve a entrar con una invitación | Su reporte personal ya no está; el de equipo sigue (AC-28) | |
 | 4.19 | Tú | `node scripts/f4-cupos-simultaneos.mjs` (cuenta con cupo; gasta 1) | `ok: 1`, el resto `cooldown` y `CUMPLE` (AC-15) || OK (15 oct, f4-validar-nube: ok 1, cooldown 9) |
@@ -101,19 +101,19 @@ Cuentas: A = owner, B = member y C = viewer (las de arriba). Faltan dos, del mis
 
 | # | Quién | Qué hacer | Resultado esperado | Resultado |
 |---|---|---|---|---|
-| 5.1 | Tú | Con A (owner): abre *Tablero* y recorre los periodos (Hoy, Esta semana, Este mes, Semana pasada, Mes pasado) | Ve «Totales del equipo», «Horas por día», «Uso de IA del equipo», «Presencia», «Personas» (horas activas, productivas, IA, «Capacidad usada» y tareas en curso de cada persona, con «Solo categorías» junto a quien ocultó sus apps) y «Apps más usadas». «Presencia» lista a todos menos al viewer y solo dice el estado, nunca app ni sitio. No ve «Tus proyectos» (AC-1, AC-6, AC-14) | |
-| 5.2 | Tú | Con D (admin): repite 5.1 | Ve exactamente lo mismo que A: totales, «Personas», «Capacidad usada», «Apps más usadas» y «Presencia» de todos (AC-1, AC-6) | |
-| 5.3 | Tú | Con E (lead): abre *Tablero* | Ve «Totales del equipo» sin nombres y «Tus proyectos» (solo las personas de sus proyectos, con «Horas en tus proyectos», «IA en tus proyectos» y tareas en curso). «Presencia» solo con las personas de sus proyectos. NO ve «Personas», «Capacidad usada» ni «Apps más usadas», ni categorías ni apps por persona, ni a nadie ajeno a sus proyectos (AC-2, AC-6) | |
-| 5.4 | Tú | Con B (member): abre *Tablero*. Con A, en *Equipo* → *General* → «Ajustes del equipo», apaga «Los miembros pueden ver quién está activo» y guarda; B recarga *Tablero*. Luego A lo enciende y B recarga | Siempre ve «Totales del equipo», «Horas por día» y «Uso de IA del equipo», sin ningún nombre de persona. NO ve «Personas», «Tus proyectos» ni «Apps más usadas». «Presencia» no aparece con el interruptor apagado (la app no la pide; sin texto de error) y muestra a todos (solo estado) con él encendido (AC-3, AC-6) | |
-| 5.5 | Tú | Con C (viewer): abre *Tablero* | Ve «Totales del equipo», «Horas por día» y «Uso de IA del equipo», sin ningún nombre de persona. NO ve «Presencia», «Personas», «Tus proyectos» ni «Apps más usadas» (AC-3, AC-6) | |
-| 5.6 | Tú | Con un equipo de prueba que tenga solo owner + viewer (o con el equipo cuando B, D y E aún no hayan entrado): abre *Tablero* con C y con A | C ve «Hacen falta al menos 2 miembros» y ninguna cifra; A sí ve los totales (AC-4, AC-14) | |
-| 5.7 | Tú | Con A, D, E, B y C: *Tablero* → «Imprimir / PDF» (vista previa de impresión) | El PDF solo trae el tablero de ese rol, sin menú ni controles (AC-17) | |
-| 5.8 | Tú | Elige un día y un miembro (por ejemplo B). Espera a «Al día» en B y en A. Con B: *Mi día* → Día de ese día y anota horas activas, productivas y tiempo de IA. Con A: *Tablero* → Hoy (o el periodo que cubra solo ese día) → «Personas» y compara con la fila de B. Repite con otro miembro | Horas activas, «Productivas» y tiempo de IA de la fila de B (la tabla «Personas» no muestra neutral ni distracción) en el tablero coinciden con *Mi día* de B, con una diferencia de 0,1 h como máximo (el tablero redondea a 1 decimal). Si no coinciden, anota la diferencia y si B tenía datos sin subir (AC-1) | |
-| 5.9 | Tú | Mismo día: compara «Totales del equipo» del tablero con la suma de *Mi día* de todos los miembros sin viewer | Horas activas y de IA del equipo = suma de las de cada persona (margen de 0,1 h, como en 5.8) (AC-1) | |
-| 5.10 | Tú | Con B: *Ajustes* → *Mi privacidad* → apaga «Compartir los nombres de mis apps con el equipo» y confirma con «Sí, dejar de compartir». Trabaja 5 minutos con otra app y espera a «Al día» | La opción queda apagada y explica que el equipo ve solo categorías (AC-24) | |
-| 5.11 | Tú | Con A: *Tablero* → «Personas» y «Apps más usadas» | Junto a B aparece «Solo categorías»; B suma sus horas por categoría, pero ninguna app suya (ni las ya subidas ni las nuevas) sale en «Apps más usadas» (AC-9) | |
-| 5.12 | Tú | Con B: vuelve a encender «Compartir los nombres de mis apps con el equipo», trabaja 5 minutos con una app y espera a «Al día». Con A: mira *Tablero* | «Solo categorías» desaparece junto a B y las apps nuevas vuelven a verse; las ya ocultas siguen sin nombre (encender solo afecta a lo nuevo) (AC-9) | |
-| 5.13 | Tú | Con A: *Equipo* → *Auditoría* (también con D). Luego con B, E y C mira *Equipo* | Hay filas «Cambió los ajustes del equipo» (de 5.4) y «Cambió si comparte los nombres de sus apps» (de 5.10 y 5.12), con quién y cuándo. A y D ven la pestaña; B, E y C no (AC-9, AC-10, AC-22) | |
+| 5.1 | Tú | Con A (owner): abre *Tablero* y recorre los periodos (Hoy, Esta semana, Este mes, Semana pasada, Mes pasado) | Ve «Totales del equipo», «Horas por día», «Uso de IA del equipo», «Presencia», «Personas» (horas activas, productivas, IA, «Capacidad usada» y tareas en curso de cada persona, con «Solo categorías» junto a quien ocultó sus apps) y «Apps más usadas». «Presencia» lista a todos menos al viewer y solo dice el estado, nunca app ni sitio. No ve «Tus proyectos» (AC-1, AC-6, AC-14) | OK (16 oct) |
+| 5.2 | Tú | Con D (admin): repite 5.1 | Ve exactamente lo mismo que A: totales, «Personas», «Capacidad usada», «Apps más usadas» y «Presencia» de todos (AC-1, AC-6) | OK (16 oct). Una vez, con B recién pasado a viewer, D vio solo a B; no se repitió (en estudio) |
+| 5.3 | Tú | Con E (lead): abre *Tablero* | Ve «Totales del equipo» sin nombres y «Tus proyectos» (solo las personas de sus proyectos, con «Horas en tus proyectos», «IA en tus proyectos» y tareas en curso). «Presencia» solo con las personas de sus proyectos. NO ve «Personas», «Capacidad usada» ni «Apps más usadas», ni categorías ni apps por persona, ni a nadie ajeno a sus proyectos (AC-2, AC-6) | OK parcial (16 oct): falta que E tenga tiempo con temporizador para ver «Tus proyectos» con datos |
+| 5.4 | Tú | Con B (member): abre *Tablero*. Con A, en *Equipo* → *General* → «Ajustes del equipo», apaga «Los miembros pueden ver quién está activo» y guarda; B recarga *Tablero*. Luego A lo enciende y B recarga | Siempre ve «Totales del equipo», «Horas por día» y «Uso de IA del equipo», sin ningún nombre de persona. NO ve «Personas», «Tus proyectos» ni «Apps más usadas». «Presencia» no aparece con el interruptor apagado (la app no la pide; sin texto de error) y muestra a todos (solo estado) con él encendido (AC-3, AC-6) | OK (16 oct) |
+| 5.5 | Tú | Con C (viewer): abre *Tablero* | Ve «Totales del equipo», «Horas por día» y «Uso de IA del equipo», sin ningún nombre de persona. NO ve «Presencia», «Personas», «Tus proyectos» ni «Apps más usadas» (AC-3, AC-6) | OK (16 oct) |
+| 5.6 | Tú | Con un equipo de prueba que tenga solo owner + viewer (o con el equipo cuando B, D y E aún no hayan entrado): abre *Tablero* con C y con A | C ve «Hacen falta al menos 2 miembros» y ninguna cifra; A sí ve los totales (AC-4, AC-14) | OK (16 oct) |
+| 5.7 | Tú | Con A, D, E, B y C: *Tablero* → «Imprimir / PDF» (vista previa de impresión) | El PDF solo trae el tablero de ese rol, sin menú ni controles (AC-17) | OK (16 oct) |
+| 5.8 | Tú | Elige un día y un miembro (por ejemplo B). Espera a «Al día» en B y en A. Con B: *Mi día* → Día de ese día y anota horas activas, productivas y tiempo de IA. Con A: *Tablero* → Hoy (o el periodo que cubra solo ese día) → «Personas» y compara con la fila de B. Repite con otro miembro | Horas activas, «Productivas» y tiempo de IA de la fila de B (la tabla «Personas» no muestra neutral ni distracción) en el tablero coinciden con *Mi día* de B, con una diferencia de 0,1 h como máximo (el tablero redondea a 1 decimal). Si no coinciden, anota la diferencia y si B tenía datos sin subir (AC-1) | OK (16 oct, ≤ 0,1 h) |
+| 5.9 | Tú | Mismo día: compara «Totales del equipo» del tablero con la suma de *Mi día* de todos los miembros sin viewer | Horas activas y de IA del equipo = suma de las de cada persona (margen de 0,1 h, como en 5.8) (AC-1) | OK (16 oct, ≤ 0,1 h) |
+| 5.10 | Tú | Con B: *Ajustes* → *Mi privacidad* → apaga «Compartir los nombres de mis apps con el equipo» y confirma con «Sí, dejar de compartir». Trabaja 5 minutos con otra app y espera a «Al día» | La opción queda apagada y explica que el equipo ve solo categorías (AC-24) | OK (16 oct) |
+| 5.11 | Tú | Con A: *Tablero* → «Personas» y «Apps más usadas» | Junto a B aparece «Solo categorías»; B suma sus horas por categoría, pero ninguna app suya (ni las ya subidas ni las nuevas) sale en «Apps más usadas» (AC-9) | OK (16 oct) |
+| 5.12 | Tú | Con B: vuelve a encender «Compartir los nombres de mis apps con el equipo», trabaja 5 minutos con una app y espera a «Al día». Con A: mira *Tablero* | «Solo categorías» desaparece junto a B y las apps nuevas vuelven a verse; las ya ocultas siguen sin nombre (encender solo afecta a lo nuevo) (AC-9) | OK (16 oct) |
+| 5.13 | Tú | Con A: *Equipo* → *Auditoría* (también con D). Luego con B, E y C mira *Equipo* | Hay filas «Cambió los ajustes del equipo» (de 5.4) y «Cambió si comparte los nombres de sus apps» (de 5.10 y 5.12), con quién y cuándo. A y D ven la pestaña; B, E y C no (AC-9, AC-10, AC-22) | OK (16 oct) |
 
 ## Fuera de esta lista
 
