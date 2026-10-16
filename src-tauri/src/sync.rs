@@ -2,7 +2,7 @@
 //! Los tipos de fila no tienen campo de título: los títulos de ventana nunca salen del equipo (D-05, R8).
 //! La subida a Supabase la hace TypeScript; Rust solo entrega y marca.
 
-use crate::store::{Closure, PendingBlock, PendingEntry};
+use crate::store::{Closure, PendingAiUsage, PendingBlock, PendingEntry};
 use serde::Serialize;
 
 /// Lote pendiente del equipo activo y la cuenta actual. Vacío si falta alguno de los dos.
@@ -12,4 +12,6 @@ pub struct SyncBatch {
   pub blocks: Vec<PendingBlock>,
   pub entries: Vec<PendingEntry>,
   pub closures: Vec<Closure>,
+  /// Etiquetas de IA de bloques ya subidos (F4 D-13); las de bloques sin subir van en `blocks`.
+  pub ai_usages: Vec<PendingAiUsage>,
 }

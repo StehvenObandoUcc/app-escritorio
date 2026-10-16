@@ -1,14 +1,17 @@
 import { t } from '@/i18n';
-import type { ActivityBlock } from '@/bridge/contract';
-import { CATEGORY_STYLE } from '@/lib/categories';
+import type { ActivityBlock, AiUsage } from '@/bridge/contract';
+import { AI_USAGES, CATEGORY_STYLE } from '@/lib/categories';
 import { cleanTitle, displayAppName } from '@/lib/apps';
 import { formatHour, formatShortDuration } from '@/lib/time';
-import { Badge, CategoryMark } from '@/ui/atoms';
+import { Badge, CategoryMark, Select } from '@/ui/atoms';
 
 const seconds = (b: ActivityBlock) => (Date.parse(b.endedAt) - Date.parse(b.startedAt)) / 1000;
 
-/** Detalle del día, bloque por bloque, tal como lo guardó el sensor. Es la versión en texto de la franja de pulso. */
-export function ActivityList({ blocks }: { blocks: ActivityBlock[] }) {
+/**
+ * Detalle del día, bloque por bloque, tal como lo guardó el sensor. Es la versión en texto de la franja de pulso.
+ * Con `onAiUsage`, cada bloque de IA se puede etiquetar por tipo de uso (IA-04).
+ */
+export function ActivityList({ blocks, onAiUsage }: { blocks: ActivityBlock[]; onAiUsage?: (blockId: string, usage: AiUsage | null) => void }) {
   return (
     <ol aria-label={t('activity.blocks')} className="divide-y divide-line">
       {blocks.map((block) => (
@@ -28,6 +31,15 @@ export function ActivityList({ blocks }: { blocks: ActivityBlock[] }) {
             </span>
           </span>
           {block.aiTool && <Badge tone="accent">{block.aiTool}</Badge>}
+          {onAiUsage && block.category === 'ai' && (
+            <Select
+              size="sm"
+              aria-label={t('aiUsage.of', { app: displayAppName(block.appName) })}
+              value={block.aiUsage ?? ''}
+              onChange={(e) => onAiUsage(block.id, (e.target.value || null) as AiUsage | null)}
+              options={[{ value: '', label: t('aiUsage.none') }, ...AI_USAGES.map((u) => ({ value: u, label: t(`aiUsage.${u}`) }))]}
+            />
+          )}
           <span className="w-28 shrink-0 text-sm text-fg-muted">
             {CATEGORY_STYLE[block.category].label}
           </span>

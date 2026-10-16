@@ -1,4 +1,4 @@
-import { t } from '@/i18n';
+import { errorMessage, t } from '@/i18n';
 import { useEffect, useMemo, useState } from 'react';
 import type { Bridge, Category } from '@/bridge/contract';
 import { useOptionalSession } from '@/app/session';
@@ -52,6 +52,7 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
   const taskTitle = useTaskTitle(bridge, status?.timer.taskId ?? null);
   const [view, setView] = useState<ActivityView>('resumen');
   const [showHidden, setShowHidden] = useState(true);
+  const [tagError, setTagError] = useState<string | null>(null);
   const allBlocks = state.phase === 'ready' ? state.day.blocks : null;
   const hasHidden = useMemo(() => Boolean(allBlocks?.some((b) => b.appName === HIDDEN_APP)), [allBlocks]);
   // Solo cambia lo que se ve: los totales del día (franja y reparto) siguen incluyendo las apps ocultas.
@@ -207,7 +208,22 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
                 </p>
               ))}
             {view === 'linea' && <ActivityTimeline rows={timeline} />}
-            {view === 'detalle' && <ActivityList blocks={blocks ?? []} />}
+            {view === 'detalle' && (
+              <>
+                {tagError && (
+                  <p role="alert" className="px-4 pt-3 text-sm text-danger md:px-5">
+                    {tagError}
+                  </p>
+                )}
+                <ActivityList
+                  blocks={blocks ?? []}
+                  onAiUsage={(id, usage) => {
+                    setTagError(null);
+                    bridge.blockSetAiUsage(id, usage).then(reload, (cause: unknown) => setTagError(errorMessage(cause)));
+                  }}
+                />
+              </>
+            )}
           </Surface>
         )}
       </section>

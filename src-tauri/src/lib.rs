@@ -1,3 +1,4 @@
+pub mod ai;
 pub mod apps;
 pub mod classifier;
 pub mod commands;
@@ -183,6 +184,11 @@ pub fn run() {
       commands::tasks_cache_put,
       commands::tasks_cache_get,
       commands::open_external,
+      commands::ai_config_get,
+      commands::ai_config_set,
+      commands::ai_config_clear,
+      commands::ai_chat,
+      commands::block_set_ai_usage,
     ])
     .build(context)
     .expect("error while building tauri application");

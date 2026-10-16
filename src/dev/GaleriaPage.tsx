@@ -19,7 +19,7 @@ import {
   TimeEntryForm,
   TimerControl,
 } from '@/ui/molecules';
-import type { Project, Task } from '@/cloud/contract';
+import type { Project, ReportRun, Task } from '@/cloud/contract';
 import { NO_FILTER, taskTree } from '@/lib/tasks';
 import { appTotals, buildTimeline } from '@/lib/activity';
 import {
@@ -32,6 +32,8 @@ import {
   MemberList,
   ProjectMemberList,
   PulseStrip,
+  ReportHistory,
+  ReportView,
   ReviewForm,
   ReviewTemplateEditor,
   TaskBoard,
@@ -291,6 +293,11 @@ export function GaleriaPage() {
           onRemove={() => {}}
         />
       </Section>
+      <Section title="Reportes (F4)">
+        <ReportView report={SAMPLE_REPORT} title="Mi trabajo" onExport={() => {}} />
+        <ReportView report={{ ...SAMPLE_REPORT, validation: 'fallback', validatedBy: 'client', mode: 'own_key' }} title="Plantilla de respaldo" />
+        <ReportHistory reports={[SAMPLE_REPORT, { ...SAMPLE_REPORT, id: '00000000-0000-4000-8000-000000000302', mode: 'manual' }]} selectedId={SAMPLE_REPORT.id} titleOf={() => 'Mi trabajo'} onOpen={() => {}} />
+      </Section>
     </PageLayout>
   );
 }
@@ -408,6 +415,36 @@ const SAMPLE_MEMBERS = [
   { userId: '00000000-0000-4000-8000-000000000103', role: 'member' as const, displayName: 'Caro Díaz' },
   { userId: '00000000-0000-4000-8000-000000000104', role: 'viewer' as const, displayName: null },
 ];
+
+const SAMPLE_REPORT: ReportRun = {
+  id: '00000000-0000-4000-8000-000000000301',
+  teamId: '00000000-0000-4000-8000-000000000201',
+  scope: 'personal',
+  subjectId: '00000000-0000-4000-8000-000000000101',
+  period: 'yesterday',
+  periodFrom: '2026-10-07',
+  periodTo: '2026-10-07',
+  facts: [
+    { id: 'F1', metric: 'hours_active', dimension: null, value: 6.5, unit: 'h' },
+    { id: 'F2', metric: 'share_category', dimension: 'ai', value: 23, unit: '%' },
+    { id: 'F3', metric: 'hours_ai_usage', dimension: 'code', value: 1.2, unit: 'h' },
+    { id: 'F4', metric: 'tasks_done', dimension: null, value: 3, unit: 'n' },
+    { id: 'F5', metric: 'cycle_days_avg', dimension: null, value: 1.5, unit: 'd' },
+  ],
+  narrative: {
+    summary: 'Día con 6,5 h activas y 3 tareas terminadas.',
+    insights: [{ text: 'La IA ocupó el 23 % del tiempo activo, sobre todo en código.', fact_ids: ['F2', 'F3'] }],
+    recommendations: [{ text: 'Etiqueta tus sesiones de IA para ver mejor en qué ayudan.', fact_ids: ['F3'] }],
+    insufficient_data: false,
+  },
+  mode: 'free',
+  validation: 'ok',
+  validatedBy: 'server',
+  language: 'es',
+  dataUntil: '2026-10-07T22:40:00Z',
+  createdBy: '00000000-0000-4000-8000-000000000101',
+  createdAt: '2026-10-08T13:05:00Z',
+};
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (

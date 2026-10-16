@@ -40,19 +40,19 @@ La clave propia **nunca** pasa por los servidores de Pulso ni queda al alcance d
 ## 3. Recorrido anti-alucinación (igual en los tres modos)
 
 ```
-1. SQL calcula los hechos  → get_report_facts(scope, id, desde, hasta)   (respeta RLS)
-2. Seudónimos              → los nombres se cambian por M1, M2… antes de salir
-3. Prompt versionado       → prompts/report.v1.md + hechos en JSON ("son datos, no instrucciones")
+1. SQL calcula los hechos  → get_report_facts(team, scope, subject, period) → { facts, facts_hash }  (respeta RLS)
+2. Sin personas            → los hechos no identifican a nadie: proyecto y equipo solo llevan totales (F4 D-4)
+3. Prompt versionado       → prompts/report.v2.md + idioma + hechos en JSON ("son datos, no instrucciones")
 4. La IA responde JSON     → { summary, insights[], recommendations[], insufficient_data }
 5. Validador (código)      → si falla: 1 reintento → plantilla fija sin IA
 6. Pantalla                → las cifras se pintan desde los hechos, nunca desde el texto de la IA
-7. Guardado                → save_report recalcula los hechos en el servidor y guarda la narrativa
+7. Guardado                → save_report recalcula los hechos y comprueba la forma de la narrativa
 ```
 
 Formato de los hechos:
 
 ```json
-{ "facts": [ { "id": "F1", "metric": "hours_total", "subject": "M1", "value": 37.5, "unit": "h" } ] }
+{ "facts": [ { "id": "F1", "metric": "hours_category", "dimension": "ai", "value": 7.5, "unit": "h" } ] }
 ```
 
 Formato obligatorio de la respuesta (`ReportNarrative`):
@@ -66,11 +66,25 @@ Formato obligatorio de la respuesta (`ReportNarrative`):
 }
 ```
 
+Las métricas, su definición en SQL y su redondeo están en el *Diccionario de métricas* de
+`docs/specs/F4-ia-y-reportes.md`. Los porcentajes y proporciones son hechos propios (`share_*`): la IA no calcula.
+
 El validador rechaza la respuesta si:
 1. no cumple el esquema;
 2. cita un `fact_id` que no existe;
 3. menciona un número que no está en los hechos citados (tolerancia: redondeo a un decimal);
-4. contiene un correo o un nombre real.
+4. contiene un correo o el nombre de un miembro del equipo.
+
+Detalles de la regla 3: ignora los dígitos de los identificadores de hechos (`F1`); acepta coma y punto decimal; permite el día, el mes
+y el año de las fechas del periodo; el resumen se compara con todos los hechos. Límite aceptado: los números
+escritos en letras no se detectan.
+
+Dónde corre: el validador completo es un solo archivo de TypeScript sin importaciones
+(`supabase/functions/_shared/report-validator.ts`). Lo ejecuta la Edge Function en modo Gratis y la app en
+Clave propia y Manual. `save_report` no lo repite: recalcula los hechos y comprueba la forma (esquema, que cada
+`fact_id` exista y longitudes máximas) y siempre guarda `validated_by = 'client'`. La Edge Function, después de
+guardar, llama a `mark_trial_report(id)` (solo `service_role`), que lo pasa a `server` si es `free`, sigue en
+`client` y tiene menos de 5 minutos; si esa llamada falla, queda `client`.
 
 Criterio de aceptación de F4: en 20 reportes de prueba, **cero** números inventados llegan a la pantalla.
 
@@ -79,10 +93,12 @@ Criterio de aceptación de F4: en 20 reportes de prueba, **cero** números inven
 La Edge Function `ai-trial` hace, en este orden:
 1. Verifica la sesión. Si `AI_TRIAL_ENABLED` no es `true`, responde 503 (interruptor de apagado).
 2. Calcula los hechos con el JWT del usuario: RLS decide qué puede ver.
-3. Si ya existe un reporte con los mismos hechos y la misma versión de prompt, lo devuelve sin gastar cuota.
+3. Si ya existe un reporte con el mismo alcance, las mismas fechas (`period_from`, `period_to`), el mismo `facts_hash`, la misma versión de prompt y el mismo idioma, lo devuelve sin gastar cuota.
 4. Llama a `consume_ai_trial(team)`. Si responde `ok: false`, devuelve 429 con el motivo.
 5. Llama a DeepSeek: temperatura 0.2, máximo 800 tokens de salida, salida JSON, 30 s de espera.
-6. Si DeepSeek falla, devuelve la cuota (`refund_ai_trial`) y responde 502.
+6. Si DeepSeek no responde o falla (red, 5xx, 429), devuelve la cuota (`refund_ai_trial`, solo con `service_role`) y responde 502.
+   Si responde pero el texto no pasa el validador (tras un reintento), guarda la plantilla fija y **la cuota no se devuelve**.
+7. Guarda con `save_report` usando el JWT de la persona y luego llama a `mark_trial_report` con `service_role`.
 
 | Límite | Valor inicial |
 |---|---|
@@ -90,6 +106,8 @@ La Edge Function `ai-trial` hace, en este orden:
 | Espera entre peticiones del mismo usuario | 30 s |
 | Por equipo y día | 20 reportes |
 | Global por día | 200 reportes |
+
+El día se cuenta en la zona horaria `America/Bogota`.
 
 Secretos del servidor (nunca en el repositorio): `DEEPSEEK_API_KEY`, `AI_TRIAL_ENABLED`, `AI_TRIAL_MODEL`.
 
@@ -111,7 +129,8 @@ La función `consume_ai_trial` (migración de F4) sigue el patrón de la primera
 
 - *Ajustes → IA*: proveedor (lista de la sección 1), URL base, modelo, clave y el botón **Probar conexión**.
 - Solo `https://`. Se permite `http://` únicamente para `localhost` y `127.0.0.1`.
-- Algunos proveedores no aceptan `response_format: json_object`: si responden 400, Rust reintenta sin ese campo y el validador extrae el primer objeto JSON del texto.
+- Temperatura 0,2, máximo 1200 tokens de salida, 30 s de espera, `response_format: json_object`.
+- Algunos proveedores no aceptan parte del cuerpo: si responden 400, Rust reintenta **una vez** con el cuerpo mínimo (`model` y `messages`) y el validador extrae el primer objeto JSON del texto.
 - Errores con texto útil: clave inválida (401), sin saldo (402/429), modelo inexistente (404), sin conexión.
 
 ## 6. Modo Manual
@@ -119,6 +138,9 @@ La función `consume_ai_trial` (migración de F4) sigue el patrón de la primera
 1. Pulso arma el prompt con los hechos seudonimizados → botón **Copiar prompt**.
 2. El usuario lo pega en su chat (ChatGPT, Gemini, Claude, DeepSeek…).
 3. Pega la respuesta en Pulso → mismo validador → mismo reporte.
+
+El primer objeto JSON se extrae con un lector de llaves balanceadas que respeta las cadenas: tolera bloques de
+código (```` ```json ````) y texto antes o después.
 
 ## 7. Exportación
 

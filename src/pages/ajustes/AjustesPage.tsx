@@ -9,6 +9,7 @@ import { EmptyState, FormField } from '@/ui/molecules';
 import { HiddenAppsPicker, type AppCandidate } from '@/ui/organisms';
 import { PageLayout } from '@/ui/templates';
 import { useOptionalSession } from '@/app/session';
+import { AiSection } from './AiSection';
 import { PerfilSection } from './PerfilSection';
 
 /** Días hacia atrás de los que se sacan las apps candidatas a ocultar. */
@@ -179,6 +180,7 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
           </form>
         </Surface>
       )}
+      <AiSection bridge={bridge} />
       <EmptyState
         title={t('settings.moreLater')}
         description={t('settings.moreLaterHint')}

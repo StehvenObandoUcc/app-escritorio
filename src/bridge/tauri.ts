@@ -7,6 +7,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { z } from 'zod';
 import {
+  AiConfigSchema,
   DayViewSchema,
   InstalledAppSchema,
   NotAllowedAlertSchema,
@@ -88,6 +89,15 @@ export function createTauriBridge(): Bridge {
     tasksCacheGet: async () => z.string().nullable().parse(await invoke('tasks_cache_get')),
     openExternal: async (url) => {
       await invoke('open_external', { url });
+    },
+    aiConfigGet: async () => AiConfigSchema.parse(await invoke('ai_config_get')),
+    aiConfigSet: async (baseUrl, model, key) => AiConfigSchema.parse(await invoke('ai_config_set', { baseUrl, model, key: key ?? null })),
+    aiConfigClear: async () => {
+      await invoke('ai_config_clear');
+    },
+    aiChat: async (messages) => z.string().parse(await invoke('ai_chat', { messages })),
+    blockSetAiUsage: async (id, usage) => {
+      await invoke('block_set_ai_usage', { id, usage });
     },
   };
 }
