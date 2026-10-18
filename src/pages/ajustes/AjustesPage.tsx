@@ -208,6 +208,7 @@ function LanguageSection() {
       <label className="flex flex-col gap-1 text-sm font-medium text-fg">
         {t('settings.languageLabel')}
         <Select
+          id="idioma-ajustes"
           value={locale}
           onChange={(e) => {
             setError(null);

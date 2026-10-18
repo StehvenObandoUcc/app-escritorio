@@ -3,6 +3,7 @@ export * from './EmptyState';
 export * from './FormField';
 export * from './TimerControl';
 export * from './ThemeToggle';
+export * from './LocaleSwitcher';
 export * from './TimeEntryForm';
 export * from './SyncStatus';
 export * from './PasswordField';

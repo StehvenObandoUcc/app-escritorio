@@ -19,12 +19,12 @@ import { TareaPage } from '@/pages/proyectos/TareaPage';
 import { ProyectosPage } from '@/pages/proyectos/ProyectosPage';
 import { MisTareasPage } from '@/pages/tareas/MisTareasPage';
 import { Select } from '@/ui/atoms';
-import { KeyboardHelp, SyncStatus, ThemeToggle } from '@/ui/molecules';
+import { KeyboardHelp, LocaleSwitcher, SyncStatus, ThemeToggle } from '@/ui/molecules';
 import { AlertBanner, AppNav, type NavItem } from '@/ui/organisms';
 import { AppShell } from '@/ui/templates';
 import { useNotAllowedAlerts } from './alerts';
 import { useAppKeyboard } from './keyboard';
-import { LocaleProvider } from './locale';
+import { LocaleProvider, useLocale } from './locale';
 import { SessionProvider, useSession } from './session';
 
 export const nav = (): NavItem[] => [
@@ -42,9 +42,10 @@ const cloud = createCloud(bridge);
 /** Rutas de la navegación en el mismo orden: Alt+1 … Alt+n abre la n-ésima (`nav()` y esta lista deben coincidir). */
 export const ROUTES = ['/mi-dia', '/tareas', '/proyectos', '/equipo', '/tablero', '/reportes', '/ajustes'];
 
-/** Pie de la navegación: equipo activo (D1), sincronización y tema. */
+/** Pie de la navegación: equipo activo (D1), sincronización, idioma (F-03) y tema. */
 function NavFooter() {
   const { theme, cycle } = useTheme();
+  const { locale, change } = useLocale();
   const { sync, teams, activeTeam, selectTeam } = useSession();
   return (
     <div className="flex flex-col items-center gap-3 lg:items-stretch">
@@ -61,6 +62,10 @@ function NavFooter() {
         </div>
       )}
       <SyncStatus phase={sync.phase} message={sync.message} lastSyncedAt={sync.lastSyncedAt} compact />
+      {/* En el riel (640-1023 px) no cabe; ahí sigue en Ajustes → Idioma. */}
+      <div className="hidden lg:block">
+        <LocaleSwitcher id="idioma-menu" locale={locale} onChange={(l) => void change(l).catch(() => {})} />
+      </div>
       <ThemeToggle theme={theme} onCycle={cycle} />
     </div>
   );

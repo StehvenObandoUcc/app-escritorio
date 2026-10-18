@@ -122,7 +122,9 @@ export function toCloudError(error: { message: string; code?: string | null; sta
   }
   if (code === 'P0001' || code === '22023' || code.startsWith('23')) return new CloudError(error.message, 'invalid');
   if (code.startsWith('PGRST')) return new CloudError(t('cloud.rejected'), 'unknown');
-  return new CloudError(error.message || t('cloud.unexpected'), 'unknown');
+  // Lo demás es texto técnico (de Postgres o de la librería, en inglés): a la persona, un aviso general (F-20).
+  if (error.message) console.warn('Error sin mensaje para la persona:', error.message);
+  return new CloudError(t('cloud.unexpected'), 'unknown');
 }
 
 const toUser = (u: User | null | undefined): CloudUser | null =>

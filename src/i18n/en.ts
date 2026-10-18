@@ -341,6 +341,7 @@ export const en: Dict = {
     coreError: 'The sensor did not receive the team settings: {error} Close and reopen Pulso.',
   },
   theme: { change: 'Change theme', system: 'System theme', light: 'Light theme', dark: 'Dark theme' },
+  locale: { label: 'Language (Idioma)', changed: 'Language changed to {name}.' },
   alerts: {
     title: 'Site not allowed: {domain}',
     body: 'You entered at {time}. Your team marked it as not allowed: Pulso does not block it and the time counts as distraction.',
@@ -352,7 +353,7 @@ export const en: Dict = {
     offline: 'No connection to the server. Your data is still saved on this computer.',
     forbidden: 'You do not have permission for this action.',
     rejected: 'The server rejected the request. Try again.',
-    unexpected: 'An unexpected error occurred.',
+    unexpected: 'The action could not be completed. Try again.',
     sessionEnded: 'Your session ended. Sign in again.',
     noProfile: 'Your profile was not found.',
     inviteFailed: 'The invitation could not be created.',
