@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router';
+import { blockLeave } from '@/lib/useForm';
 
 /** Campos que Enter recorre dentro de un formulario. */
 const FIELDS = 'input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=file]):not([type=submit]):not([type=button]):not(:disabled), select:not(:disabled), textarea:not(:disabled)';
@@ -105,7 +106,8 @@ export function useAppKeyboard(routes: string[], openHelp: () => void) {
         const route = routes[Number(e.code.slice(5)) - 1];
         if (route) {
           e.preventDefault();
-          navigate(route);
+          const go = () => navigate(route);
+          if (!blockLeave(go)) go();
         }
         return;
       }

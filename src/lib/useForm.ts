@@ -18,6 +18,47 @@ function snapshot(form: HTMLFormElement | null): string {
   );
 }
 
+/** Formularios abiertos que piden confirmar antes de salir de la pantalla si tienen cambios. */
+const leaveGuards = new Set<(go: () => void) => boolean>();
+let bypassGuards = false;
+
+/**
+ * Si algún formulario abierto tiene cambios, le pide confirmar y devuelve true: `go` (la salida) queda en
+ * espera y solo se ejecuta si la persona elige descartar. Sin cambios devuelve false y no hace nada (H3).
+ */
+export function blockLeave(go: () => void): boolean {
+  if (bypassGuards) return false;
+  for (const ask of leaveGuards) if (ask(go)) return true;
+  return false;
+}
+
+// Los enlaces internos (menú, migas, «Ir a Equipo»…) pasan por el aviso. Se escucha en captura para llegar
+// antes que el enrutador; HashRouter no admite `useBlocker`, por eso se hace aquí.
+if (typeof document !== 'undefined') {
+  document.addEventListener(
+    'click',
+    (e) => {
+      if (e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+      const a = e.target instanceof Element ? e.target.closest<HTMLAnchorElement>('a[href]') : null;
+      const href = a?.getAttribute('href');
+      if (!a || !href || a.target === '_blank' || /^[a-z][a-z\d+.-]*:/i.test(href)) return;
+      const go = () => {
+        bypassGuards = true;
+        try {
+          a.click();
+        } finally {
+          bypassGuards = false;
+        }
+      };
+      if (blockLeave(go)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    },
+    true,
+  );
+}
+
 /**
  * Patrón común de formulario (AC-42, AC-43), sin librerías:
  * - valida con un esquema de `forms.ts` y deja un error junto a cada campo (`errors[campo]`);
@@ -26,6 +67,7 @@ function snapshot(form: HTMLFormElement | null): string {
  * - Esc y Cancelar llaman a `cancel`: si el formulario cambió desde que se abrió, primero piden confirmar
  *   (`discard`, se muestra con `DiscardDialog`); si está limpio, llaman a `onCancel` directo (H3).
  *   Se compara el estado del DOM del formulario, así sirve para cualquier formulario sin tocar sus campos.
+ *   Lo mismo al cambiar de pantalla (enlaces y Alt+número) mientras el formulario está abierto con cambios.
  * - Enter (siguiente campo) y Ctrl+Enter (enviar) funcionan en toda la app.
  */
 export function useForm<S extends z.ZodType>(schema: () => S, onCancel?: () => void) {
@@ -35,22 +77,46 @@ export function useForm<S extends z.ZodType>(schema: () => S, onCancel?: () => v
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const initial = useRef('');
+  /** Salida de la pantalla en espera de confirmar; null si lo que se confirma es cancelar el formulario. */
+  const leave = useRef<(() => void) | null>(null);
   useEffect(() => {
     initial.current = snapshot(ref.current);
   }, []);
 
+  // Solo los formularios que se pueden cancelar (abiertos para una tarea concreta) avisan al salir.
+  useEffect(() => {
+    if (!onCancel) return;
+    const ask = (go: () => void) => {
+      if (snapshot(ref.current) === initial.current) return false;
+      leave.current = go;
+      setConfirming(true);
+      return true;
+    };
+    leaveGuards.add(ask);
+    return () => {
+      leaveGuards.delete(ask);
+    };
+  }, [onCancel]);
+
   /** Cancela; si hay cambios sin enviar, pide confirmar antes de descartarlos. */
   const cancel = useCallback(() => {
     if (!onCancel) return;
+    leave.current = null;
     if (snapshot(ref.current) !== initial.current) setConfirming(true);
     else onCancel();
   }, [onCancel]);
   const discard = {
     open: confirming,
-    keep: () => setConfirming(false),
-    confirm: () => {
+    keep: () => {
+      leave.current = null;
       setConfirming(false);
-      onCancel?.();
+    },
+    confirm: () => {
+      const go = leave.current;
+      leave.current = null;
+      setConfirming(false);
+      if (go) go();
+      else onCancel?.();
     },
   };
 
