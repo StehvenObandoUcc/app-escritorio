@@ -34,6 +34,9 @@ $$;
 grant usage on schema auth to anon, authenticated, service_role;
 grant execute on function auth.uid(), auth.jwt() to anon, authenticated, service_role;
 grant usage on schema public to anon, authenticated, service_role;
+-- Como Supabase: toda función nueva de public se puede ejecutar como anon, authenticated y service_role
+-- salvo que la migración lo revoque. Así las pruebas detectan un REVOKE olvidado.
+alter default privileges in schema public grant execute on functions to anon, authenticated, service_role;
 
 -- Storage mínimo (ADR-0014): buckets y objetos con RLS, como en Supabase.
 create schema storage;

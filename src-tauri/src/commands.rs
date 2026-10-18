@@ -1,7 +1,8 @@
-//! Comandos de Tauri de las fases F1 a F3 (nombres de docs/ARQUITECTURA.md §6).
+//! Comandos de Tauri de las fases F1 a F4 (nombres de docs/ARQUITECTURA.md §6).
 //! Son una capa fina: la lógica y las pruebas viven en `tracker`.
 //! Los argumentos llegan en camelCase desde la interfaz (`taskId` → `task_id`).
 
+use crate::ai::{self, AiConfig, ChatMessage};
 use crate::sync::SyncBatch;
 use crate::tracker::{Result, SensorStatus, Settings, SettingsPatch, TeamPolicy, Tracker};
 use crate::views::{DayView, RangeView, TimeEntryView};
@@ -160,4 +161,48 @@ pub fn notifications_status() -> crate::system::NotificationsStatus {
 #[tauri::command]
 pub fn team_policy_set(t: Tr, policy: TeamPolicy) -> Result<()> {
   t.team_policy_set(policy)
+}
+
+// ---- F4 ----
+
+/// URL base, modelo y si hay clave guardada. **Nunca** la clave (AC-19).
+#[tauri::command]
+pub fn ai_config_get(t: Tr) -> Result<AiConfig> {
+  let (base_url, model) = t.ai_config_get()?;
+  Ok(AiConfig { base_url, model, has_key: ai::key_get(ai::KEY_USER)?.is_some() })
+}
+
+/// Guarda URL y modelo; la clave solo si llega (si no, se conserva la que había).
+#[tauri::command]
+pub fn ai_config_set(t: Tr, base_url: String, model: String, key: Option<String>) -> Result<AiConfig> {
+  let base_url = ai::check_base_url(&base_url)?;
+  let model = ai::check_model(&model)?;
+  if let Some(k) = key.as_deref().filter(|k| !k.trim().is_empty()) {
+    ai::key_set(ai::KEY_USER, k)?;
+  }
+  t.ai_config_set(&base_url, &model)?;
+  ai_config_get(t)
+}
+
+#[tauri::command]
+pub fn ai_config_clear(t: Tr) -> Result<()> {
+  ai::key_clear(ai::KEY_USER)?;
+  t.ai_config_clear()
+}
+
+/// Llamada al proveedor del usuario (formato OpenAI). La clave se lee aquí y no sale de Rust.
+#[tauri::command]
+pub async fn ai_chat(t: Tr<'_>, messages: Vec<ChatMessage>) -> Result<String> {
+  let (base_url, model) = t.ai_config_get()?;
+  let (Some(base_url), Some(model)) = (base_url, model) else {
+    return Err("Configura primero el proveedor de IA en Ajustes.".into());
+  };
+  let key = ai::key_get(ai::KEY_USER)?;
+  ai::chat(&base_url, &model, key.as_deref(), &messages).await
+}
+
+/// IA-04: etiqueta un bloque de IA con su tipo de uso (`null` la quita).
+#[tauri::command]
+pub fn block_set_ai_usage(t: Tr, id: String, usage: Option<String>) -> Result<()> {
+  t.block_set_ai_usage(Utc::now(), &id, usage.as_deref())
 }

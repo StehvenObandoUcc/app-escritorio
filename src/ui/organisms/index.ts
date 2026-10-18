@@ -18,3 +18,5 @@ export * from './TaskSidebar';
 export * from './TaskDetails';
 export * from './TaskReview';
 export * from './TaskWorkflow';
+export * from './ReportView';
+export * from './ReportHistory';
