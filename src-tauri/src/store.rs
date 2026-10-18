@@ -78,6 +78,16 @@ pub struct PendingBlock {
   pub category: Category,
   pub ai_tool: Option<String>,
   pub domain: Option<String>,
+  /// Etiqueta de uso de IA (IA-04): viaja con el bloque mientras no se haya subido.
+  pub ai_usage_type: Option<String>,
+}
+
+/// Etiqueta de un bloque ya subido que falta por subir (F4 D-13): va por `set_block_ai_usage`.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PendingAiUsage {
+  pub id: String,
+  pub ai_usage_type: Option<String>,
 }
 
 /// Entrada de tiempo pendiente de subir, incluidas las borradas (para propagar el borrado).
@@ -179,6 +189,9 @@ impl Store {
       "CREATE TABLE tasks_cache (
          user_id TEXT NOT NULL, team_id TEXT NOT NULL, json TEXT NOT NULL, updated_at TEXT NOT NULL,
          PRIMARY KEY (user_id, team_id));",
+      // F4 (IA-04): tipo de uso de un bloque de IA y si la etiqueta falta por subir.
+      "ALTER TABLE activity_blocks_local ADD COLUMN ai_usage_type TEXT NULL;
+       ALTER TABLE activity_blocks_local ADD COLUMN ai_usage_pending INTEGER NOT NULL DEFAULT 0;",
     ];
     let current: i64 = self.conn.pragma_query_value(None, "user_version", |r| r.get(0)).map_err(db)?;
     for (i, sql) in MIGRATIONS.iter().enumerate().skip(current as usize) {
@@ -227,7 +240,8 @@ impl Store {
          ON CONFLICT(id) DO UPDATE SET
            started_at = excluded.started_at, ended_at = excluded.ended_at,
            app_name = excluded.app_name, title_enc = excluded.title_enc,
-           category = excluded.category, ai_tool = excluded.ai_tool, domain = excluded.domain, synced_at = NULL",
+           category = excluded.category, ai_tool = excluded.ai_tool, domain = excluded.domain, synced_at = NULL,
+           ai_usage_type = CASE WHEN excluded.category = 'ai' THEN activity_blocks_local.ai_usage_type END",
         // team_id y user_id no se actualizan: una fila no cambia de equipo ni de cuenta.
         params![b.id, fmt(b.started_at), fmt(b.ended_at), b.app_name, b.title_enc, b.category.as_str(), b.ai_tool, b.team_id, b.domain, user],
       )
@@ -415,7 +429,7 @@ impl Store {
     let mut stmt = self
       .conn
       .prepare(
-        "SELECT id, team_id, started_at, ended_at, app_name, category, ai_tool, domain
+        "SELECT id, team_id, started_at, ended_at, app_name, category, ai_tool, domain, ai_usage_type
          FROM activity_blocks_local
          WHERE synced_at IS NULL AND team_id = ?1 AND started_at <= ?2 AND user_id IS ?4
          ORDER BY started_at LIMIT ?3",
@@ -486,6 +500,74 @@ impl Store {
     }
     tx.commit().map_err(db)?;
     Ok(n)
+  }
+
+  // ---- Etiquetas de uso de IA (F4, IA-04) ----
+
+  /// Etiqueta un bloque de IA propio (o sin cuenta). Queda pendiente: si el bloque no se ha subido, la etiqueta
+  /// viaja con él; si ya se subió, va aparte con `pending_ai_usages`.
+  pub fn set_block_ai_usage(&self, id: &str, usage: Option<&str>) -> Result<()> {
+    let n = self
+      .conn
+      .execute(
+        "UPDATE activity_blocks_local SET ai_usage_type = ?2, ai_usage_pending = 1
+         WHERE id = ?1 AND category = 'ai' AND (user_id IS ?3 OR user_id IS NULL)",
+        params![id, usage, self.user],
+      )
+      .map_err(db)?;
+    if n == 0 {
+      return Err("Solo puedes etiquetar tus bloques de IA.".into());
+    }
+    Ok(())
+  }
+
+  /// Etiquetas de bloques **ya subidos** de `team` que faltan por subir (también las quitadas, `None`).
+  pub fn pending_ai_usages(&self, team: &str, limit: usize) -> Result<Vec<PendingAiUsage>> {
+    let mut stmt = self
+      .conn
+      .prepare(
+        "SELECT id, ai_usage_type FROM activity_blocks_local
+         WHERE ai_usage_pending = 1 AND synced_at IS NOT NULL AND team_id = ?1 AND user_id IS ?3
+         ORDER BY started_at LIMIT ?2",
+      )
+      .map_err(db)?;
+    let rows = stmt
+      .query_map(params![team, limit as i64, self.user], |r| Ok(PendingAiUsage { id: r.get(0)?, ai_usage_type: r.get(1)? }))
+      .map_err(db)?;
+    rows.map(|r| r.map_err(db)).collect()
+  }
+
+  /// Marca subidas las etiquetas, solo si no cambiaron desde que se leyeron (`versions`).
+  pub fn mark_ai_usages_synced(&self, ids: &[String], versions: &HashMap<String, Option<String>>) -> Result<usize> {
+    let tx = self.conn.unchecked_transaction().map_err(db)?;
+    let mut n = 0;
+    for id in ids {
+      if let Some(v) = versions.get(id) {
+        n += tx
+          .execute(
+            "UPDATE activity_blocks_local SET ai_usage_pending = 0 WHERE id = ?1 AND ai_usage_type IS ?2",
+            params![id, v],
+          )
+          .map_err(db)?;
+      }
+    }
+    tx.commit().map_err(db)?;
+    Ok(n)
+  }
+
+  /// Etiquetas de los bloques que se solapan con `[from, to)`, para *Mi día*.
+  pub fn ai_usages_between(&self, from: DateTime<Utc>, to: DateTime<Utc>) -> Result<HashMap<String, String>> {
+    let mut stmt = self
+      .conn
+      .prepare(
+        "SELECT id, ai_usage_type FROM activity_blocks_local
+         WHERE ai_usage_type IS NOT NULL AND started_at < ?2 AND ended_at > ?1 AND (user_id IS ?3 OR user_id IS NULL)",
+      )
+      .map_err(db)?;
+    let rows = stmt
+      .query_map(params![fmt(from), fmt(to), self.user], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))
+      .map_err(db)?;
+    rows.map(|r| r.map_err(db)).collect()
   }
 
   pub fn insert_closure(&self, c: &Closure) -> Result<()> {
@@ -574,10 +656,10 @@ fn block_from_row(r: &Row) -> rusqlite::Result<Result<BlockRow>> {
 
 fn pending_block_from_row(r: &Row) -> rusqlite::Result<Result<PendingBlock>> {
   let (id, team_id, start, end, app_name): (String, String, String, String, String) = (r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?);
-  let (category, ai_tool, domain): (String, Option<String>, Option<String>) = (r.get(5)?, r.get(6)?, r.get(7)?);
+  let (category, ai_tool, domain, ai_usage_type): (String, Option<String>, Option<String>, Option<String>) = (r.get(5)?, r.get(6)?, r.get(7)?, r.get(8)?);
   let category = Category::parse(&category).ok_or_else(|| db(format!("categoría desconocida: {category}")));
   Ok(category.and_then(|category| {
-    Ok(PendingBlock { id, team_id, started_at: parse(&start)?, ended_at: parse(&end)?, app_name, category, ai_tool, domain })
+    Ok(PendingBlock { id, team_id, started_at: parse(&start)?, ended_at: parse(&end)?, app_name, category, ai_tool, domain, ai_usage_type })
   }))
 }
 
@@ -769,6 +851,47 @@ mod tests {
     b.ended_at = t(10, 30);
     s.upsert_block(&b).unwrap();
     assert_eq!(s.pending_blocks(TEAM, t(12, 0), 200).unwrap().len(), 1);
+  }
+
+  fn ai_block(id: &str) -> BlockRow {
+    BlockRow { category: Category::Ai, ai_tool: Some("ChatGPT".into()), ..team_block(id, Some(TEAM), t(9, 0), t(10, 0)) }
+  }
+
+  #[test]
+  fn an_ai_usage_travels_with_an_unsynced_block_and_apart_once_synced() {
+    let s = Store::open_in_memory().unwrap();
+    s.insert_block(&ai_block("ai")).unwrap();
+    s.insert_block(&team_block("prod", Some(TEAM), t(10, 0), t(11, 0))).unwrap();
+    assert!(s.set_block_ai_usage("prod", Some("code")).is_err(), "solo bloques de IA");
+    assert!(s.set_block_ai_usage("no-existe", Some("code")).is_err());
+
+    // Sin subir: la etiqueta va en el propio bloque, no aparte.
+    s.set_block_ai_usage("ai", Some("code")).unwrap();
+    assert_eq!(s.pending_blocks(TEAM, t(23, 0), 200).unwrap()[0].ai_usage_type.as_deref(), Some("code"));
+    assert!(s.pending_ai_usages(TEAM, 200).unwrap().is_empty());
+    assert_eq!(s.ai_usages_between(t(0, 0), t(23, 0)).unwrap()["ai"], "code");
+
+    // Ya subido: quitar la etiqueta (None) también queda pendiente, aparte.
+    s.mark_synced(SyncKind::Blocks, &["ai".into(), "prod".into()], &HashMap::new(), t(11, 0)).unwrap();
+    s.set_block_ai_usage("ai", None).unwrap();
+    let pending = s.pending_ai_usages(TEAM, 200).unwrap();
+    assert_eq!(pending, [PendingAiUsage { id: "ai".into(), ai_usage_type: None }]);
+
+    // Si cambió mientras subía, no se marca; con la versión correcta, sí.
+    let stale = HashMap::from([("ai".to_string(), Some("code".to_string()))]);
+    assert_eq!(s.mark_ai_usages_synced(&["ai".into()], &stale).unwrap(), 0);
+    let current = HashMap::from([("ai".to_string(), None)]);
+    assert_eq!(s.mark_ai_usages_synced(&["ai".into()], &current).unwrap(), 1);
+    assert!(s.pending_ai_usages(TEAM, 200).unwrap().is_empty());
+  }
+
+  #[test]
+  fn a_block_that_stops_being_ai_loses_its_usage() {
+    let s = Store::open_in_memory().unwrap();
+    s.insert_block(&ai_block("b")).unwrap();
+    s.set_block_ai_usage("b", Some("writing")).unwrap();
+    s.upsert_block(&BlockRow { category: Category::Productive, ai_tool: None, ..ai_block("b") }).unwrap();
+    assert_eq!(s.pending_blocks(TEAM, t(23, 0), 200).unwrap()[0].ai_usage_type, None);
   }
 
   #[test]

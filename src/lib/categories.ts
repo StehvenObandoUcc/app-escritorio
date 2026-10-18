@@ -24,5 +24,8 @@ export const CATEGORY_STYLE: Record<Category, CategoryStyle> = {
   paused: { get label() { return t('categories.paused'); }, fill: 'pattern-paused', height: 'h-1/5' },
 };
 
+/** Tipo de uso de una sesión de IA (IA-04). */
+export const AI_USAGES = ['code', 'writing', 'analysis', 'other'] as const;
+
 /** Categorías que cuentan como tiempo de trabajo en los totales */
 export const WORK_CATEGORIES: Category[] = ['productive', 'ai', 'neutral', 'distraction'];

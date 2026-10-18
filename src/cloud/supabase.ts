@@ -2,11 +2,12 @@
  * Nube real: Supabase (Auth + Postgres con RLS + funciones SQL de supabase/migrations).
  * La sesión no va al almacenamiento del navegador: se guarda con el puente (Rust la cifra, PS-08).
  */
-import { createClient, type SupabaseClient, type SupportedStorage, type User } from '@supabase/supabase-js';
+import { createClient, FunctionsHttpError, type SupabaseClient, type SupportedStorage, type User } from '@supabase/supabase-js';
 import { z } from 'zod';
 import type { Bridge, SyncBlock, SyncClosure, SyncEntry, TeamRule } from '@/bridge/contract';
 import { t, type TKey } from '@/i18n';
 import type { Database } from '@/lib/database.types';
+import { PROMPT_VERSION } from '../../supabase/functions/_shared/report-prompt.ts';
 import {
   CloudError,
   DEFAULT_WORKDAY,
@@ -18,6 +19,10 @@ import {
   ProfileSchema,
   HistorySchema,
   ProjectTimeSchema,
+  ReportFactsSchema,
+  ReportRunSchema,
+  TRIAL_REASONS,
+  TrialError,
   TeamWorkSchema,
   TeamInvitationSchema,
   TeamRoleSchema,
@@ -25,6 +30,8 @@ import {
   wrongInvitationCode,
   type Cloud,
   type CloudUser,
+  type ReportRun,
+  type TrialReason,
   type ReviewSubmission,
   type TaskInput,
 } from './contract';
@@ -513,8 +520,92 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
     upsertClosures: async (userId, rows) => {
       await run(client.from('app_closures').upsert(rows.map((c) => closureRow(userId, c)), { onConflict: 'id' }));
     },
+    setBlockAiUsage: async (blockId, usage) => {
+      // El tipo generado no marca p_usage como opcional; null quita la etiqueta.
+      await run(client.rpc('set_block_ai_usage', { p_id: blockId, p_usage: usage as string }));
+    },
+
+    // ---- Reportes (F4) ----
+    reportFacts: async (req) => {
+      const data = await run(client.rpc('get_report_facts', { p_team: req.teamId, p_scope: req.scope, p_subject: req.subjectId, p_period: req.period }));
+      const raw = z.object({ facts: z.unknown(), facts_hash: z.string(), period_from: z.string(), period_to: z.string() }).parse(data);
+      return ReportFactsSchema.parse({ facts: raw.facts, factsHash: raw.facts_hash, periodFrom: raw.period_from, periodTo: raw.period_to });
+    },
+    saveReport: async (req, factsHash, narrative, mode, validation, language) =>
+      z.uuid().parse(
+        await run(
+          client.rpc('save_report', {
+            p_team: req.teamId, p_scope: req.scope, p_subject: req.subjectId, p_period: req.period, p_facts_hash: factsHash,
+            p_narrative: narrative, p_mode: mode, p_validation: validation, p_prompt_version: PROMPT_VERSION, p_language: language,
+          }),
+        ),
+      ),
+    findReport: async (req, facts, language) => {
+      const row = await run(
+        client
+          .from('report_runs')
+          .select('*')
+          .eq('team_id', req.teamId)
+          .eq('scope', req.scope)
+          .eq('subject_id', req.subjectId)
+          .eq('period_from', facts.periodFrom)
+          .eq('period_to', facts.periodTo)
+          .eq('facts_hash', facts.factsHash)
+          .eq('prompt_version', PROMPT_VERSION)
+          .eq('language', language)
+          .maybeSingle(),
+      );
+      return row ? reportFromRow(row) : null;
+    },
+    report: async (id) => {
+      const row = await run(client.from('report_runs').select('*').eq('id', id).maybeSingle());
+      return row ? reportFromRow(row) : null;
+    },
+    reports: async (teamId) =>
+      ((await run(client.from('report_runs').select('*').eq('team_id', teamId).order('created_at', { ascending: false }).limit(REPORT_HISTORY_LIMIT))) ?? []).map(reportFromRow),
+    generateFreeReport: async (req, language) => {
+      const { data, error } = await client.functions.invoke('ai-trial', {
+        body: { team: req.teamId, scope: req.scope, subject: req.subjectId, period: req.period, language },
+      });
+      if (error) {
+        // Sin respuesta de la función (red): como cualquier otro fallo de red.
+        if (!(error instanceof FunctionsHttpError)) throw toCloudError({ message: error.message });
+        const body = z
+          .object({ reason: z.string(), message: z.string().optional() })
+          .safeParse(await (error.context as Response).json().catch(() => null));
+        const reason = body.success && (TRIAL_REASONS as readonly string[]).includes(body.data.reason) ? (body.data.reason as TrialReason) : 'provider';
+        throw new TrialError(reason, body.success && body.data.message ? body.data.message : reason);
+      }
+      const parsed = z.object({ report: z.record(z.string(), z.unknown()), cached: z.boolean() }).parse(data);
+      return { report: reportFromRow(parsed.report), cached: parsed.cached };
+    },
+    memberNames: async () => ((await run(client.from('profiles').select('display_name'))) ?? []).map((p) => p.display_name),
   };
 }
+
+/** Historial: los últimos reportes visibles (D-14). */
+const REPORT_HISTORY_LIMIT = 50;
+
+/** Fila de `report_runs` → `ReportRun` (validada). */
+export const reportFromRow = (r: Record<string, unknown>): ReportRun =>
+  ReportRunSchema.parse({
+    id: r.id,
+    teamId: r.team_id,
+    scope: r.scope,
+    subjectId: r.subject_id,
+    period: r.period,
+    periodFrom: r.period_from,
+    periodTo: r.period_to,
+    facts: r.facts,
+    narrative: r.narrative,
+    mode: r.mode,
+    validation: r.validation,
+    validatedBy: r.validated_by,
+    language: r.language,
+    dataUntil: r.data_until ?? null,
+    createdBy: r.created_by ?? null,
+    createdAt: r.created_at,
+  });
 
 /** Campos vacíos se omiten: la función SQL los toma como vacíos (valores por defecto). */
 const EVIDENCE_BUCKET = 'task-evidence';
@@ -545,6 +636,7 @@ export const blockRow = (userId: string, b: SyncBlock) => ({
   category: b.category,
   ai_tool: b.aiTool,
   domain: b.domain,
+  ai_usage_type: b.aiUsageType,
 });
 
 export const entryRow = (userId: string, e: SyncEntry) => ({
