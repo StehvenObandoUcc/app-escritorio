@@ -12,7 +12,7 @@ import { LIMITS } from '@/lib/limits';
 import { useForm } from '@/lib/useForm';
 import { canSeeMembers, invitableRoles, ROLE_LABEL, type Role } from '@/lib/permissions';
 import { Badge, Button, Heading, Select, Surface } from '@/ui/atoms';
-import { ConfirmDialog, DiscardDialog, EmptyState, FormField, SegmentedControl, SyncStatus } from '@/ui/molecules';
+import { ConfirmDialog, DiscardDialog, EmptyState, FormField, SegmentedControl, SyncStatus, tabPanelLabel } from '@/ui/molecules';
 import { ConsentPanel, MemberList } from '@/ui/organisms';
 import { PageLayout } from '@/ui/templates';
 import { AuditoriaTab } from './AuditoriaTab';
@@ -213,6 +213,8 @@ function CreateTeam({ first = false, onDone }: { first?: boolean; onDone?: () =>
 }
 
 type TeamTab = 'members' | 'sites' | 'audit' | 'general';
+/** Panel de las pestañas del equipo (A-03). */
+const TEAM_PANEL = 'equipo-panel';
 
 function TeamView({ team }: { team: MyTeam }) {
   const { cloud, refresh, sync, syncNow } = useSession();
@@ -248,7 +250,8 @@ function TeamView({ team }: { team: MyTeam }) {
   // D2: la pantalla se divide en pestañas para no ser una lista larga.
   return (
     <>
-      <SegmentedControl label={t('team.tabs.label')} options={tabs} value={tab} onChange={setTab} />
+      <SegmentedControl label={t('team.tabs.label')} options={tabs} value={tab} onChange={setTab} panelId={TEAM_PANEL} />
+      <div role="tabpanel" id={TEAM_PANEL} aria-labelledby={tabPanelLabel(TEAM_PANEL, tab)} className="flex flex-col gap-5">
       {tab === 'members' && (
         <>
           <Members team={team} />
@@ -287,6 +290,7 @@ function TeamView({ team }: { team: MyTeam }) {
           )}
         </>
       )}
+      </div>
     </>
   );
 }
