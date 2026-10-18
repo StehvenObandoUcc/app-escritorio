@@ -1,7 +1,7 @@
 import { t } from '@/i18n';
 import { useId, useState, type ReactNode } from 'react';
 import { CONSENT_POINTS, CONSENT_VERSION } from '@/lib/consent';
-import { Button, Heading, Surface } from '@/ui/atoms';
+import { Button, Checkbox, Heading, Surface } from '@/ui/atoms';
 
 /**
  * Consentimiento explícito al unirse a un equipo o al crearlo (PS-02). Sin marcar la casilla,
@@ -45,10 +45,9 @@ export function ConsentPanel({
       </dl>
       {children}
       <label htmlFor={checkId} className="flex items-start gap-2 text-fg">
-        <input
+        <Checkbox
           id={checkId}
-          type="checkbox"
-          className="mt-1 size-4 accent-accent"
+          className="mt-1"
           checked={agreed}
           onChange={(e) => setAgreed(e.target.checked)}
         />

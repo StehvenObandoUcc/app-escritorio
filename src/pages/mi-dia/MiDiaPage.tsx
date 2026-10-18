@@ -7,7 +7,7 @@ import { HIDDEN_APP } from '@/lib/apps';
 import { parseTasksCache } from '@/lib/tasks';
 import { WORK_CATEGORIES } from '@/lib/categories';
 import { formatDuration, formatHour, formatLongDate, formatShortDuration, localDate, localDateTimeToIso } from '@/lib/time';
-import { Badge, Heading, Surface } from '@/ui/atoms';
+import { Badge, Checkbox, Heading, Surface } from '@/ui/atoms';
 import { CategoryBreakdown, EmptyState, SegmentedControl, TimeEntryForm, TimerControl } from '@/ui/molecules';
 import { ActivityList, ActivityTimeline, AppSummary, PulseStrip, TimeEntryList } from '@/ui/organisms';
 import { PageLayout } from '@/ui/templates';
@@ -235,7 +235,7 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
         </div>
         {hasHidden && (
           <label className="flex items-center gap-2 text-sm text-fg-muted">
-            <input type="checkbox" className="size-4 accent-accent" checked={showHidden} onChange={(e) => setShowHidden(e.target.checked)} />
+            <Checkbox checked={showHidden} onChange={(e) => setShowHidden(e.target.checked)} />
             {t('myDay.showHidden')}
             <span className="text-xs">{t('myDay.showHiddenHint')}</span>
           </label>

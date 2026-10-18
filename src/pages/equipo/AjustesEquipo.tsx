@@ -5,7 +5,7 @@ import { IDLE_MINUTES_MAX, IDLE_MINUTES_MIN } from '@/bridge/contract';
 import { PAUSE_CAP_MINUTES, type MyTeam, type TeamSettingsInput } from '@/cloud/contract';
 import { t } from '@/i18n';
 import { useForm } from '@/lib/useForm';
-import { Button, Heading, Select, Surface } from '@/ui/atoms';
+import { Button, Checkbox, Heading, Select, Surface } from '@/ui/atoms';
 import { FormField } from '@/ui/molecules';
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -125,7 +125,7 @@ export function TeamSettingsSection({ team }: { team: MyTeam }) {
           <div className="flex flex-wrap gap-x-4 gap-y-2">
             {WEEK.map((day) => (
               <label key={day} className="flex items-center gap-2 text-fg">
-                <input type="checkbox" name="days" aria-invalid={errors.days ? true : undefined} aria-describedby={errors.days ? 'team-days-error' : undefined} className="size-4 accent-accent" checked={draft.days.includes(day)} onChange={() => toggleDay(day)} />
+                <Checkbox name="days" aria-invalid={errors.days ? true : undefined} aria-describedby={errors.days ? 'team-days-error' : undefined} checked={draft.days.includes(day)} onChange={() => toggleDay(day)} />
                 {t(`teamSettings.day.${DAY_KEY[day]}`)}
               </label>
             ))}
@@ -143,7 +143,7 @@ export function TeamSettingsSection({ team }: { team: MyTeam }) {
         </div>
 
         <label className="flex items-start gap-3">
-          <input type="checkbox" name="aiCountsAsProductive" className="mt-1 size-4 accent-accent" checked={draft.aiCountsAsProductive} onChange={(e) => change({ aiCountsAsProductive: e.target.checked })} />
+          <Checkbox name="aiCountsAsProductive" className="mt-1" checked={draft.aiCountsAsProductive} onChange={(e) => change({ aiCountsAsProductive: e.target.checked })} />
           <span>
             <span className="block font-medium text-fg">{t('teamSettings.ai')}</span>
             <span className="block text-sm text-fg-muted">{t('teamSettings.aiHint')}</span>
@@ -151,7 +151,7 @@ export function TeamSettingsSection({ team }: { team: MyTeam }) {
         </label>
 
         <label className="flex items-start gap-3">
-          <input type="checkbox" name="presenceVisibleToMembers" className="mt-1 size-4 accent-accent" checked={draft.presenceVisibleToMembers} onChange={(e) => change({ presenceVisibleToMembers: e.target.checked })} />
+          <Checkbox name="presenceVisibleToMembers" className="mt-1" checked={draft.presenceVisibleToMembers} onChange={(e) => change({ presenceVisibleToMembers: e.target.checked })} />
           <span>
             <span className="block font-medium text-fg">{t('teamSettings.presence')}</span>
             <span className="block text-sm text-fg-muted">{t('teamSettings.presenceHint')}</span>

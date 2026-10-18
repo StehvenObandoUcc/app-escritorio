@@ -742,6 +742,7 @@ export const es = {
   },
   evidence: {
     title: 'Evidencia requerida',
+    selected: { one: '{n} seleccionada', other: '{n} seleccionadas' },
     hint: 'Marca lo que hay que entregar para dar la tarea por hecha. Cada tipo será obligatorio al enviarla.',
     none: 'Esta tarea no exige evidencia adicional.',
     kinds: {

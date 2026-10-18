@@ -1,12 +1,12 @@
 import { deliveryFields } from '@/lib/evidence';
 import { ExternalLink, FileText, History, Image as ImageIcon } from 'lucide-react';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import type { Project, Task, TaskHistory } from '@/cloud/contract';
 import { errorMessage, formatDate, t, type TKey } from '@/i18n';
 import { fieldErrors, forms } from '@/lib/forms';
 import { LIMITS } from '@/lib/limits';
 import { canReview, STATUS_LABEL } from '@/lib/tasks';
-import { Button, Heading } from '@/ui/atoms';
+import { Button, Heading, Textarea } from '@/ui/atoms';
 
 const when = (iso: string) => formatDate(iso, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 
@@ -34,6 +34,7 @@ export function TaskReview({
   onOpenEvidence: (path: string) => void;
 }) {
   const [comment, setComment] = useState('');
+  const commentErrorId = useId();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const r = task.pendingReview;
@@ -110,18 +111,18 @@ export function TaskReview({
       )}
       {decide && (
         <div className="flex flex-col gap-2">
-          <textarea
+          <Textarea
             aria-label={t('review.comment')}
             placeholder={t('review.commentPlaceholder')}
             rows={3}
             maxLength={LIMITS.reviewComment.max}
             value={comment}
-            aria-invalid={Boolean(error) || undefined}
+            invalid={Boolean(error)}
+            aria-describedby={error ? commentErrorId : undefined}
             onChange={(e) => setComment(e.target.value)}
-            className={`w-full rounded-md border bg-surface px-3 py-2 text-base text-fg ${error ? 'border-danger' : 'border-line-strong'}`}
           />
           {error && (
-            <p role="alert" className="text-sm text-danger">
+            <p id={commentErrorId} role="alert" className="text-sm text-danger">
               {error}
             </p>
           )}
