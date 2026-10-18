@@ -19,13 +19,13 @@ describe('Mi día', () => {
     // Por defecto, el tiempo por app; el detalle conserva todos los bloques.
     const byApp = screen.getByRole('list', { name: 'Tiempo por app' });
     expect(within(byApp).getAllByRole('listitem')[0]).toHaveTextContent('Visual Studio Code');
-    await userEvent.click(screen.getByRole('tab', { name: 'Detalle' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Detalle' }));
     const list = screen.getByRole('list', { name: 'Bloques de actividad' });
     expect(within(list).getAllByRole('listitem')).toHaveLength(11);
-    await userEvent.click(screen.getByRole('tab', { name: 'Línea de tiempo' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Línea de tiempo' }));
     expect(screen.getByRole('list', { name: 'Línea de tiempo' })).toBeInTheDocument();
     // Por sitio: dominios de los bloques de navegador del ejemplo, nunca rutas.
-    await userEvent.click(screen.getByRole('tab', { name: 'Por sitio' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Por sitio' }));
     const sites = screen.getByRole('list', { name: 'Tiempo por sitio' });
     const domains = ['claude.ai', 'youtube.com', 'chatgpt.com'];
     const rows = within(sites).getAllByRole('listitem').map((li) => domains.find((d) => li.textContent?.includes(d)));

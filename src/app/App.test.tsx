@@ -10,7 +10,7 @@ describe('puerta de entrada', () => {
     expect(screen.queryByRole('navigation', { name: 'Principal' })).not.toBeInTheDocument();
 
     // Registro con la nube simulada (en pruebas no hay .env de Supabase).
-    await userEvent.click(screen.getByRole('tab', { name: 'Crear cuenta' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Crear cuenta' }));
     await userEvent.type(screen.getByLabelText('Nombre visible'), 'Ana');
     await userEvent.type(screen.getByLabelText('Correo'), 'ana@pulso.test');
     await userEvent.type(screen.getByLabelText('Contraseña'), 'secreto-123');

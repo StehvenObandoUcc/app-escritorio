@@ -38,7 +38,7 @@ async function signedIn(aiCountsAsProductive = false) {
   return { cloud, team };
 }
 
-const open = (name: 'Semana' | 'Mes') => userEvent.click(screen.getByRole('tab', { name }));
+const open = (name: 'Semana' | 'Mes') => userEvent.click(screen.getByRole('radio', { name }));
 
 // Solo se finge la fecha: los temporizadores y las promesas siguen reales.
 beforeEach(() => vi.useFakeTimers({ toFake: ['Date'] }));
@@ -52,9 +52,9 @@ describe('Mi día: Día · Semana · Mes (AC-18)', () => {
     vi.setSystemTime(new Date('2026-10-07T10:00:00'));
     const { bridge } = bridgeWithRange();
     renderWithSession(<MiDiaPage bridge={bridge} />, { bridge, cloud: (await signedIn()).cloud });
-    const tabs = within(screen.getByRole('tablist', { name: 'Periodo' })).getAllByRole('tab');
+    const tabs = within(screen.getByRole('radiogroup', { name: 'Periodo' })).getAllByRole('radio');
     expect(tabs.map((t) => t.textContent)).toEqual(['Día', 'Semana', 'Mes']);
-    expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
+    expect(tabs[0]).toHaveAttribute('aria-checked', 'true');
     expect(await screen.findByRole('heading', { name: 'Registro de tiempo' })).toBeInTheDocument();
   }, LONG);
 

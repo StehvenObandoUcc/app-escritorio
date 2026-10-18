@@ -14,7 +14,7 @@ const LONG = 20_000;
 describe('Acceso (CU-01 a CU-03)', () => {
   it('registra una cuenta y entra al instante, sin esperar un correo (AC-1, ADR-0008)', async () => {
     const { cloud } = renderWithSession(<AccesoPage />, { path: '/' });
-    await userEvent.click(await screen.findByRole('tab', { name: 'Crear cuenta' }));
+    await userEvent.click(await screen.findByRole('radio', { name: 'Crear cuenta' }));
     await userEvent.type(screen.getByLabelText('Nombre visible'), 'Caro Díaz');
     await userEvent.type(screen.getByLabelText('Correo'), 'caro@pulso.test');
     await userEvent.type(screen.getByLabelText('Contraseña'), 'secreto-123');
@@ -25,7 +25,7 @@ describe('Acceso (CU-01 a CU-03)', () => {
 
   it('si Supabase aún exige confirmar el correo, pide el código y entra al verificarlo', async () => {
     const { cloud } = renderWithSession(<AccesoPage />, { path: '/', cloud: createMockCloud(undefined, { confirmEmail: true }) });
-    await userEvent.click(await screen.findByRole('tab', { name: 'Crear cuenta' }));
+    await userEvent.click(await screen.findByRole('radio', { name: 'Crear cuenta' }));
     await userEvent.type(screen.getByLabelText('Nombre visible'), 'Caro Díaz');
     await userEvent.type(screen.getByLabelText('Correo'), 'caro@pulso.test');
     await userEvent.type(screen.getByLabelText('Contraseña'), 'secreto-123');
@@ -48,7 +48,7 @@ describe('Acceso (CU-01 a CU-03)', () => {
 
   it('valida el formulario antes de enviar: error junto al campo y foco en el primero (AC-42)', async () => {
     renderWithSession(<AccesoPage />);
-    await userEvent.click(await screen.findByRole('tab', { name: 'Crear cuenta' }));
+    await userEvent.click(await screen.findByRole('radio', { name: 'Crear cuenta' }));
     await userEvent.click(screen.getByRole('button', { name: 'Crear cuenta' }));
     const name = screen.getByLabelText('Nombre visible');
     expect(name).toHaveAttribute('aria-invalid', 'true');
@@ -84,7 +84,7 @@ describe('Acceso (CU-01 a CU-03)', () => {
       throw toCloudError({ message: 'HTTP 504', status: 504 });
     };
     renderWithSession(<AccesoPage />, { cloud });
-    await userEvent.click(await screen.findByRole('tab', { name: 'Crear cuenta' }));
+    await userEvent.click(await screen.findByRole('radio', { name: 'Crear cuenta' }));
     await userEvent.type(screen.getByLabelText('Nombre visible'), 'Caro');
     await userEvent.type(screen.getByLabelText('Correo'), 'caro@pulso.test');
     await userEvent.type(screen.getByLabelText('Contraseña'), 'secreto-123');
