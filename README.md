@@ -207,7 +207,11 @@ Calendario y puertas en [`docs/PLAN.md`](docs/PLAN.md). Estado al domingo 18 de 
 
 ## Instalación para usuarios
 
-1. Ejecuta el instalador **`Pulso_0.1.0_x64-setup.exe`** (NSIS). Al compilar con `npm run tauri build`, queda en
+### [⬇ Descargar Pulso para Windows](https://github.com/StehvenObandoUcc/app-escritorio/releases/latest/download/Pulso_0.1.0_x64-setup.exe)
+
+También en la página de [versiones publicadas](https://github.com/StehvenObandoUcc/app-escritorio/releases).
+
+1. Descarga y ejecuta **`Pulso_0.1.0_x64-setup.exe`** (unos 4 MB). Si compilas tú con `npm run tauri build`, queda en
    `src-tauri/target/release/bundle/nsis/`.
 2. Windows mostrará un aviso porque el instalador **no está firmado** (no hay certificado de código). Pulsa **«Más información»** y luego **«Ejecutar de todas formas»**.
 3. Abre Pulso, crea una cuenta o inicia sesión y, si te invitan a un equipo, acepta el consentimiento.
