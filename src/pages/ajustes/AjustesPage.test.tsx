@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { Bridge } from '@/bridge/contract';
 import { createMockBridge } from '@/bridge/mock';
 import { AjustesPage } from './AjustesPage';
@@ -77,13 +77,14 @@ describe('Ajustes', () => {
     expect(screen.getAllByText(/notificaciones de Windows están apagadas/)).toHaveLength(1);
   });
 
-  it('si no puede leer los ajustes, lo explica', async () => {
-    const bridge: Bridge = {
-      ...createMockBridge(),
-      settingsGet: () => Promise.reject(new Error('sin núcleo')),
-    };
-    render(<AjustesPage bridge={bridge} />);
+  it('si no puede leer los ajustes, lo explica y «Reintentar» los vuelve a pedir (F-10)', async () => {
+    const base = createMockBridge();
+    const settingsGet = vi.fn<Bridge['settingsGet']>().mockRejectedValueOnce(new Error('sin núcleo')).mockImplementation(base.settingsGet);
+    render(<AjustesPage bridge={{ ...base, settingsGet }} />);
     expect(await screen.findByText('No se pudieron leer los ajustes')).toBeInTheDocument();
-    expect(screen.getByText(/sin núcleo/)).toBeInTheDocument();
+    expect(screen.getByText(/No pudimos leer tus ajustes/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
+    await waitFor(() => expect(screen.queryByText('No se pudieron leer los ajustes')).not.toBeInTheDocument());
+    expect(settingsGet).toHaveBeenCalledTimes(2);
   });
 });

@@ -22,6 +22,8 @@ export function MisTareasPage() {
         <EmptyState
           title={blocked?.title ?? t('projects.loadError')}
           description={blocked?.description ?? t('projects.loadErrorHint', { error: errorMessage(data.error) })}
+          action={blocked?.action}
+          onRetry={blocked ? undefined : () => void data.refetch()}
         />
       </PageLayout>
     );

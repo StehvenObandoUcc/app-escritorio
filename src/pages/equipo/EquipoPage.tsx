@@ -12,7 +12,7 @@ import { LIMITS } from '@/lib/limits';
 import { useForm } from '@/lib/useForm';
 import { canSeeMembers, invitableRoles, ROLE_LABEL, type Role } from '@/lib/permissions';
 import { Badge, Button, Heading, Select, Surface } from '@/ui/atoms';
-import { ConfirmDialog, EmptyState, FormField, SegmentedControl, SyncStatus } from '@/ui/molecules';
+import { ConfirmDialog, DiscardDialog, EmptyState, FormField, SegmentedControl, SyncStatus } from '@/ui/molecules';
 import { ConsentPanel, MemberList } from '@/ui/organisms';
 import { PageLayout } from '@/ui/templates';
 import { AuditoriaTab } from './AuditoriaTab';
@@ -175,7 +175,7 @@ function MyInvitations() {
 function CreateTeam({ first = false, onDone }: { first?: boolean; onDone?: () => void }) {
   const { cloud, refresh, selectTeam } = useSession();
   const [name, setName] = useState('');
-  const { ref, errors, formError, busy, submit: send, onKeyDown } = useForm(forms.team, onDone);
+  const { ref, errors, formError, busy, submit: send, onKeyDown, cancel, discard } = useForm(forms.team, onDone);
   const submit = (e: FormEvent) =>
     void send(
       { name },
@@ -190,6 +190,7 @@ function CreateTeam({ first = false, onDone }: { first?: boolean; onDone?: () =>
     );
   return (
     <Surface as="section" aria-label={t('team.create')}>
+      <DiscardDialog discard={discard} />
       <form ref={ref} onSubmit={submit} onKeyDown={onKeyDown} className="flex max-w-prose flex-col gap-4" noValidate>
         <div>
           <Heading level={2}>{first ? t('team.createFirst') : t('team.createAnother')}</Heading>
@@ -201,7 +202,7 @@ function CreateTeam({ first = false, onDone }: { first?: boolean; onDone?: () =>
             {t('team.create')}
           </Button>
           {onDone && (
-            <Button variant="ghost" onClick={onDone}>
+            <Button variant="ghost" onClick={cancel}>
               {t('common.cancel')}
             </Button>
           )}

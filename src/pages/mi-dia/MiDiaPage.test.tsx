@@ -75,14 +75,15 @@ describe('Mi día', () => {
     expect(screen.getByRole('button', { name: 'Reanudar seguimiento' })).toBeInTheDocument();
   });
 
-  it('si el sensor falla, explica qué pasó', async () => {
-    const broken: Bridge = {
-      ...createMockBridge(),
-      dayView: () => Promise.reject(new Error('sensor no disponible')),
-    };
+  it('si el sensor falla, explica qué pasó y «Reintentar» vuelve a pedir el día (F-04)', async () => {
+    const dayView = vi.fn(() => Promise.reject(new Error('sensor no disponible')));
+    const broken: Bridge = { ...createMockBridge(), dayView };
     render(<MiDiaPage bridge={broken} date={DATE} />);
     expect(await screen.findByText('No se pudo leer tu actividad')).toBeInTheDocument();
-    expect(screen.getByText(/sensor no disponible/)).toBeInTheDocument();
+    expect(screen.getByText(/Pulso sigue registrando/)).toBeInTheDocument();
+    const before = dayView.mock.calls.length;
+    await userEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
+    await waitFor(() => expect(dayView.mock.calls.length).toBeGreaterThan(before));
   });
 
   it('con el sensor real desaparece la etiqueta «Datos de ejemplo» (AC-16)', async () => {

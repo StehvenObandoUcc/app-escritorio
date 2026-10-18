@@ -143,7 +143,7 @@ describe('Mi día: Día · Semana · Mes (AC-18)', () => {
     await screen.findByRole('heading', { name: 'Registro de tiempo' });
     await open('Semana');
     expect(await screen.findByText('No se pudo leer tu actividad del periodo')).toBeInTheDocument();
-    expect(screen.getByText(/sensor no disponible/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reintentar' })).toBeInTheDocument();
   }, LONG);
 });
 

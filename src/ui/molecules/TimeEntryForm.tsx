@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react';
 import { forms } from '@/lib/forms';
 import { useForm } from '@/lib/useForm';
 import { Button } from '@/ui/atoms';
+import { DiscardDialog } from './DiscardDialog';
 import { FormField } from './FormField';
 
 /** Día y horas en hora local: "2026-10-01", "09:30". */
@@ -25,7 +26,7 @@ export interface TimeEntryFormProps {
 /** Registro manual de tiempo: día, inicio y fin. Validación por campo y teclado (AC-42, AC-43). */
 export function TimeEntryForm({ initial, submitLabel, onSubmit, onCancel, clearOnSuccess }: TimeEntryFormProps) {
   const [values, setValues] = useState(initial);
-  const { ref, errors, formError, busy, submit: send, onKeyDown } = useForm(forms.timeEntry, onCancel);
+  const { ref, errors, formError, busy, submit: send, onKeyDown, cancel, discard } = useForm(forms.timeEntry, onCancel);
 
   const change = (field: keyof TimeEntryValues) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setValues((v) => ({ ...v, [field]: e.target.value }));
@@ -41,6 +42,7 @@ export function TimeEntryForm({ initial, submitLabel, onSubmit, onCancel, clearO
     );
 
   return (
+    <>
     <form ref={ref} onSubmit={submit} onKeyDown={onKeyDown} className="flex flex-col gap-3" noValidate>
       <div className="flex flex-wrap items-start gap-3">
         <div className="min-w-40 flex-1">
@@ -63,11 +65,13 @@ export function TimeEntryForm({ initial, submitLabel, onSubmit, onCancel, clearO
           {submitLabel}
         </Button>
         {onCancel && (
-          <Button size="sm" variant="ghost" onClick={onCancel} disabled={busy}>
+          <Button size="sm" variant="ghost" onClick={cancel} disabled={busy}>
             {t('common.cancel')}
           </Button>
         )}
       </div>
     </form>
+    <DiscardDialog discard={discard} />
+    </>
   );
 }
