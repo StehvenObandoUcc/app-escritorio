@@ -131,6 +131,51 @@ describe('teclado en toda la app (ADR-0019)', () => {
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
+  it('cambiar de pantalla con un formulario con cambios pide confirmar; sin cambios no (F-01, H3)', async () => {
+    function Screen() {
+      useAppKeyboard(ROUTES, () => {});
+      return (
+        <>
+          <AppNav
+            items={[
+              { to: '/mi-dia', label: 'Mi día', icon: Sun },
+              { to: '/tareas', label: 'Mis tareas', icon: ListChecks },
+            ]}
+          />
+          {useLocation().pathname === '/mi-dia' && <TaskForm people={[]} manage isNew submitLabel="Crear tarea" onSubmit={async () => {}} onCancel={() => {}} />}
+          <p data-testid="ruta">{useLocation().pathname}</p>
+        </>
+      );
+    }
+    render(
+      <MemoryRouter initialEntries={['/mi-dia']}>
+        <Screen />
+      </MemoryRouter>,
+    );
+    const ruta = screen.getByTestId('ruta');
+    await userEvent.type(screen.getByLabelText('Descripción'), 'Notas a medias');
+
+    // Clic en el menú: pregunta y no se va; «Seguir editando» conserva lo escrito.
+    await userEvent.click(screen.getByRole('link', { name: 'Mis tareas' }));
+    expect(ruta).toHaveTextContent('/mi-dia');
+    await userEvent.click(within(screen.getByRole('dialog', { name: '¿Descartar los cambios?' })).getByRole('button', { name: 'Seguir editando' }));
+    expect(ruta).toHaveTextContent('/mi-dia');
+    expect(screen.getByLabelText('Descripción')).toHaveValue('Notas a medias');
+
+    // Alt+número también pregunta; «Descartar» completa la salida.
+    await userEvent.keyboard('{Alt>}2{/Alt}');
+    expect(ruta).toHaveTextContent('/mi-dia');
+    await userEvent.click(within(screen.getByRole('dialog', { name: '¿Descartar los cambios?' })).getByRole('button', { name: 'Descartar' }));
+    expect(ruta).toHaveTextContent('/tareas');
+
+    // Sin formulario con cambios, el menú navega directo.
+    await userEvent.click(screen.getByRole('link', { name: 'Mi día' }));
+    expect(ruta).toHaveTextContent('/mi-dia');
+    await userEvent.click(screen.getByRole('link', { name: 'Mis tareas' }));
+    expect(ruta).toHaveTextContent('/tareas');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
   it('las flechas recorren el menú de navegación', async () => {
     setup();
     screen.getByRole('link', { name: 'Mi día' }).focus();
