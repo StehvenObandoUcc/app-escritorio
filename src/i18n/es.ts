@@ -339,6 +339,8 @@ export const es = {
     coreError: 'El sensor no recibió la configuración del equipo: {error} Cierra y vuelve a abrir Pulso.',
   },
   theme: { change: 'Cambiar tema', system: 'Tema del sistema', light: 'Tema claro', dark: 'Tema oscuro' },
+  /** El nombre del control lleva los dos idiomas para que se encuentre aunque no se lea el actual. */
+  locale: { label: 'Idioma (Language)', changed: 'Idioma cambiado a {name}.' },
   alerts: {
     title: 'Sitio no permitido: {domain}',
     body: 'Entraste a las {time}. Tu equipo lo marcó como no permitido: Pulso no lo bloquea y el tiempo cuenta como distracción.',
@@ -350,7 +352,7 @@ export const es = {
     offline: 'Sin conexión con el servidor. Tus datos siguen guardados en este equipo.',
     forbidden: 'No tienes permiso para esta acción.',
     rejected: 'El servidor rechazó la petición. Inténtalo de nuevo.',
-    unexpected: 'Ocurrió un error inesperado.',
+    unexpected: 'No se pudo completar la acción. Inténtalo de nuevo.',
     sessionEnded: 'Tu sesión terminó. Vuelve a iniciar sesión.',
     noProfile: 'No se encontró tu perfil.',
     inviteFailed: 'No se pudo crear la invitación.',

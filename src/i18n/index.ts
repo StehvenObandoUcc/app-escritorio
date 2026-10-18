@@ -56,18 +56,26 @@ export function formatDate(date: string | Date, options: Intl.DateTimeFormatOpti
 
 /**
  * Mensajes de error que vienen en español del servidor (supabase/migrations) o de Rust (src-tauri):
- * en inglés se traducen con esta tabla; los que no están se muestran tal cual.
- * Una prueba comprueba que todo mensaje fijo del servidor y de Rust tiene entrada.
+ * en inglés se traducen con esta tabla; uno que no está se cambia por un aviso general en inglés (F-20)
+ * y el original queda en la consola. Una prueba comprueba que todo mensaje fijo del servidor y de Rust tiene entrada.
  */
 export function translateServerMessage(message: string): string {
   if (current === 'es') return message;
+  const english = englishServerMessage(message);
+  if (english) return english;
+  console.warn('Mensaje sin traducir:', message);
+  return t('cloud.unexpected');
+}
+
+/** Traducción al inglés de un mensaje del servidor o de Rust, si está en la tabla. */
+export function englishServerMessage(message: string): string | undefined {
   const exact = SERVER_MESSAGES[message];
   if (exact) return exact;
   for (const [pattern, english] of SERVER_PATTERNS) {
     const m = message.match(pattern);
     if (m) return english.replace(/\$(\d)/g, (_, i: string) => m[Number(i)] ?? '');
   }
-  return message;
+  return undefined;
 }
 
 
