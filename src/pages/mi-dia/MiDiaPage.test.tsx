@@ -148,10 +148,10 @@ describe('Mi día', () => {
       fill('Fin', '10:00');
       await userEvent.click(screen.getByRole('button', { name: 'Guardar entrada' }));
       await userEvent.click(
-        await screen.findByRole('button', { name: /Eliminar entrada de 09:00–10:00/ }),
+        await screen.findByRole('button', { name: /Borrar entrada de 09:00–10:00/ }),
       );
-      expect(screen.getByText('¿Eliminar esta entrada?')).toBeInTheDocument();
-      await userEvent.click(screen.getByRole('button', { name: 'Sí, eliminar' }));
+      expect(screen.getByText('¿Borrar esta entrada de tiempo?')).toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Sí, borrar' }));
       expect(await screen.findByText('Sin entradas de tiempo')).toBeInTheDocument();
     });
 

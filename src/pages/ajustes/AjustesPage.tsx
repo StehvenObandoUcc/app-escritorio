@@ -190,9 +190,15 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
       )}
       <MiPrivacidadSection bridge={bridge} />
       <AiSection bridge={bridge} />
+      {/* Antes era una tarjeta de relleno con un código de fase (F-11): ahora lleva a donde están esos ajustes. */}
       <EmptyState
         title={t('settings.moreLater')}
         description={t('settings.moreLaterHint')}
+        action={
+          <a href="#/equipo" className="inline-flex min-h-control items-center gap-2 rounded-md border border-line-strong bg-surface px-4 font-medium text-fg hover:bg-sunken">
+            {t('common.goToTeam')}
+          </a>
+        }
       />
     </PageLayout>
   );
