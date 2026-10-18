@@ -6,7 +6,7 @@ import { forms } from '@/lib/forms';
 import { LIMITS } from '@/lib/limits';
 import { TYPE_LABEL } from '@/lib/tasks';
 import { useForm } from '@/lib/useForm';
-import { Button, Select, type SelectOption } from '@/ui/atoms';
+import { Button, Checkbox, Select, Textarea, type SelectOption } from '@/ui/atoms';
 import { EstimateInput } from './EstimateInput';
 import { DiscardDialog } from './DiscardDialog';
 import { FormField } from './FormField';
@@ -23,8 +23,6 @@ export const EMPTY_TASK: TaskInput = {
   estimateMinutes: null,
   evidence: [],
 };
-
-const textarea = 'w-full rounded-md border bg-surface px-3 py-2 text-base text-fg';
 
 /**
  * Crear o editar una tarea o una subtarea (PT-03, ADR-0014): el mismo formulario para las dos (C6).
@@ -101,17 +99,21 @@ export function TaskForm({
         <label htmlFor={`${id}-description`} className="text-sm font-medium text-fg">
           {t('tasks.form.description')}
         </label>
-        <textarea
+        <Textarea
           id={`${id}-description`}
           name="description"
           rows={4}
           maxLength={LIMITS.taskDescription.max}
           value={v.description}
-          aria-invalid={Boolean(err.description) || undefined}
+          invalid={Boolean(err.description)}
+          aria-describedby={err.description ? `${id}-description-help` : undefined}
           onChange={(e) => set('description', e.target.value)}
-          className={`${textarea} ${err.description ? 'border-danger' : 'border-line-strong'}`}
         />
-        {err.description && <p className="text-sm text-danger">{err.description}</p>}
+        {err.description && (
+          <p id={`${id}-description-help`} className="text-sm text-danger">
+            {err.description}
+          </p>
+        )}
       </div>
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex min-w-40 flex-1 flex-col gap-1 text-sm font-medium text-fg">
@@ -121,7 +123,7 @@ export function TaskForm({
       </div>
       {manage && (
         <label className="flex items-center gap-2 text-sm text-fg">
-          <input type="checkbox" name="assigneeCanManage" checked={v.assigneeCanManage} onChange={(e) => set('assigneeCanManage', e.target.checked)} />
+          <Checkbox name="assigneeCanManage" checked={v.assigneeCanManage} onChange={(e) => set('assigneeCanManage', e.target.checked)} />
           {t('tasks.form.assigneeCanManage')}
         </label>
       )}
@@ -133,8 +135,7 @@ export function TaskForm({
               .filter((p) => p.value !== v.assigneeId)
               .map((p) => (
                 <label key={p.value} className="flex items-center gap-2 text-sm text-fg">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={collaborators.includes(p.value)}
                     onChange={(e) => setCollaborators((c) => (e.target.checked ? [...c, p.value] : c.filter((x) => x !== p.value)))}
                   />
@@ -153,23 +154,28 @@ export function TaskForm({
         </div>
       </div>
       {(manage || isNew) && (
-        <fieldset className="flex flex-col gap-2">
-          <legend className="text-sm font-medium text-fg">{t('evidence.title')}</legend>
-          <p className="text-sm text-fg-muted">{t('evidence.hint')}</p>
-          <div className="grid gap-x-4 gap-y-2 md:grid-cols-2">
-            {EVIDENCE_KEYS.map((key) => (
-              <label key={key} className="flex items-center gap-2 text-sm text-fg">
-                <input
-                  type="checkbox"
-                  name={`evidence-${key}`}
-                  checked={v.evidence.includes(key)}
-                  onChange={(e) => set('evidence', e.target.checked ? [...v.evidence, key] : v.evidence.filter((x) => x !== key))}
-                />
-                {evidenceLabel(key)}
-              </label>
-            ))}
-          </div>
-        </fieldset>
+        // Plegada por defecto (F-17): casi nunca se usa al crear una tarea simple; el contador dice cuántas hay.
+        <details>
+          <summary className="cursor-pointer rounded-xs text-sm font-medium text-fg">
+            {t('evidence.title')} <span className="font-normal text-fg-muted">({t('evidence.selected', { n: v.evidence.length })})</span>
+          </summary>
+          <fieldset className="mt-2 flex flex-col gap-2">
+            <legend className="sr-only">{t('evidence.title')}</legend>
+            <p className="text-sm text-fg-muted">{t('evidence.hint')}</p>
+            <div className="grid gap-x-4 gap-y-2 md:grid-cols-2">
+              {EVIDENCE_KEYS.map((key) => (
+                <label key={key} className="flex items-center gap-2 text-sm text-fg">
+                  <Checkbox
+                    name={`evidence-${key}`}
+                    checked={v.evidence.includes(key)}
+                    onChange={(e) => set('evidence', e.target.checked ? [...v.evidence, key] : v.evidence.filter((x) => x !== key))}
+                  />
+                  {evidenceLabel(key)}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        </details>
       )}
       <FormField
         name="labels"
@@ -184,16 +190,18 @@ export function TaskForm({
           <label htmlFor={`${id}-criteria`} className="text-sm font-medium text-fg">
             {t('tasks.form.criteria')}
           </label>
-          <textarea
+          <Textarea
             id={`${id}-criteria`}
             name="criteria"
             rows={3}
             value={criteria}
-            aria-invalid={Boolean(err.criteria) || undefined}
+            invalid={Boolean(err.criteria)}
+            aria-describedby={`${id}-criteria-help`}
             onChange={(e) => setCriteria(e.target.value)}
-            className={`${textarea} ${err.criteria ? 'border-danger' : 'border-line-strong'}`}
           />
-          <p className={err.criteria ? 'text-sm text-danger' : 'text-sm text-fg-muted'}>{err.criteria ?? t('tasks.form.criteriaHint')}</p>
+          <p id={`${id}-criteria-help`} className={err.criteria ? 'text-sm text-danger' : 'text-sm text-fg-muted'}>
+            {err.criteria ?? t('tasks.form.criteriaHint')}
+          </p>
         </div>
       )}
       {formError && (

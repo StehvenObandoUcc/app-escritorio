@@ -743,6 +743,7 @@ export const en: Dict = {
   },
   evidence: {
     title: 'Required evidence',
+    selected: { one: '{n} selected', other: '{n} selected' },
     hint: 'Check what must be delivered for the task to count as done. Each type will be required on submit.',
     none: 'This task requires no extra evidence.',
     kinds: {

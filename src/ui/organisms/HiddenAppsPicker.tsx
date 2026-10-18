@@ -1,7 +1,7 @@
 import { t } from '@/i18n';
 import { Plus, Search } from 'lucide-react';
 import { useId, useMemo, useState } from 'react';
-import { Button, Input } from '@/ui/atoms';
+import { Button, Checkbox, Input } from '@/ui/atoms';
 
 export interface AppCandidate {
   /** Nombre de proceso en minúsculas (lo que guarda el ajuste) */
@@ -89,9 +89,7 @@ export function HiddenAppsPicker({
                 {g.items.map((c) => (
                   <li key={c.process}>
                     <label className="flex min-h-touch items-center gap-3 rounded-md px-2 hover:bg-sunken md:min-h-control">
-                      <input
-                        type="checkbox"
-                        className="size-4 shrink-0 accent-accent"
+                      <Checkbox
                         checked={selected.includes(c.process)}
                         onChange={(e) => toggle(c.process, e.target.checked)}
                       />

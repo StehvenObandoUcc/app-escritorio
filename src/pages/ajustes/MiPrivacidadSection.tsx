@@ -2,7 +2,7 @@ import { useId, useState } from 'react';
 import type { Bridge } from '@/bridge/contract';
 import { useOptionalSession } from '@/app/session';
 import { errorMessage, t } from '@/i18n';
-import { Button, Heading, Surface } from '@/ui/atoms';
+import { Button, Checkbox, Heading, Surface } from '@/ui/atoms';
 import { ConfirmDialog } from '@/ui/molecules';
 
 /**
@@ -62,10 +62,8 @@ export function MiPrivacidadSection({ bridge }: { bridge: Bridge }) {
       {canShare && team && (
         <div className="flex flex-col gap-1">
           <label className="flex items-center gap-2 text-sm font-medium text-fg">
-            <input
-              type="checkbox"
+            <Checkbox
               role="switch"
-              className="size-4 accent-accent"
               checked={team.shareAppNames}
               disabled={busy}
               aria-describedby={hintId}
