@@ -15,6 +15,8 @@ import { Badge, Button, Heading, Select, Surface } from '@/ui/atoms';
 import { ConfirmDialog, EmptyState, FormField, SegmentedControl, SyncStatus } from '@/ui/molecules';
 import { ConsentPanel, MemberList } from '@/ui/organisms';
 import { PageLayout } from '@/ui/templates';
+import { AuditoriaTab } from './AuditoriaTab';
+import { TeamSettingsSection } from './AjustesEquipo';
 import { SitiosYPoliticas } from './SitiosYPoliticas';
 
 const withDash = (c: string) => (c.includes('-') ? c : `${c.slice(0, 4)}-${c.slice(4)}`);
@@ -209,7 +211,7 @@ function CreateTeam({ first = false, onDone }: { first?: boolean; onDone?: () =>
   );
 }
 
-type TeamTab = 'members' | 'sites' | 'general';
+type TeamTab = 'members' | 'sites' | 'audit' | 'general';
 
 function TeamView({ team }: { team: MyTeam }) {
   const { cloud, refresh, sync, syncNow } = useSession();
@@ -238,7 +240,7 @@ function TeamView({ team }: { team: MyTeam }) {
   const manager = team.role === 'owner' || team.role === 'admin';
   const tabs: { value: TeamTab; label: string }[] = [
     { value: 'members', label: t('team.tabs.members') },
-    ...(manager ? [{ value: 'sites' as TeamTab, label: t('sites.title') }] : []),
+    ...(manager ? [{ value: 'sites' as TeamTab, label: t('sites.title') }, { value: 'audit' as TeamTab, label: t('audit.title') }] : []),
     { value: 'general', label: t('team.tabs.general') },
   ];
 
@@ -253,6 +255,7 @@ function TeamView({ team }: { team: MyTeam }) {
         </>
       )}
       {tab === 'sites' && manager && <SitiosYPoliticas team={team} />}
+      {tab === 'audit' && manager && <AuditoriaTab team={team} />}
       {tab === 'general' && (
         <>
           <Surface as="section" aria-label={t('team.sync')} className="flex flex-wrap items-center justify-between gap-3">
@@ -270,6 +273,7 @@ function TeamView({ team }: { team: MyTeam }) {
               </Link>
             </div>
           </Surface>
+          {manager && <TeamSettingsSection team={team} />}
           <LeaveTeam team={team} />
           {creating ? (
             <CreateTeam onDone={() => setCreating(false)} />
@@ -293,7 +297,12 @@ function Members({ team }: { team: MyTeam }) {
   const [removing, setRemoving] = useState<{ userId: string; name: string } | null>(null);
   const query = useQuery({ queryKey: ['members', team.id], queryFn: () => cloud.members(team.id) });
   const reload = async () => {
-    await queryClient.invalidateQueries({ queryKey: ['members', team.id] });
+    // El tablero depende de los roles.
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['members', team.id] }),
+      queryClient.invalidateQueries({ queryKey: ['team-dashboard', team.id] }),
+      queryClient.invalidateQueries({ queryKey: ['team-presence', team.id] }),
+    ]);
     await refresh();
   };
 

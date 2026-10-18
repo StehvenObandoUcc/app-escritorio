@@ -191,7 +191,7 @@ Conclusión: D-15 se queda como está y **no se crea `export_save`**. La pantall
 ## Supuestos tomados al implementar
 
 1. `get_report_facts` devuelve también `period_from` y `period_to`: la app y la Edge Function los necesitan para la caché y el validador.
-2. `save_report` recibe `p_facts_hash` y rechaza el guardado si los datos cambiaron mientras se generaba (código 40001): así el texto de la IA siempre corresponde a las cifras guardadas.
+2. `save_report` recibe `p_facts_hash` y rechaza el guardado si los datos cambiaron mientras se generaba (código PT409, que PostgREST responde como HTTP 409 sin reintentar; 40001 lo reintentaba en bucle, corregido el 16 oct): así el texto de la IA siempre corresponde a las cifras guardadas.
 3. «Esta semana» va de lunes a domingo aunque el domingo no haya llegado; los días sin datos suman 0.
 4. `ai_tool` se normaliza en minúsculas y sin espacios ni signos (`LM Studio` → `lmstudio`) antes de compararlo con la lista cerrada.
 5. `data_until` personal es el fin del último bloque sincronizado, sin pasar del final del periodo; si no hay bloques, queda vacío.

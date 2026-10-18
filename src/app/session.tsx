@@ -11,7 +11,7 @@
 import { FALLBACK_TIMEZONE } from '@/lib/limits';
 import { errorMessage, t } from '@/i18n';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { Bridge } from '@/bridge/contract';
 import type { Cloud, CloudUser, MyTeam, Profile } from '@/cloud/contract';
 import { CONSENT_VERSION } from '@/lib/consent';
@@ -64,6 +64,12 @@ export interface SessionValue {
   syncNow: () => Promise<void>;
   /** Dominios que el equipo activo marcó como no permitidos (ADR-0009). */
   notAllowedDomains: string[];
+  /**
+   * Fija al instante si el motor sube los nombres de apps, sin esperar a que `refresh()` relea los equipos.
+   * Mientras el equipo no confirme el mismo valor, manda este (PS-05, D-8). Con `revert`, vuelve al valor del equipo
+   * (la llamada a la nube falló).
+   */
+  applyShareAppNames: (share: boolean, revert?: boolean) => void;
   /** El equipo activo pide aceptar una versión nueva del consentimiento. */
   needsNewConsent: boolean;
 }
@@ -187,14 +193,49 @@ export function SessionProvider({
     if (rulesQuery.data) void bridge.rulesSet(rulesQuery.data).catch(reportCore);
   }, [bridge, rulesQuery.data, reportCore]);
 
+  // Umbral de inactividad del equipo (F5 D-10): si el equipo define uno, manda sobre el ajuste personal.
+  // Las escrituras van en cadena, se ignora la que ya no es la vigente y no se lanza otra para un valor en vuelo.
+  const teamIdle = activeTeam?.idleMinutes ?? null;
+  const latestIdle = useRef<number | null>(null);
+  const idleInFlight = useRef<number | null>(null);
+  const idleChain = useRef<Promise<void>>(Promise.resolve());
+  useEffect(() => {
+    latestIdle.current = teamIdle;
+    if (teamIdle === null || !user || idleInFlight.current === teamIdle) return;
+    idleInFlight.current = teamIdle;
+    idleChain.current = idleChain.current.then(async () => {
+      try {
+        if (latestIdle.current !== teamIdle) return; // llegó un valor más nuevo mientras esperaba
+        const current = await bridge.settingsGet();
+        if (current.idleMinutes !== teamIdle && latestIdle.current === teamIdle) await bridge.settingsSet({ idleMinutes: teamIdle });
+      } catch (cause) {
+        reportCore(cause);
+      } finally {
+        if (idleInFlight.current === teamIdle) idleInFlight.current = null;
+      }
+    });
+  }, [bridge, user, teamIdle, reportCore]);
+
+  // PS-05: lo que la persona acaba de decidir manda sobre lo que el equipo aún no refleja.
+  const shareOverride = useRef<boolean | null>(null);
+  const applyShareAppNames = useCallback(
+    (share: boolean, revert = false) => {
+      shareOverride.current = revert ? null : share;
+      engine.setShareAppNames(share);
+    },
+    [engine],
+  );
+
   // Contexto del motor de sincronización.
   useEffect(() => {
     if (user && uploading) {
+      if (shareOverride.current === uploading.shareAppNames) shareOverride.current = null;
       engine.setContext({
         userId: user.id,
         teamId: uploading.id,
         workday: uploading.workday,
         timezone: profile?.timezone ?? systemTimezone(),
+        shareAppNames: shareOverride.current ?? uploading.shareAppNames,
       });
       void engine.syncNow();
     } else if (user === null || (user && teamsQuery.isSuccess && !uploading)) {
@@ -241,6 +282,7 @@ export function SessionProvider({
     sync,
     syncNow: () => engine.syncNow(),
     notAllowedDomains,
+    applyShareAppNames,
     needsNewConsent,
   };
 

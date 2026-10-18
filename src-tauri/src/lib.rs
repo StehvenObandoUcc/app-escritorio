@@ -189,6 +189,7 @@ pub fn run() {
       commands::ai_config_clear,
       commands::ai_chat,
       commands::block_set_ai_usage,
+      commands::export_my_data,
     ])
     .build(context)
     .expect("error while building tauri application");

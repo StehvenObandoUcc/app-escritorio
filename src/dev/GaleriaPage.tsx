@@ -1,7 +1,12 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Play } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { SessionProvider } from '@/app/session';
+import { createMockCloud, type MockCloud } from '@/cloud/mock';
+import { CONSENT_VERSION } from '@/lib/consent';
+import { SyncEngine } from '@/sync/engine';
 import { CATEGORIES, type TimeEntry } from '@/bridge/contract';
-import { sampleDay } from '@/bridge/mock';
+import { createMockBridge, sampleDay } from '@/bridge/mock';
 import { CATEGORY_STYLE } from '@/lib/categories';
 import { Avatar, Badge, Button, CategoryMark, Heading, Input, ProgressBar, Select, Surface } from '@/ui/atoms';
 import {
@@ -9,17 +14,19 @@ import {
   EmptyState,
   FormField,
   EstimateInput,
+  HorizontalBarList,
   PasswordField,
   ProjectCard,
   ProjectProgress,
   SegmentedControl,
+  StackedBarChart,
   SyncStatus,
   TaskFilters,
   TaskForm,
   TimeEntryForm,
   TimerControl,
 } from '@/ui/molecules';
-import type { Project, ReportRun, Task } from '@/cloud/contract';
+import type { Presence, Project, ReportRun, Task, TeamDashboard } from '@/cloud/contract';
 import { NO_FILTER, taskTree } from '@/lib/tasks';
 import { appTotals, buildTimeline } from '@/lib/activity';
 import {
@@ -45,6 +52,16 @@ import {
   TimeEntryList,
 } from '@/ui/organisms';
 import { AuthLayout, PageLayout } from '@/ui/templates';
+import { MyRangeView } from '@/pages/mi-dia/MyRangeView';
+import { DashboardBody, TableroPage } from '@/pages/tablero/TableroPage';
+import { PresenceSection } from '@/pages/tablero/sections';
+import { formatDuration } from '@/lib/time';
+import { errorMessage, t } from '@/i18n';
+import { MiPrivacidadSection } from '@/pages/ajustes/MiPrivacidadSection';
+import { TeamSettingsSection } from '@/pages/equipo/AjustesEquipo';
+import { AuditoriaTab } from '@/pages/equipo/AuditoriaTab';
+import { ReglasPorApp } from '@/pages/equipo/ReglasPorApp';
+import { useSession } from '@/app/session';
 
 const SWATCHES = [
   ['canvas', 'bg-canvas'],
@@ -151,6 +168,27 @@ export function GaleriaPage() {
           onStop={noop}
           onBreakToggle={noop}
           onPauseToggle={noop}
+        />
+        <TimerControl
+          running={false}
+          elapsedSeconds={0}
+          state="tracking"
+          onStart={noop}
+          onStop={noop}
+          onBreakToggle={noop}
+          onPauseToggle={noop}
+          pauseMinutes={10}
+        />
+        <TimerControl
+          running={false}
+          elapsedSeconds={0}
+          state="tracking"
+          onStart={noop}
+          onStop={noop}
+          onBreakToggle={noop}
+          onPauseToggle={noop}
+          pauseMinutes={0}
+          pauseDisabledReason={t('pause.capReached', { min: 30 })}
         />
         <div className="max-w-96">
           <CategoryBreakdown
@@ -298,9 +336,254 @@ export function GaleriaPage() {
         <ReportView report={{ ...SAMPLE_REPORT, validation: 'fallback', validatedBy: 'client', mode: 'own_key' }} title="Plantilla de respaldo" />
         <ReportHistory reports={[SAMPLE_REPORT, { ...SAMPLE_REPORT, id: '00000000-0000-4000-8000-000000000302', mode: 'manual' }]} selectedId={SAMPLE_REPORT.id} titleOf={() => 'Mi trabajo'} onOpen={() => {}} />
       </Section>
+      <Section title={t('charts.gallerySection')}>
+        <StackedBarChart data={SAMPLE_BARS} unit={t('charts.galleryHours')} label={t('charts.galleryWeek')} formatValue={(h) => formatDuration(h * 3600)} />
+        <HorizontalBarList
+          label={t('charts.galleryProjects')}
+          formatValue={formatDuration}
+          items={[
+            // Datos de muestra
+            { key: 'p1', label: 'Pulso', value: 7200 },
+            { key: 'p1/t1', label: 'Gráficas de la semana', value: 5400, depth: 1 },
+            { key: 'p1/t2', label: 'Pruebas de interfaz', value: 1800, depth: 1 },
+            { key: 'p2', label: 'Taller de serverless', value: 3000 },
+            { key: 'none', label: 'Sin tarea', value: 900 },
+          ]}
+        />
+        <HorizontalBarList label={t('charts.galleryEmpty')} formatValue={formatDuration} items={[]} />
+        <MyRangeView bridge={GALLERY_BRIDGE} kind="week" range={{ from: '2026-10-05', to: '2026-10-11' }} canGoNext onShift={noop} />
+      </Section>
+      <Section title={t('teamSettings.galleryTitle')}>
+        <GalleryEquipo />
+      </Section>
+      <Section title={t('myPrivacy.galleryTitle')}>
+        <GalleryEquipo privacy />
+      </Section>
+      <Section title={t('dashboard.galleryTitle')}>
+        <Heading level={3}>{t('dashboard.galleryPage')}</Heading>
+        <GalleryTablero />
+        <Heading level={3}>{t('dashboard.galleryOwner')}</Heading>
+        <PresenceSection people={SAMPLE_PRESENCE} />
+        <DashboardBody data={SAMPLE_DASHBOARD} periodLabel={t('dashboard.periods.this_week')} />
+        <Heading level={3}>{t('dashboard.galleryLead')}</Heading>
+        <DashboardBody
+          data={{ ...SAMPLE_DASHBOARD, role: 'member', isLead: true, members: [], topApps: [], leadMembers: SAMPLE_DASHBOARD.members.map((m) => ({ userId: m.userId, name: m.name, projectHours: m.hoursActive / 2, aiHoursInProjects: m.aiHours / 2, tasksDoing: m.tasksDoing })) }}
+          periodLabel={t('dashboard.periods.this_week')}
+        />
+        <Heading level={3}>{t('dashboard.galleryViewer')}</Heading>
+        <DashboardBody data={{ ...SAMPLE_DASHBOARD, role: 'viewer', members: [], topApps: [] }} periodLabel={t('dashboard.periods.this_week')} />
+        <Heading level={3}>{t('dashboard.galleryFew')}</Heading>
+        <DashboardBody data={{ ...SAMPLE_DASHBOARD, role: 'viewer', totals: null, perDay: [], members: [], topApps: [] }} periodLabel={t('dashboard.periods.this_week')} />
+      </Section>
     </PageLayout>
   );
 }
+
+const SAMPLE_CATS = (productive: number, ai: number, neutral: number, distraction: number) => ({ productive, ai, neutral, distraction });
+const SAMPLE_TASK = (id: string, title: string, projectName: string) => ({ id, title, projectId: '00000000-0000-4000-8000-0000000004f0', projectName });
+
+const SAMPLE_PRESENCE: Presence[] = [
+  { userId: '00000000-0000-4000-8000-000000000401', name: 'Ana Gómez', state: 'active', since: '2026-10-13T08:05:00-05:00' },
+  { userId: '00000000-0000-4000-8000-000000000402', name: 'Beto Ruiz', state: 'break', since: '2026-10-13T09:40:00-05:00' },
+  { userId: '00000000-0000-4000-8000-000000000403', name: null, state: 'offline', since: null },
+];
+
+/** Datos de muestra: tablero tal como lo entrega `team_dashboard` a owner y admin. */
+const SAMPLE_DASHBOARD: TeamDashboard = {
+  role: 'owner',
+  isLead: false,
+  totals: {
+    members: 3,
+    hoursActive: 52.5,
+    hoursProductive: 31,
+    hoursCategory: SAMPLE_CATS(31, 9.5, 8, 4),
+    aiHours: 9.5,
+    aiSessions: 14,
+    aiTool: { claude: 5.5, chatgpt: 3, other: 1 },
+    aiUsage: { code: 5, writing: 2, analysis: 1.5, other: 0.5, untagged: 0.5 },
+    tasksDoing: 4,
+    tasksDone: 11,
+  },
+  perDay: [
+    ['2026-10-12', 11, 3, 2, 1],
+    ['2026-10-13', 10, 3.5, 3, 2],
+    ['2026-10-14', 10, 3, 3, 1],
+  ].map(([day, p, a, n, d]) => ({ day: String(day), hoursCategory: SAMPLE_CATS(Number(p), Number(a), Number(n), Number(d)) })),
+  members: [
+    {
+      userId: '00000000-0000-4000-8000-000000000401',
+      name: 'Ana Gómez',
+      shareAppNames: true,
+      hoursActive: 22,
+      hoursProductive: 14,
+      hoursCategory: SAMPLE_CATS(14, 4, 3, 1),
+      aiHours: 4,
+      aiSessions: 6,
+      capacityHours: 30,
+      capacityShare: 73,
+      tasksDoing: [SAMPLE_TASK('00000000-0000-4000-8000-0000000004a1', 'Tablero del equipo', 'Pulso')],
+    },
+    {
+      userId: '00000000-0000-4000-8000-000000000402',
+      name: 'Beto Ruiz',
+      shareAppNames: false,
+      hoursActive: 18.5,
+      hoursProductive: 10,
+      hoursCategory: SAMPLE_CATS(10, 3.5, 3, 2),
+      aiHours: 3.5,
+      aiSessions: 5,
+      capacityHours: 30,
+      capacityShare: 62,
+      tasksDoing: [],
+    },
+    {
+      userId: '00000000-0000-4000-8000-000000000403',
+      name: null,
+      shareAppNames: true,
+      hoursActive: 12,
+      hoursProductive: 7,
+      hoursCategory: SAMPLE_CATS(7, 2, 2, 1),
+      aiHours: 2,
+      aiSessions: 3,
+      capacityHours: 0,
+      capacityShare: null,
+      tasksDoing: [SAMPLE_TASK('00000000-0000-4000-8000-0000000004a2', 'Taller de serverless', 'Universidad'), SAMPLE_TASK('00000000-0000-4000-8000-0000000004a3', 'Pruebas de interfaz', 'Pulso')],
+    },
+  ],
+  leadMembers: [],
+  topApps: [
+    { appName: 'Visual Studio Code', hours: 20.5 },
+    { appName: 'Google Chrome', hours: 14 },
+    { appName: 'Claude', hours: 5.5 },
+  ],
+};
+
+const GALLERY_BRIDGE = createMockBridge();
+
+/**
+ * La página completa con la nube simulada (sin red): una cuenta propietaria en un equipo de ejemplo, con
+ * `teamDashboard` y `teamPresence` devolviendo datos de muestra. Tiene su propia sesión, aparte de la de la app.
+ */
+function GalleryTablero() {
+  const [demo, setDemo] = useState<{ cloud: MockCloud; engine: SyncEngine } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const cloud = createMockCloud();
+    const owner = cloud.debug.addAccount('galeria@pulso.test', 'secreto-123', 'Ana Gómez');
+    const team = cloud.debug.addTeam('Equipo de muestra', owner);
+    cloud.teamDashboard = async () => SAMPLE_DASHBOARD;
+    cloud.teamPresence = async () => SAMPLE_PRESENCE;
+    void cloud
+      .signIn('galeria@pulso.test', 'secreto-123')
+      .then(() => cloud.giveConsent(team, CONSENT_VERSION))
+      .then(() => alive && setDemo({ cloud, engine: new SyncEngine({ bridge: GALLERY_BRIDGE, cloud, setTimer: () => () => {} }) }));
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const [queryClient] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: false } } }));
+  if (!demo) return <p role="status">{t('common.loading')}</p>;
+  return (
+    <QueryClientProvider client={queryClient}>
+      <SessionProvider cloud={demo.cloud} bridge={GALLERY_BRIDGE} engine={demo.engine}>
+        <div className="rounded-lg border border-line">
+          <TableroPage />
+        </div>
+      </SessionProvider>
+    </QueryClientProvider>
+  );
+}
+
+const GALLERY_AUDIT_ACTIONS = ['team_created', 'invitation_sent', 'invitation_accepted', 'role_changed', 'settings_changed', 'member_removed'] as const;
+
+/**
+ * Equipo (F5) con la nube simulada: ajustes del equipo con valores de ejemplo, auditoría con filas de ejemplo
+ * (incluye a un exmiembro y una acción del sistema) y reglas por app. Tiene su propia sesión.
+ */
+function GalleryEquipo({ privacy = false }: { privacy?: boolean }) {
+  const [demo, setDemo] = useState<{ cloud: MockCloud; engine: SyncEngine } | null>(null);
+  const [failure, setFailure] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const cloud = createMockCloud();
+    const owner = cloud.debug.addAccount('equipo-galeria@pulso.test', 'secreto-123', 'Ana Gómez');
+    const team = cloud.debug.addTeam('Equipo de muestra', owner);
+    const luis = cloud.debug.addAccount('luis-galeria@pulso.test', 'secreto-123', 'Luis Pardo');
+    cloud.debug.addMember(team, luis, 'member', true);
+    GALLERY_AUDIT_ACTIONS.forEach((action, i) =>
+      cloud.debug.audit.push({
+        teamId: team,
+        id: i + 1,
+        action,
+        actorId: i === 0 ? null : i === 5 ? crypto.randomUUID() : owner,
+        targetUserId: action === 'role_changed' || action === 'invitation_accepted' ? luis : null,
+        details: {},
+        createdAt: `2026-10-0${i + 1}T14:${10 + i}:00Z`,
+      }),
+    );
+    void cloud
+      .signIn('equipo-galeria@pulso.test', 'secreto-123')
+      .then(() => cloud.giveConsent(team, CONSENT_VERSION))
+      .then(() =>
+        cloud.setTeamSettings(team, {
+          idleMinutes: 7,
+          workday: { days: [1, 2, 3, 4, 5], start: '08:30', end: '17:30' },
+          aiCountsAsProductive: true,
+          presenceVisibleToMembers: false,
+          pauseCapMinutes: 60,
+        }),
+      )
+      .then(() => cloud.addProcessRule(team, 'Code.exe', 'productive'))
+      .then(() => cloud.addProcessRule(team, 'Spotify.exe', 'distraction'))
+      .then(() => alive && setDemo({ cloud, engine: new SyncEngine({ bridge: GALLERY_BRIDGE, cloud, setTimer: () => () => {} }) }))
+      .catch((cause) => alive && setFailure(errorMessage(cause)));
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const [queryClient] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: false } } }));
+  if (failure) return <p role="alert" className="text-sm text-danger">{t('teamSettings.galleryError', { error: failure })}</p>;
+  if (!demo) return <p role="status">{t('common.loading')}</p>;
+  return (
+    <QueryClientProvider client={queryClient}>
+      <SessionProvider cloud={demo.cloud} bridge={GALLERY_BRIDGE} engine={demo.engine}>
+        <GalleryEquipoPieces privacy={privacy} />
+      </SessionProvider>
+    </QueryClientProvider>
+  );
+}
+
+function GalleryEquipoPieces({ privacy }: { privacy: boolean }) {
+  const { activeTeam } = useSession();
+  if (!activeTeam) return <p role="status">{t('common.loading')}</p>;
+  if (privacy) return <MiPrivacidadSection bridge={GALLERY_BRIDGE} />;
+  return (
+    <div className="flex flex-col gap-4">
+      <TeamSettingsSection team={activeTeam} />
+      <AuditoriaTab team={activeTeam} />
+      <ReglasPorApp team={activeTeam} />
+    </div>
+  );
+}
+
+/** Datos de muestra: una semana de ejemplo, en horas. */
+const SAMPLE_BARS = [
+  ['lun 5', 3.5, 1, 0.5, 0.2],
+  ['mar 6', 4, 1.5, 0.8, 0.3],
+  ['mié 7', 2.5, 2, 1, 0],
+  ['jue 8', 5, 0.5, 0.4, 0.6],
+  ['vie 9', 3, 1, 0.3, 0.1],
+  ['sáb 10', 0, 0, 0, 0],
+  ['dom 11', 0.5, 0, 0.2, 0],
+].map(([label, productive, ai, neutral, distraction]) => ({
+  label: label as string,
+  segments: [
+    { key: 'productive' as const, value: productive as number },
+    { key: 'ai' as const, value: ai as number },
+    { key: 'neutral' as const, value: neutral as number },
+    { key: 'distraction' as const, value: distraction as number },
+  ],
+}));
 
 const PEOPLE = [
   { value: '00000000-0000-4000-8000-000000000101', label: 'Ana Gómez' },

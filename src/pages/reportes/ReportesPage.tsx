@@ -239,9 +239,14 @@ export function ReportesPage() {
                 )}
                 <div>
                   <Button type="submit" variant="primary" disabled={Boolean(busy)}>
-                    {t('reports.manual.submit')}
+                    {busy ?? t('reports.manual.submit')}
                   </Button>
                 </div>
+                {error && (
+                  <p role="alert" className="text-sm text-danger">
+                    {error}
+                  </p>
+                )}
               </form>
             </Surface>
           )}
