@@ -39,6 +39,17 @@
     ],
     "android": {
       "debugApplicationIdSuffix": ".debug"
+    },
+    "publisher": "Pulso",
+    "shortDescription": "Pulso: actividad y tareas de tu equipo, con tus datos privados",
+    "windows": {
+      "nsis": {
+        "languages": [
+          "Spanish",
+          "English"
+        ],
+        "displayLanguageSelector": false
+      }
     }
   }
 }
