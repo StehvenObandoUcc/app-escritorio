@@ -24,7 +24,7 @@ async function teamWith(role: 'owner' | 'admin' | 'member') {
   return { cloud, team, me };
 }
 
-describe('Sitios y políticas (ADR-0009)', () => {
+describe('Reglas y políticas (ADR-0009)', () => {
   it('de una URL pegada se queda solo el dominio', () => {
     expect(toDomain('https://www.YouTube.com/shorts/abc?x=1')).toBe('youtube.com');
     expect(toDomain('netflix.com')).toBe('netflix.com');
@@ -35,8 +35,8 @@ describe('Sitios y políticas (ADR-0009)', () => {
   it('el admin marca un sitio como no permitido y lo puede quitar', async () => {
     const { cloud, team } = await teamWith('admin');
     renderWithSession(<EquipoPage />, { path: '/equipo', cloud });
-    await userEvent.click(await screen.findByRole('tab', { name: 'Sitios y políticas' }));
-    const section = await screen.findByRole('region', { name: 'Sitios y políticas' });
+    await userEvent.click(await screen.findByRole('tab', { name: 'Reglas y políticas' }));
+    const section = await screen.findByRole('region', { name: 'Reglas y políticas' });
     await userEvent.type(within(section).getByLabelText('Sitio'), 'https://www.youtube.com/watch?v=secreto');
     await userEvent.click(within(section).getByRole('button', { name: 'Marcar como no permitido' }));
     const list = await within(section).findByRole('list', { name: 'Sitios no permitidos' });
@@ -52,7 +52,7 @@ describe('Sitios y políticas (ADR-0009)', () => {
     const bridge = createMockBridge();
     const policy = vi.spyOn(bridge, 'teamPolicySet');
     renderWithSession(<EquipoPage />, { path: '/equipo', cloud, bridge });
-    await userEvent.click(await screen.findByRole('tab', { name: 'Sitios y políticas' }));
+    await userEvent.click(await screen.findByRole('tab', { name: 'Reglas y políticas' }));
     const toggle = await screen.findByRole('checkbox', { name: /Permitir que cada persona oculte apps/ });
     expect(toggle).toBeChecked();
     await userEvent.click(toggle);
@@ -65,8 +65,8 @@ describe('Sitios y políticas (ADR-0009)', () => {
     const bridge = createMockBridge();
     const rules = vi.spyOn(bridge, 'rulesSet');
     renderWithSession(<EquipoPage />, { path: '/equipo', cloud, bridge });
-    await userEvent.click(await screen.findByRole('tab', { name: 'Sitios y políticas' }));
-    const section = await screen.findByRole('region', { name: 'Sitios y políticas' });
+    await userEvent.click(await screen.findByRole('tab', { name: 'Reglas y políticas' }));
+    const section = await screen.findByRole('region', { name: 'Reglas y políticas' });
     await userEvent.type(within(section).getByLabelText('Sitio'), 'youtube.com');
     await userEvent.click(within(section).getByRole('button', { name: 'Marcar como no permitido' }));
     await waitFor(() =>
@@ -79,7 +79,7 @@ describe('Sitios y políticas (ADR-0009)', () => {
     const bridge = createMockBridge();
     const policy = vi.spyOn(bridge, 'teamPolicySet');
     renderWithSession(<EquipoPage />, { path: '/equipo', cloud, bridge });
-    await userEvent.click(await screen.findByRole('tab', { name: 'Sitios y políticas' }));
+    await userEvent.click(await screen.findByRole('tab', { name: 'Reglas y políticas' }));
     const repeat = await screen.findByLabelText('Repetir el aviso');
     expect(repeat).toHaveValue('10');
     await userEvent.selectOptions(repeat, '2');
@@ -93,7 +93,7 @@ describe('Sitios y políticas (ADR-0009)', () => {
     const { cloud } = await teamWith('member');
     renderWithSession(<EquipoPage />, { path: '/equipo', cloud });
     expect(await screen.findByRole('list', { name: 'Miembros del equipo' })).toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: 'Sitios y políticas' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Reglas y políticas' })).not.toBeInTheDocument();
   });
 
   it('con el consentimiento de una versión anterior, se pide aceptar la nueva antes de subir nada', async () => {

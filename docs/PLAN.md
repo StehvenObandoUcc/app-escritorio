@@ -139,21 +139,21 @@ Funcionalidades: RI-01 a RI-10, IA-04. Detalle en `docs/IA.md`.
 | C · Interfaz | Validador, *Ajustes → IA*, vista de reporte, modo manual, historial, exportación |
 
 **Puerta G4**
-- [ ] 20 reportes de prueba: ningún número inventado llega a la pantalla.
-- [ ] El sexto reporte gratis del día muestra el aviso de límite.
-- [ ] Una clave propia válida pasa *Probar conexión*; una inválida explica qué pasó.
-- [ ] En modo manual, un texto que no cumple el formato se rechaza con un mensaje claro.
-- [ ] Un `member` no puede generar el reporte del equipo.
+- [x] 20 reportes de prueba: ningún número inventado llega a la pantalla. *(cubierta por el validador: AC-21 y paso 4.14; el 4.20 de calidad, AC-13b, no se ejecutó por decisión del responsable, 18 oct)*
+- [x] El sexto reporte gratis del día muestra el aviso de límite.
+- [x] Una clave propia válida pasa *Probar conexión*; una inválida explica qué pasó.
+- [x] En modo manual, un texto que no cumple el formato se rechaza con un mensaje claro.
+- [x] Un `member` no puede generar el reporte del equipo.
 
 ### F5 · Tableros, privacidad y avisos (mié 14 – jue 15)
 
 Funcionalidades: DR-01 a DR-07, TA-10, TA-11, IA-02, IA-05, EQ-09, EQ-10 (pantalla), PS-05, PS-06, CU-06, CU-07, NO-01 a NO-03.
 
 **Puerta G5**
-- [ ] Una prueba de punta a punta por rol: cada uno ve exactamente su columna de la matriz.
-- [ ] Las cifras del tablero coinciden con *Mi día* de cada miembro.
-- [ ] Quien oculta sus apps aparece solo con categorías.
-- [ ] **Congelamiento el jueves 15 a las 23:59**: desde aquí solo se corrigen errores.
+- [x] Una prueba de punta a punta por rol: cada uno ve exactamente su columna de la matriz.
+- [x] Las cifras del tablero coinciden con *Mi día* de cada miembro.
+- [x] Quien oculta sus apps aparece solo con categorías.
+- [x] **Congelamiento el jueves 15 a las 23:59**: desde aquí solo se corrigen errores.
 
 ### F6 · Endurecer y entregar (vie 16 – dom 18)
 
@@ -284,3 +284,29 @@ Decisiones abiertas:
 - **A-4** · Resuelta el 7 oct: el correo de recuperación llega con el SMTP de Gmail (puerto 465).
 - **Pasa a F5** (con TA-11, pedido el 6 oct): reglas de productividad del equipo y editar la lista de apps sin teclado. La lista fija ya está en F2 (TA-15, ADR-0013).
 - **A-5** · Enviar por correo el código de invitación, además de mostrarlo para compartirlo (pedido el 6 oct). Depende de A-4 y necesita una Edge Function o el SMTP del proyecto; se retoma después de G2.
+
+## 9. Adaptaciones (12 y 13 de octubre, F4 y F5)
+
+### 9.1 Forma de trabajo con agentes
+- Un orquestador escribe la spec de cada fase y una ficha por cambio (plantilla de `AGENTS.md`), un agente revisor la revisa antes y revisa el diff después, y un agente programador implementa una ficha por vez. Si algo es ambiguo, el programador responde `BLOQUEADO` y se decide antes de seguir.
+- La verificación completa (`npm run verify` y `npm run verify:rust`) corre en una copia en la nube con Linux; las 3 pruebas exclusivas de Windows y la app real se comprueban en el equipo del responsable.
+- Los commits los hace el orquestador en la rama de la fase, en español y sin líneas de atribución (§8.1).
+
+### 9.2 Cambios al plan
+- **F5 empezó en paralelo con la validación real de F4** (G4 pendiente). Los fallos de F4 tienen prioridad sobre F5. La validación de la parte servidor de F4 se automatizó con `scripts/f4-validar-nube.mjs`.
+- **Recortes (decisión del responsable, 12 oct, §4):** NO-01 a NO-03, CU-06 y la exportación a CSV de DR-06 pasan a después de la entrega.
+- **Decisiones de producto (13 oct):** reglas por app solo para lo nuevo; *Mi semana/Mi mes* sin desglose por app; exportar mis datos a *Descargas* (ADR-0023).
+- **Riesgo aceptado:** con exactamente 2 miembros, quien solo ve totales podría deducir las cifras del otro restando las suyas (misma regla de mínimo 2 que F4).
+- **Límite aceptado:** el tope diario de pausa se aplica en la interfaz, no en Rust (F7).
+- **Sin `pulso-demo` (decisión del responsable, 16 oct):** proyecto universitario, no comercial. La demo usa `pulso-dev` con un equipo y cuentas nuevas creadas desde la app el domingo 18; el lunes por la mañana se abre el proyecto para que no se pause. Se cumple F6 sin repetir migraciones, secretos ni el despliegue de `ai-trial`.
+
+### 9.3 Pendientes para F6 (anotados durante la validación real)
+| # | Prioridad | Pendiente |
+|---|---|---|
+| F6-1 | P2 | **Formato de fecha y hora de los campos nativos.** En *Mi día → Registro de tiempo*, `<input type="date">` muestra `10/15/2026` y la hora `--:-- --` (formato de EE. UU.) con la app en español. En F1 se arregló con `--lang=es-CO` en `additionalBrowserArgs` (`2bd0ca8`), pero se quitó el 7 oct (`2e7f541`) para que la app pudiera cambiar a inglés; `document.documentElement.lang` no cambia el formato de los campos nativos de WebView2. Visto el 15 oct; no se toca antes del congelamiento. |
+| F6-2 | P2 | **El perfil solo lo crea la app al iniciar sesión** (`ensureProfile`, `src/app/session.tsx:124`); no hay trigger sobre `auth.users`. Cuentas creadas fuera de la app (p. ej. `scripts/f4-validar-nube.mjs`) salen como «Persona sin nombre» en *Miembros* y *Auditoría* hasta su primer inicio de sesión, y lo mismo pasaría si `ensureProfile` fallara por red al primer inicio. Valorar en F6 un trigger `after insert on auth.users` que cree `profiles` desde `raw_user_meta_data->>'display_name'`. Visto el 15 oct con las cuentas B y C. |
+| F6-3 | P2 | **Sin aviso al pedir cambios.** Cuando un responsable pide cambios en una tarea, la persona asignada no recibe aviso; lo ve solo al abrir la tarea. Los avisos del sistema (NO-01 a NO-03) se recortaron el 12 oct (§9.2). Visto el 16 oct en el paso 3.1. |
+| F6-4 | P2 | **La tarea queda sin responsable al pasar a alguien a viewer.** Es coherente (un viewer no pertenece a proyectos), pero no se avisa a quien hace el cambio. Valorar un aviso en el diálogo de cambio de rol. Visto el 16 oct. |
+| F6-5 | P2 | **Prueba inestable bajo carga:** `src/pages/mi-dia/PausaConTope.test.tsx` («tope 30 y 20 min pausados: ofrece 10 min») falló una vez en `npm run verify` y pasa aislada (5 de 5). Visto el 16 oct. |
+| F6-6 | P2 | **Reporte de «Hoy» en modo Manual casi siempre da «Los datos cambiaron…».** Al salir de Pulso para ir al chat de IA se cierran y suben bloques nuevos, y `save_report` rechaza (PT409) porque las cifras ya no son las del prompt. Es el comportamiento pedido (R5), pero en Manual conviene un periodo cerrado («Ayer», «Semana pasada»). Hasta el 16 oct el error era 40001 y PostgREST lo reintentaba en bucle hasta el «upstream request timeout» (corregido en `0e54e41`). Valorar en F7 calcular los facts hasta un corte fijo (`data_until`). |
+| F6-7 | P2 | **ChatGPT no siempre devuelve el formato del modo Manual** (respondió en prosa o con cifras calculadas, como porcentajes); Claude sí lo cumplió. Valorar en `prompts/report.v1.md` un ejemplo literal del JSON y la frase «responde solo con el objeto JSON». Visto el 16 oct en 4.14. |

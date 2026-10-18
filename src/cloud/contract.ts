@@ -50,6 +50,16 @@ export const MyTeamSchema = z.object({
   /** Aviso con sonido al entrar a un sitio no permitido (ADR-0010). Por defecto, sí, cada 10 min. */
   alertNotAllowed: z.boolean(),
   alertRepeatMinutes: z.number().int(),
+  /** Umbral de inactividad del equipo en minutos (3 a 15); `null` = sin valor de equipo, manda el ajuste personal (F5 D-10). */
+  idleMinutes: z.number().int().nullable(),
+  /** Si la IA cuenta como tiempo productivo en el tablero y en Mi semana/Mi mes (F5 D-7). Por defecto, no. */
+  aiCountsAsProductive: z.boolean(),
+  /** Si los members ven quién está activo (F5 D-4). Por defecto, no. */
+  presenceVisibleToMembers: z.boolean(),
+  /** Tope diario de pausa de privacidad en minutos; 0 = sin tope (F5 D-11). */
+  pauseCapMinutes: z.number().int().nonnegative(),
+  /** Si la persona comparte los nombres de sus apps con este equipo (F5 D-8, fila propia de `team_members`). Por defecto, sí. */
+  shareAppNames: z.boolean(),
 });
 export type MyTeam = z.infer<typeof MyTeamSchema>;
 
@@ -98,6 +108,158 @@ export const DomainUsageSchema = z.object({
   seconds: z.number(),
 });
 export type DomainUsage = z.infer<typeof DomainUsageSchema>;
+
+// ---- Tableros, privacidad y ajustes del equipo (F5, docs/specs/F5-tableros-privacidad.md) ----
+
+/** Categorías activas con horas (1 decimal). */
+const HoursByCategorySchema = z.strictObject({
+  productive: z.number(),
+  neutral: z.number(),
+  distraction: z.number(),
+  ai: z.number(),
+});
+export type HoursByCategory = z.infer<typeof HoursByCategorySchema>;
+
+/** Tarea en curso de alguien (`tasks_doing`). */
+const DashboardTaskSchema = z.strictObject({
+  id: z.uuid(),
+  title: z.string(),
+  projectId: z.uuid(),
+  projectName: z.string(),
+});
+export type DashboardTask = z.infer<typeof DashboardTaskSchema>;
+
+/** Totales del equipo sin nombres (fila 15). */
+export const DashboardTotalsSchema = z.strictObject({
+  members: z.number().int(),
+  hoursActive: z.number(),
+  hoursProductive: z.number(),
+  hoursCategory: HoursByCategorySchema,
+  aiHours: z.number(),
+  aiSessions: z.number().int(),
+  /** Horas de IA por herramienta (claves normalizadas por `report_ai_tool`). */
+  aiTool: z.record(z.string(), z.number()),
+  aiUsage: z.strictObject({ code: z.number(), writing: z.number(), analysis: z.number(), other: z.number(), untagged: z.number() }),
+  tasksDoing: z.number().int(),
+  tasksDone: z.number().int(),
+});
+export type DashboardTotals = z.infer<typeof DashboardTotalsSchema>;
+
+/** Un día calendario (zona horaria de quien consulta) con sus horas por categoría. */
+export const DashboardDaySchema = z.strictObject({ day: z.iso.date(), hoursCategory: HoursByCategorySchema });
+export type DashboardDay = z.infer<typeof DashboardDaySchema>;
+
+/** Una persona del tablero de owner y admin (DR-02, DR-03, DR-07). `name` es null si su perfil no es visible. */
+export const DashboardMemberSchema = z.strictObject({
+  userId: z.uuid(),
+  name: z.string().nullable(),
+  /** false = «Solo categorías» (PS-05). */
+  shareAppNames: z.boolean(),
+  hoursActive: z.number(),
+  hoursProductive: z.number(),
+  hoursCategory: HoursByCategorySchema,
+  aiHours: z.number(),
+  aiSessions: z.number().int(),
+  capacityHours: z.number(),
+  /** Porcentaje entero; null si la jornada no tiene horas de capacidad en el periodo. */
+  capacityShare: z.number().nullable(),
+  tasksDoing: z.array(DashboardTaskSchema),
+});
+export type DashboardMember = z.infer<typeof DashboardMemberSchema>;
+
+/** Una persona de los proyectos del lead (D-5). */
+export const DashboardLeadMemberSchema = z.strictObject({
+  userId: z.uuid(),
+  name: z.string().nullable(),
+  projectHours: z.number(),
+  aiHoursInProjects: z.number(),
+  tasksDoing: z.array(DashboardTaskSchema),
+});
+export type DashboardLeadMember = z.infer<typeof DashboardLeadMemberSchema>;
+
+/**
+ * Tablero según el rol de quien consulta (`team_dashboard`). Member y viewer nunca reciben `userId` ni `name`:
+ * `members`, `leadMembers` y `topApps` llegan vacíos. `totals` es null si el equipo tiene menos de 2 miembros (D-3).
+ */
+export const TeamDashboardSchema = z.strictObject({
+  role: TeamRoleSchema,
+  isLead: z.boolean(),
+  totals: DashboardTotalsSchema.nullable(),
+  perDay: z.array(DashboardDaySchema),
+  members: z.array(DashboardMemberSchema),
+  leadMembers: z.array(DashboardLeadMemberSchema),
+  topApps: z.array(z.strictObject({ appName: z.string(), hours: z.number() })),
+});
+export type TeamDashboard = z.infer<typeof TeamDashboardSchema>;
+
+export const PRESENCE_STATES = ['active', 'idle', 'paused', 'break', 'offline'] as const;
+export type PresenceState = (typeof PRESENCE_STATES)[number];
+/** Quién está activo (D-4). Nunca trae app, dominio ni herramienta de IA. `since` es null si está desconectada. */
+export const PresenceSchema = z.strictObject({
+  userId: z.uuid(),
+  name: z.string().nullable(),
+  state: z.enum(PRESENCE_STATES),
+  since: z.string().nullable(),
+});
+export type Presence = z.infer<typeof PresenceSchema>;
+
+/** Valores que acepta el tope de pausa, en minutos (0 = sin tope), igual que `set_team_settings`. */
+export const PAUSE_CAP_MINUTES = [0, 15, 30, 60, 120, 240] as const;
+
+/** Ajustes del equipo que escriben owner y admin (EQ-09, D-9). `idleMinutes` null = sin valor de equipo. */
+export interface TeamSettingsInput {
+  idleMinutes: number | null;
+  workday: Workday;
+  aiCountsAsProductive: boolean;
+  presenceVisibleToMembers: boolean;
+  pauseCapMinutes: number;
+}
+
+/** Tiempo propio por proyecto y tarea (`my_time_by_task`). Sin tarea, los cuatro campos de proyecto y tarea son null. */
+export const TimeByTaskSchema = z.strictObject({
+  projectId: z.uuid().nullable(),
+  projectName: z.string().nullable(),
+  taskId: z.uuid().nullable(),
+  taskTitle: z.string().nullable(),
+  seconds: z.number(),
+});
+export type TimeByTask = z.infer<typeof TimeByTaskSchema>;
+
+/** Acciones que admite `audit_log.action` (restricción de 20261013000001). */
+export const AUDIT_ACTIONS = [
+  'team_created', 'role_changed', 'member_removed', 'member_left', 'consent_given',
+  'invitation_sent', 'invitation_revoked', 'invitation_accepted', 'invitation_declined',
+  'policy_changed', 'project_deleted', 'task_deleted', 'report_generated',
+  'settings_changed', 'share_apps_changed',
+] as const;
+export type AuditAction = (typeof AUDIT_ACTIONS)[number];
+/** Filas por página de la auditoría (D-12). */
+export const AUDIT_PAGE_SIZE = 50;
+
+/** Fila de la auditoría. Sin nombres: la página los resuelve con la lista de miembros. */
+export const AuditEntrySchema = z.strictObject({
+  id: z.number().int(),
+  action: z.string(),
+  actorId: z.uuid().nullable(),
+  targetUserId: z.uuid().nullable(),
+  details: z.record(z.string(), z.unknown()),
+  createdAt: z.string(),
+});
+export type AuditEntry = z.infer<typeof AuditEntrySchema>;
+
+export const RULE_CATEGORIES = ['productive', 'neutral', 'distraction', 'ai'] as const;
+export type RuleCategory = (typeof RULE_CATEGORIES)[number];
+
+/** Regla del equipo por app (`match_type = 'process'`, TA-11). */
+export const ProcessRuleSchema = z.strictObject({
+  id: z.uuid(),
+  pattern: z.string(),
+  category: z.enum(RULE_CATEGORIES),
+});
+export type ProcessRule = z.infer<typeof ProcessRuleSchema>;
+
+/** Nombre de proceso como lo guarda la regla (D-13): minúsculas, sin espacios al borde y sin `.exe` final. */
+export const normalizeProcessPattern = (raw: string): string => raw.trim().toLowerCase().replace(/\.exe$/, '').trim();
 
 // ---- Proyectos y tareas (F3 v2, ADR-0014, docs/specs/F3-proyectos-y-tareas.md) ----
 
@@ -382,8 +544,28 @@ export interface Cloud {
   domainRules(teamId: string): Promise<DomainRule[]>;
   /** Marca un dominio como no permitido (cuenta como distracción). */
   addNotAllowedDomain(teamId: string, domain: string): Promise<void>;
+  /** Borra cualquier regla del equipo por id (de sitio o de app): no hace falta otro método para las reglas de app. */
   removeDomainRule(ruleId: string): Promise<void>;
   teamDomainSummary(teamId: string, from: string, to: string): Promise<DomainUsage[]>;
+
+  // ---- Reglas por app (TA-11, D-13; solo owner y admin escriben, aplica a los bloques nuevos) ----
+  processRules(teamId: string): Promise<ProcessRule[]>;
+  /** Normaliza el patrón con `normalizeProcessPattern` y crea la regla (prioridad 0, sin herramienta de IA). */
+  addProcessRule(teamId: string, pattern: string, category: RuleCategory): Promise<void>;
+
+  // ---- Tableros, presencia y ajustes del equipo (F5: filas 15, 24, 38 a 40 de docs/ROLES.md) ----
+  /** Tablero según el rol de quien llama; periodo [from, to) en ISO, máximo 92 días (D-2). */
+  teamDashboard(teamId: string, from: string, to: string): Promise<TeamDashboard>;
+  /** Quién está activo, según el último bloque subido (D-4). Se pide cada 60 s. */
+  teamPresence(teamId: string): Promise<Presence[]>;
+  /** Solo owner y admin (D-9). Valida jornada, umbral y tope en el servidor. */
+  setTeamSettings(teamId: string, settings: TeamSettingsInput): Promise<void>;
+  /** Derecho personal (PS-05, D-8): oculta los nombres de mis apps ante el equipo. */
+  setShareAppNames(teamId: string, share: boolean): Promise<void>;
+  /** Mi tiempo por proyecto y tarea en [from, to) (TA-10, DR-05). */
+  myTimeByTask(teamId: string, from: string, to: string): Promise<TimeByTask[]>;
+  /** Auditoría (EQ-10, D-12): 50 filas de la más nueva a la más vieja; `beforeId` pide las anteriores a ese id. Solo owner y admin. */
+  auditLog(teamId: string, options?: { beforeId?: number; action?: AuditAction }): Promise<AuditEntry[]>;
 
   // ---- Proyectos y tareas (F3 v2: filas 13 «P», 16 a 19 y 27 a 30 de docs/ROLES.md) ----
   /** Todo el trabajo visible del equipo en una sola lectura. */

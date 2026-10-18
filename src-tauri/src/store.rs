@@ -115,6 +115,14 @@ pub struct Closure {
   pub reopened_at: DateTime<Utc>,
 }
 
+/// Filas locales de una cuenta para exportarlas (CU-07). Bloques con su tipo de uso de IA; entradas con su equipo.
+#[derive(Debug, Default)]
+pub struct ExportRows {
+  pub blocks: Vec<(BlockRow, Option<String>)>,
+  pub entries: Vec<(TimeEntry, Option<String>)>,
+  pub closures: Vec<Closure>,
+}
+
 /// Qué tabla marca `mark_synced`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SyncKind {
@@ -579,6 +587,54 @@ impl Store {
       )
       .map_err(db)?;
     Ok(())
+  }
+
+  /// Todo lo local de la cuenta activa, de todos sus equipos (CU-07, ADR-0023). Sin cuenta: vacío.
+  /// No incluye filas sin cuenta ni de otra cuenta, ni entradas borradas.
+  pub fn export_rows(&self) -> Result<ExportRows> {
+    let Some(user) = self.user.as_deref() else {
+      return Ok(ExportRows::default());
+    };
+    let mut stmt = self
+      .conn
+      .prepare(
+        "SELECT id, started_at, ended_at, app_name, title_enc, category, ai_tool, team_id, domain, ai_usage_type
+         FROM activity_blocks_local WHERE user_id = ?1 ORDER BY started_at, id",
+      )
+      .map_err(db)?;
+    let blocks = stmt
+      .query_map(params![user], |r| {
+        let usage: Option<String> = r.get(9)?;
+        Ok(block_from_row(r)?.map(|b| (b, usage)))
+      })
+      .map_err(db)?
+      .map(|r| r.map_err(db)?)
+      .collect::<Result<Vec<_>>>()?;
+    let mut stmt = self
+      .conn
+      .prepare(
+        "SELECT id, started_at, ended_at, task_id, source, team_id
+         FROM time_entries_local WHERE user_id = ?1 AND deleted_at IS NULL ORDER BY started_at, id",
+      )
+      .map_err(db)?;
+    let entries = stmt
+      .query_map(params![user], |r| {
+        let team_id: Option<String> = r.get(5)?;
+        Ok(entry_from_row(r)?.map(|e| (e, team_id)))
+      })
+      .map_err(db)?
+      .map(|r| r.map_err(db)?)
+      .collect::<Result<Vec<_>>>()?;
+    let mut stmt = self
+      .conn
+      .prepare("SELECT id, team_id, closed_at, reopened_at FROM app_closures_local WHERE user_id = ?1 ORDER BY closed_at, id")
+      .map_err(db)?;
+    let closures = stmt
+      .query_map(params![user], closure_from_row)
+      .map_err(db)?
+      .map(|r| r.map_err(db)?)
+      .collect::<Result<Vec<_>>>()?;
+    Ok(ExportRows { blocks, entries, closures })
   }
 
   pub fn setting_delete(&self, key: &str) -> Result<()> {

@@ -15,7 +15,7 @@ function setup() {
   const userId = cloud.debug.addAccount('caro@pulso.test', 'secreto-123', 'Caro');
   const teamId = cloud.debug.addTeam('Equipo A', cloud.debug.addAccount('ana@pulso.test', 'secreto-123', 'Ana'));
   cloud.debug.addMember(teamId, userId, 'member', true);
-  const ctx: SyncContext = { userId, teamId, workday: WEEK, timezone: 'America/Bogota' };
+  const ctx: SyncContext = { userId, teamId, workday: WEEK, timezone: 'America/Bogota', shareAppNames: true };
   return { cloud, ctx };
 }
 
@@ -193,5 +193,71 @@ describe('motor de sincronización', () => {
         closures: [],
       }),
     ).toThrow();
+  });
+
+  describe('nombres de apps (PS-05, AC-24)', () => {
+    const block = (ctx: SyncContext) => ({
+      id: '44444444-4444-4444-8444-444444444444',
+      teamId: ctx.teamId,
+      startedAt: '2026-10-05T14:00:00Z',
+      endedAt: '2026-10-05T14:30:00Z',
+      appName: 'Google Chrome',
+      category: 'productive' as const,
+      aiTool: null,
+      domain: 'github.com',
+      aiUsageType: null,
+    });
+    const run = async (shareAppNames: boolean) => {
+      const { cloud, ctx } = setup();
+      const spy = vi.spyOn(cloud, 'upsertBlocks');
+      const { bridge } = fakeBridge({ blocks: [block(ctx)] });
+      const engine = new SyncEngine({ bridge, cloud, setTimer: () => () => {} });
+      engine.setContext({ ...ctx, shareAppNames });
+      await engine.syncNow();
+      return spy.mock.calls.flatMap(([, rows]) => rows);
+    };
+
+    it('con shareAppNames = false sube el bloque sin nombre ni sitio', async () => {
+      const sent = await run(false);
+      expect(sent).toHaveLength(1);
+      expect(sent[0]).toMatchObject({ appName: 'App oculta', domain: null, category: 'productive' });
+      expect(JSON.stringify(sent)).not.toMatch(/Chrome|github/);
+    });
+
+    it('con shareAppNames = true sube el nombre y el sitio', async () => {
+      const sent = await run(true);
+      expect(sent[0]).toMatchObject({ appName: 'Google Chrome', domain: 'github.com' });
+    });
+
+    it('un bloque de otro equipo que el del contexto se enmascara aunque se comparta', async () => {
+      const { cloud, ctx } = setup();
+      const spy = vi.spyOn(cloud, 'upsertBlocks');
+      const other = { ...block(ctx), teamId: '99999999-9999-4999-8999-999999999999' };
+      const { bridge } = fakeBridge({ blocks: [other] });
+      const engine = new SyncEngine({ bridge, cloud, setTimer: () => () => {} });
+      engine.setContext(ctx);
+      await engine.syncNow().catch(() => {});
+      const sent = spy.mock.calls.flatMap(([, rows]) => rows);
+      expect(sent.every((b) => b.appName === 'App oculta' && b.domain === null)).toBe(true);
+    });
+
+    it('apagar con un ciclo en curso no sube nombres después', async () => {
+      const { cloud, ctx } = setup();
+      const spy = vi.spyOn(cloud, 'upsertBlocks');
+      const { bridge } = fakeBridge({ blocks: [block(ctx)] });
+      // El apagado llega justo cuando el ciclo ya leyó el lote y aún no lo ha subido.
+      const engine = new SyncEngine({ bridge, cloud, setTimer: () => () => {} });
+      const pending = bridge.syncPending;
+      bridge.syncPending = async () => {
+        const batch = await pending();
+        engine.setShareAppNames(false);
+        return batch;
+      };
+      engine.setContext(ctx);
+      await engine.syncNow();
+      const sent = spy.mock.calls.flatMap(([, rows]) => rows);
+      expect(sent.length).toBeGreaterThan(0);
+      expect(JSON.stringify(sent)).not.toMatch(/Chrome|github/);
+    });
   });
 });

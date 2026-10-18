@@ -157,7 +157,7 @@ export async function handleTrial(body: unknown, deps: TrialDeps): Promise<Trial
   });
   if (saved.error || !saved.data) {
     // El cupo solo se devuelve por fallo de red o del proveedor (D-10); un fallo al guardar lo gasta.
-    return reply(saved.error?.code === '40001' ? 409 : 500, { reason: saved.error?.code === '40001' ? 'changed' : 'save', message: saved.error?.message ?? '' });
+    return reply(saved.error?.code === 'PT409' ? 409 : 500, { reason: saved.error?.code === 'PT409' ? 'changed' : 'save', message: saved.error?.message ?? '' });
   }
   // Si esto falla, el reporte queda «client»: es un dato informativo, no bloquea.
   await deps.service.rpc('mark_trial_report', { p_id: saved.data }).catch(() => undefined);

@@ -748,6 +748,7 @@ export type Database = {
           consent_version: string | null
           joined_at: string
           role: string
+          share_app_names: boolean
           team_id: string
           user_id: string
         }
@@ -756,6 +757,7 @@ export type Database = {
           consent_version?: string | null
           joined_at?: string
           role: string
+          share_app_names?: boolean
           team_id: string
           user_id: string
         }
@@ -764,6 +766,7 @@ export type Database = {
           consent_version?: string | null
           joined_at?: string
           role?: string
+          share_app_names?: boolean
           team_id?: string
           user_id?: string
         }
@@ -879,6 +882,10 @@ export type Database = {
         Args: { p_assignee: string; p_project: string }
         Returns: undefined
       }
+      assert_dashboard_period: {
+        Args: { p_from: string; p_to: string }
+        Returns: undefined
+      }
       assert_delivery: {
         Args: {
           p_answers: Json
@@ -929,6 +936,16 @@ export type Database = {
         Returns: string
       }
       create_team: { Args: { p_name: string }; Returns: string }
+      dashboard_cats: {
+        Args: {
+          p_ai: number
+          p_distraction: number
+          p_neutral: number
+          p_productive: number
+        }
+        Returns: Json
+      }
+      dashboard_hours: { Args: { p_seconds: number }; Returns: number }
       decline_invitation: { Args: { p_id: string }; Returns: undefined }
       delete_project: {
         Args: { p_confirm_name: string; p_project: string }
@@ -971,6 +988,12 @@ export type Database = {
         }[]
       }
       is_task_worker: { Args: { p_task: string }; Returns: boolean }
+      lead_projects: {
+        Args: { p_team: string }
+        Returns: {
+          project_id: string
+        }[]
+      }
       leave_team: { Args: { p_team: string }; Returns: undefined }
       link_delivery_attachments: {
         Args: { p_answers: Json; p_review: string; p_task: string }
@@ -990,6 +1013,16 @@ export type Database = {
           role: string
           team_id: string
           team_name: string
+        }[]
+      }
+      my_time_by_task: {
+        Args: { p_from: string; p_team: string; p_to: string }
+        Returns: {
+          project_id: string
+          project_name: string
+          seconds: number
+          task_id: string
+          task_title: string
         }[]
       }
       new_invitation_code: { Args: never; Returns: string }
@@ -1086,6 +1119,10 @@ export type Database = {
         Args: { p_project: string; p_template: Json }
         Returns: undefined
       }
+      set_share_app_names: {
+        Args: { p_share: boolean; p_team: string }
+        Returns: undefined
+      }
       set_task_collaborators: {
         Args: { p_task: string; p_users: string[] }
         Returns: undefined
@@ -1104,6 +1141,17 @@ export type Database = {
       }
       set_team_policy: {
         Args: { p_allow_hidden_apps: boolean; p_team: string }
+        Returns: undefined
+      }
+      set_team_settings: {
+        Args: {
+          p_ai_counts_as_productive: boolean
+          p_idle_minutes: number
+          p_pause_cap_minutes: number
+          p_presence_visible_to_members: boolean
+          p_team: string
+          p_workday: Json
+        }
         Returns: undefined
       }
       shares_team_with: { Args: { p_user: string }; Returns: boolean }
@@ -1134,12 +1182,25 @@ export type Database = {
           user_id: string
         }[]
       }
+      team_dashboard: {
+        Args: { p_from: string; p_team: string; p_to: string }
+        Returns: Json
+      }
       team_domain_summary: {
         Args: { p_from: string; p_team: string; p_to: string }
         Returns: {
           category: string
           domain: string
           seconds: number
+          user_id: string
+        }[]
+      }
+      team_presence: {
+        Args: { p_team: string }
+        Returns: {
+          name: string
+          since: string
+          state: string
           user_id: string
         }[]
       }
