@@ -1,5 +1,13 @@
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
+import { t } from '@/i18n';
 import { Heading } from '@/ui/atoms';
+
+/** Título de la ventana con el de la pantalla («Mi día · Pulso»), para lectores de pantalla y la barra de tareas (A-05). */
+export function useWindowTitle(title: string) {
+  useEffect(() => {
+    document.title = t('app.windowTitle', { title });
+  }, [title]);
+}
 
 /** Estructura común de una página: título, texto de apoyo, acciones y contenido. */
 export function PageLayout({
@@ -13,6 +21,7 @@ export function PageLayout({
   actions?: ReactNode;
   children: ReactNode;
 }) {
+  useWindowTitle(title);
   return (
     <div className="mx-auto flex w-full max-w-content flex-col gap-5 p-4 md:p-6 lg:p-8">
       <header className="flex flex-wrap items-end justify-between gap-3">

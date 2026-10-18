@@ -326,6 +326,8 @@ export const en: Dict = {
   },
   app: {
     opening: 'Opening Pulso…',
+    skipToContent: 'Skip to content',
+    windowTitle: '{title} · Pulso',
   },
   sync: {
     off: 'Not syncing',

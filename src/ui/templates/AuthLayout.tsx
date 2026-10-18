@@ -1,6 +1,7 @@
 import { t } from '@/i18n';
 import { Activity, EyeOff, ShieldCheck, Sparkles } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useWindowTitle } from './PageLayout';
 
 const PROMISES = [
   { icon: Activity, key: 'pulse' as const },
@@ -42,6 +43,7 @@ export function AuthLayout({
   /** Arriba a la derecha (p. ej. el botón de tema) */
   corner?: ReactNode;
 }) {
+  useWindowTitle(title);
   return (
     <div className="flex min-h-dvh bg-canvas text-fg">
       <aside className="hidden flex-col justify-between gap-8 border-r border-line bg-accent-soft p-10 lg:flex lg:w-1/2">
