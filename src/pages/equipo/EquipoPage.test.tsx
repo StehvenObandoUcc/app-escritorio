@@ -159,7 +159,7 @@ describe('Equipo (EQ-01 a EQ-08, PS-02)', () => {
     expect(active).not.toHaveBeenCalledWith(team, expect.anything());
   });
 
-  it('expulsar pide confirmación y avisa qué se borra (AC-12)', async () => {
+  it('quitar del equipo pide confirmación y avisa qué se borra (AC-12)', async () => {
     const { cloud, id } = await signedIn();
     const team = cloud.debug.addTeam('Equipo A', id);
     await cloud.giveConsent(team, CONSENT_VERSION);
@@ -167,11 +167,11 @@ describe('Equipo (EQ-01 a EQ-08, PS-02)', () => {
     renderWithSession(<EquipoPage />, { path: '/equipo', cloud });
     const list = await screen.findByRole('list', { name: 'Miembros del equipo' });
     await within(list).findByText('Caro');
-    await userEvent.click(within(list).getByRole('button', { name: 'Expulsar' }));
-    const confirm = await screen.findByRole('dialog', { name: 'Confirmar expulsión' });
+    await userEvent.click(within(list).getByRole('button', { name: 'Quitar del equipo' }));
+    const confirm = await screen.findByRole('dialog', { name: 'Quitar del equipo' });
     expect(confirm).toHaveTextContent('Se borrará su actividad');
     expect(confirm).toHaveTextContent('Exmiembro');
-    await userEvent.click(within(confirm).getByRole('button', { name: 'Expulsar' }));
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Quitar del equipo' }));
     await waitFor(() => expect(within(list).queryByText('Caro')).not.toBeInTheDocument());
   });
 

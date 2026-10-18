@@ -34,7 +34,7 @@ describe('Ajustes: Mi privacidad', () => {
     const toggle = await screen.findByRole('switch', { name: /Compartir los nombres de mis apps/ });
     expect(toggle).toBeChecked();
     await userEvent.click(toggle);
-    expect(screen.getByText(/Tu equipo verá solo categorías\. Los nombres que ya subiste en este equipo se ocultan y lo nuevo se sube sin nombre ni sitio\./)).toBeInTheDocument();
+    expect(screen.getByText(/Tu equipo verá solo categorías\. Los nombres que ya subiste a este equipo se ocultan y lo nuevo se sube sin nombre ni sitio\./)).toBeInTheDocument();
     expect(spy).not.toHaveBeenCalled();
     await userEvent.click(screen.getByRole('button', { name: 'Sí, dejar de compartir' }));
     await waitFor(() => expect(spy).toHaveBeenCalledWith(team, false));

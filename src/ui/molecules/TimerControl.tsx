@@ -50,7 +50,11 @@ export function TimerControl({
         >
           {formatClock(elapsedSeconds)}
         </p>
-        <p className="mt-1 text-sm text-fg-muted" aria-live="polite">
+        {/* Dos cosas distintas (F-12): el temporizador de tareas (manual) y el registro de actividad (automático). */}
+        <p className="mt-1 text-sm text-fg" aria-live="polite">
+          {running ? t('timer.running') : t('timer.idle')}
+        </p>
+        <p className="text-sm text-fg-muted" aria-live="polite">
           {t(`timer.state.${state}`)}
         </p>
         {running && taskTitle && <p className="text-sm text-fg">{t('timer.onTask', { title: taskTitle })}</p>}

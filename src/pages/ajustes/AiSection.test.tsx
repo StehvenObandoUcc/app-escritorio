@@ -19,7 +19,7 @@ describe('IA con tu propio proveedor', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Guardar' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('debe empezar por https://');
 
-    await userEvent.selectOptions(screen.getByLabelText('Proveedor'), 'Ollama (en este equipo)');
+    await userEvent.selectOptions(screen.getByLabelText('Proveedor'), 'Ollama (en este computador)');
     expect(url).toHaveValue('http://localhost:11434/v1');
     await userEvent.type(screen.getByLabelText(/^Clave de API/), 'sk-secreta');
     await userEvent.click(screen.getByRole('button', { name: 'Guardar' }));
