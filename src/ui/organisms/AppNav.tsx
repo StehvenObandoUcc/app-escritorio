@@ -44,9 +44,12 @@ export function AppNav({ items, footer }: { items: NavItem[]; footer?: ReactNode
                 cx(
                   'flex min-h-touch min-w-0 flex-col items-center justify-center gap-1 rounded-md px-0.5 text-xs font-medium transition-colors',
                   'md:min-h-control md:px-2 lg:flex-row lg:justify-start lg:gap-3 lg:px-3 lg:text-base',
+                  // Barra de 3 px en el activo (abajo en la barra inferior, a la izquierda en el riel y la barra
+                  // lateral): no depende solo del fondo (A-02, WCAG 1.4.1). Los inactivos la tienen transparente.
+                  'border-b-3 md:border-b-0 md:border-l-3',
                   isActive
-                    ? 'bg-accent-soft text-accent-text'
-                    : 'text-fg-muted hover:bg-sunken hover:text-fg',
+                    ? 'border-accent bg-accent-soft text-accent-text'
+                    : 'border-transparent text-fg-muted hover:bg-sunken hover:text-fg',
                 )
               }
             >
