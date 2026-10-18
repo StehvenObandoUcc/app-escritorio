@@ -44,6 +44,8 @@ export function ProyectoPage() {
         <EmptyState
           title={blocked?.title ?? (ctx.loadError ? t('projects.loadError') : t('projects.notFound'))}
           description={blocked?.description ?? (ctx.loadError ? t('projects.loadErrorHint', { error: ctx.loadError }) : t('projects.notFoundHint'))}
+          action={blocked?.action}
+          onRetry={!blocked && ctx.loadError ? () => void ctx.data.refetch() : undefined}
         />
       </PageLayout>
     );

@@ -142,7 +142,8 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
         {selector}
         <EmptyState
           title={t('myDay.readError')}
-          description={t('myDay.readErrorHint', { error: state.message })}
+          description={t('myDay.readErrorHint')}
+          onRetry={reload}
         />
       </PageLayout>
     );

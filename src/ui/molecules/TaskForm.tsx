@@ -8,6 +8,7 @@ import { TYPE_LABEL } from '@/lib/tasks';
 import { useForm } from '@/lib/useForm';
 import { Button, Select, type SelectOption } from '@/ui/atoms';
 import { EstimateInput } from './EstimateInput';
+import { DiscardDialog } from './DiscardDialog';
 import { FormField } from './FormField';
 
 export const EMPTY_TASK: TaskInput = {
@@ -56,10 +57,11 @@ export function TaskForm({
   const [labels, setLabels] = useState(initial.labels.join(', '));
   const [criteria, setCriteria] = useState('');
   const [collaborators, setCollaborators] = useState<string[]>([]);
-  const { ref, errors: err, formError, busy, submit, onKeyDown } = useForm(forms.task, onCancel);
+  const { ref, errors: err, formError, busy, submit, onKeyDown, cancel, discard } = useForm(forms.task, onCancel);
   const set = <K extends keyof TaskInput>(key: K, value: TaskInput[K]) => setV((prev) => ({ ...prev, [key]: value }));
 
   return (
+    <>
     <form
       ref={ref}
       onKeyDown={onKeyDown}
@@ -203,11 +205,13 @@ export function TaskForm({
         <Button type="submit" variant="primary" disabled={busy}>
           {submitLabel}
         </Button>
-        <Button variant="ghost" onClick={onCancel} disabled={busy}>
+        <Button variant="ghost" onClick={cancel} disabled={busy}>
           {t('common.cancel')}
         </Button>
         <span className="text-xs text-fg-muted">{t('forms.keysHint')}</span>
       </div>
     </form>
+    <DiscardDialog discard={discard} />
+    </>
   );
 }

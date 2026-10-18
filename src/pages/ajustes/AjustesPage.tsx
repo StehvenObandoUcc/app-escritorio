@@ -54,6 +54,7 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -89,7 +90,7 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
     return () => {
       cancelled = true;
     };
-  }, [bridge]);
+  }, [bridge, attempt]);
 
   // Candidatas: las usadas hace poco y, además, las que ya están ocultas (no aparecen con su nombre en los datos).
   const candidates = useMemo<AppCandidate[]>(() => {
@@ -137,7 +138,11 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
       {loadError ? (
         <EmptyState
           title={t('settings.loadError')}
-          description={t('settings.loadErrorHint', { error: loadError })}
+          description={t('settings.loadErrorHint')}
+          onRetry={() => {
+            setLoadError(null);
+            setAttempt((a) => a + 1);
+          }}
         />
       ) : saved === null ? (
         <p className="text-fg-muted" role="status">

@@ -7,6 +7,7 @@ import { fileProblem, isHttpUrl } from '@/lib/forms';
 import { EVIDENCE_TYPES, LIMITS } from '@/lib/limits';
 import { useForm } from '@/lib/useForm';
 import { Button, Input, Select, type SelectOption } from '@/ui/atoms';
+import { DiscardDialog } from '@/ui/molecules';
 
 const textarea = 'w-full rounded-md border bg-surface px-3 py-2 text-base text-fg';
 const IMAGE_TYPES = EVIDENCE_TYPES.filter((type) => type.startsWith('image/'));
@@ -65,11 +66,12 @@ export function ReviewForm({
   const [met, setMet] = useState<string[]>([]);
   const [reviewer, setReviewer] = useState('');
   const schema = useCallback(() => deliverySchema(deliveryFields(template, task.evidence), task.criteria), [template, task.evidence, task.criteria]);
-  const { ref, errors: err, formError, busy, submit, onKeyDown } = useForm(schema, onCancel);
+  const { ref, errors: err, formError, busy, submit, onKeyDown, cancel, discard } = useForm(schema, onCancel);
   const answer = (key: string, value: string) => setAnswers((a) => ({ ...a, [key]: value }));
   const values = { ...Object.fromEntries(fields.map((f) => [f.key, isUpload(f) ? (files[f.key] ?? []) : (answers[f.key] ?? '')])), criteria: met };
 
   return (
+    <>
     <form
       ref={ref}
       onKeyDown={onKeyDown}
@@ -205,11 +207,13 @@ export function ReviewForm({
         <Button type="submit" variant="primary" disabled={busy}>
           {mode === 'submit' ? t('review.submit') : t('review.complete')}
         </Button>
-        <Button variant="ghost" onClick={onCancel} disabled={busy}>
+        <Button variant="ghost" onClick={cancel} disabled={busy}>
           {t('common.cancel')}
         </Button>
         <span className="text-xs text-fg-muted">{t('forms.keysHint')}</span>
       </div>
     </form>
+    <DiscardDialog discard={discard} />
+    </>
   );
 }

@@ -1,8 +1,9 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ListChecks, Sun } from 'lucide-react';
 import { describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, useLocation } from 'react-router';
+import { TaskForm } from '@/ui/molecules';
 import { AppNav } from '@/ui/organisms';
 import { useAppKeyboard } from './keyboard';
 
@@ -103,6 +104,31 @@ describe('teclado en toda la app (ADR-0019)', () => {
     expect(screen.getByRole('button', { name: 'C' })).toHaveFocus();
     await userEvent.keyboard('{ArrowUp}');
     expect(screen.getByRole('button', { name: 'A' })).toHaveFocus();
+  });
+
+  it('Esc y Cancelar piden confirmar si el formulario cambió; sin cambios cancelan directo (F-01, H3)', async () => {
+    const onCancel = vi.fn();
+    const view = render(<TaskForm people={[]} manage isNew submitLabel="Crear tarea" onSubmit={async () => {}} onCancel={onCancel} />);
+    // Sin tocar nada, Esc cancela sin preguntar.
+    await userEvent.click(screen.getByLabelText('Descripción'));
+    await userEvent.keyboard('{Escape}');
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    view.unmount();
+
+    render(<TaskForm people={[]} manage isNew submitLabel="Crear tarea" onSubmit={async () => {}} onCancel={onCancel} />);
+    onCancel.mockClear();
+    await userEvent.type(screen.getByLabelText('Descripción'), 'Notas a medias');
+    await userEvent.keyboard('{Escape}');
+    const dialog = screen.getByRole('dialog', { name: '¿Descartar los cambios?' });
+    expect(onCancel).not.toHaveBeenCalled();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Seguir editando' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Descripción')).toHaveValue('Notas a medias');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+    await userEvent.click(within(screen.getByRole('dialog', { name: '¿Descartar los cambios?' })).getByRole('button', { name: 'Descartar' }));
+    expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
   it('las flechas recorren el menú de navegación', async () => {

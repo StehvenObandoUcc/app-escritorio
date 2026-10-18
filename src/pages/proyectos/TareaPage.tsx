@@ -37,6 +37,8 @@ export function TareaPage() {
         <EmptyState
           title={blocked?.title ?? (ctx.loadError ? t('projects.loadError') : t('tasks.page.notFound'))}
           description={blocked?.description ?? (ctx.loadError ? t('projects.loadErrorHint', { error: ctx.loadError }) : t('tasks.page.notFoundHint'))}
+          action={blocked?.action}
+          onRetry={!blocked && ctx.loadError ? () => void ctx.data.refetch() : undefined}
         />
       </PageLayout>
     );
