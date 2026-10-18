@@ -324,6 +324,8 @@ export const es = {
   },
   app: {
     opening: 'Abriendo Pulso…',
+    skipToContent: 'Saltar al contenido',
+    windowTitle: '{title} · Pulso',
   },
   sync: {
     off: 'Sin sincronizar',

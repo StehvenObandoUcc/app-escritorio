@@ -41,7 +41,8 @@ if (typeof document !== 'undefined') {
       if (e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
       const a = e.target instanceof Element ? e.target.closest<HTMLAnchorElement>('a[href]') : null;
       const href = a?.getAttribute('href');
-      if (!a || !href || a.target === '_blank' || /^[a-z][a-z\d+.-]*:/i.test(href)) return;
+      // Fuera quedan los enlaces externos y los anclas de la misma pantalla («#contenido»); las rutas son «#/…».
+      if (!a || !href || a.target === '_blank' || /^[a-z][a-z\d+.-]*:/i.test(href) || /^#(?!\/)/.test(href)) return;
       const go = () => {
         bypassGuards = true;
         try {
