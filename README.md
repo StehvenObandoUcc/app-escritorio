@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="src-tauri/icons/128x128.png" alt="Logo de Pulso" width="96" height="96" />
+<img src="src-tauri/icons/source.svg" alt="Logo de Pulso" width="96" height="96" />
 
 # Pulso
 
