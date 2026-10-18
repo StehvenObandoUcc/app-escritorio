@@ -92,7 +92,7 @@ node scripts/f4-validar-nube.mjs
 | 4.17 | Tú | Mañana: abre *Reportes* | Los reportes de hoy siguen en el historial y se abren igual (AC-25) | |
 | 4.18 | Tú | Con una cuenta de prueba que tenga un reporte personal: *Equipo* → Salir del equipo; vuelve a entrar con una invitación | Su reporte personal ya no está; el de equipo sigue (AC-28) | |
 | 4.19 | Tú | `node scripts/f4-cupos-simultaneos.mjs` (cuenta con cupo; gasta 1) | `ok: 1`, el resto `cooldown` y `CUMPLE` (AC-15) || OK (15 oct, f4-validar-nube: ok 1, cooldown 9) |
-| 4.20 | Tú | Con `PULSO_AI_BASE_URL`, `PULSO_AI_MODEL` y `PULSO_AI_KEY`: `node scripts/f4-reportes-reales.mjs` | `Plantilla: N de 20 (meta: 3 o menos) → CUMPLE` (AC-13b) | |
+| 4.20 | Tú | Con `PULSO_AI_BASE_URL`, `PULSO_AI_MODEL` y `PULSO_AI_KEY`: `node scripts/f4-reportes-reales.mjs` | `Plantilla: N de 20 (meta: 3 o menos) → CUMPLE` (AC-13b) | OMITIDO (18 oct, decisión del responsable): el validador ya impide cifras inventadas (4.14) |
 | 4.21 | Tú | Abre `/dev/galeria` (solo con `npm run dev`), sección «Reportes (F4)», en ventana estrecha, media y ancha, en tema claro y oscuro; recorre *Reportes* solo con el teclado | Se ve bien en los seis casos y todo se alcanza con flechas, Enter y Esc (AC-31) | |
 
 ## F5 · Tableros y privacidad (puerta G5)
