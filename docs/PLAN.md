@@ -139,7 +139,7 @@ Funcionalidades: RI-01 a RI-10, IA-04. Detalle en `docs/IA.md`.
 | C · Interfaz | Validador, *Ajustes → IA*, vista de reporte, modo manual, historial, exportación |
 
 **Puerta G4**
-- [ ] 20 reportes de prueba: ningún número inventado llega a la pantalla. *(paso 4.20, sáb 17)*
+- [x] 20 reportes de prueba: ningún número inventado llega a la pantalla. *(cubierta por el validador: AC-21 y paso 4.14; el 4.20 de calidad, AC-13b, no se ejecutó por decisión del responsable, 18 oct)*
 - [x] El sexto reporte gratis del día muestra el aviso de límite.
 - [x] Una clave propia válida pasa *Probar conexión*; una inválida explica qué pasó.
 - [x] En modo manual, un texto que no cumple el formato se rechaza con un mensaje claro.
