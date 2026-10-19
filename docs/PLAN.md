@@ -1,4 +1,4 @@
-﻿# Plan por fases — entrega el lunes 19 de octubre de 2026
+# Plan por fases — entrega el lunes 19 de octubre de 2026
 
 Cada fase termina en algo que se puede **ver funcionar** y tiene una puerta de calidad:
 una lista corta que se comprueba en minutos, sin Docker. No se empieza una fase hasta
