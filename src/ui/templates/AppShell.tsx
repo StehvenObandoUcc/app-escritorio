@@ -19,6 +19,7 @@ export function AppShell({ nav, children }: { nav: ReactNode; children: ReactNod
     <div className="flex h-dvh flex-col-reverse bg-canvas text-fg md:flex-row print:block print:h-auto">
       <a
         href="#contenido"
+        data-skip-arrows
         onClick={skipToContent}
         className="sr-only z-50 rounded-md bg-surface px-4 py-2 font-medium text-fg shadow-overlay focus:not-sr-only focus:fixed focus:top-2 focus:left-2 print:hidden"
       >

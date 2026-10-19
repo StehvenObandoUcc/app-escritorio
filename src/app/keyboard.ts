@@ -52,7 +52,8 @@ export function arrowToNearest(e: KeyboardEvent): boolean {
   // En un campo de texto, izquierda y derecha mueven el cursor.
   if (from instanceof HTMLInputElement && dir[0] !== 0) return false;
   const scope = document.querySelector<HTMLElement>('dialog[open]') ?? document.body;
-  const all = [...scope.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => !el.closest('[inert], [aria-hidden=true]'));
+  // `data-skip-arrows`: elementos solo para Tab, como «Saltar al contenido» (A-06); si las flechas llegaran ahí, aparecería sin buscarlo.
+  const all = [...scope.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => !el.closest('[inert], [aria-hidden=true], [data-skip-arrows]'));
   const candidates = all.filter((el) => el !== from);
   if (!candidates.length) return false;
   let next: HTMLElement | undefined;
