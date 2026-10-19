@@ -1,10 +1,11 @@
-import { useState, type FormEvent } from 'react';
+import { useId, useState, type FormEvent } from 'react';
 import { useOptionalSession, type SessionValue } from '@/app/session';
 import { t } from '@/i18n';
-import { forms } from '@/lib/forms';
+import { forms, validTimezone } from '@/lib/forms';
 import { LIMITS } from '@/lib/limits';
+import { systemTimezone, timeZones } from '@/lib/time';
 import { useForm } from '@/lib/useForm';
-import { Avatar, Button, Heading, Surface } from '@/ui/atoms';
+import { Avatar, Button, Heading, Select, Surface } from '@/ui/atoms';
 import { FormField } from '@/ui/molecules';
 
 /** Perfil (CU-04) y cerrar sesión (CU-02). Sin proveedor de sesión (p. ej. en pruebas de F1) no se muestra. */
@@ -39,8 +40,11 @@ function PerfilForm({
   tz0: string;
   email: string;
 }) {
+  const id = useId();
   const [name, setName] = useState(name0);
-  const [tz, setTz] = useState(tz0);
+  // La guardada si es válida; si no, la del sistema ya elegida (F-16).
+  const [tz, setTz] = useState(validTimezone(tz0) ? tz0 : systemTimezone());
+  const [zones] = useState(() => timeZones(tz, systemTimezone()));
   const [notice, setNotice] = useState<string | null>(null);
   const { ref, errors, formError, busy, submit: send, onKeyDown } = useForm(forms.profile);
 
@@ -68,15 +72,24 @@ function PerfilForm({
           </div>
         </div>
         <FormField name="name" label={t('profile.name')} maxLength={LIMITS.displayName.max} value={name} error={errors.name} onChange={(e) => setName(e.target.value)} hint={t('profile.nameHint')} />
-        <FormField
-          name="timezone"
-          label={t('profile.timezone')}
-          error={errors.timezone}
-          maxLength={64}
-          value={tz}
-          onChange={(e) => setTz(e.target.value)}
-          hint={t('profile.timezoneHint')}
-        />
+        {/* Lista en lugar de texto libre (F-16): no se puede escribir una zona inexistente. */}
+        <div className="flex flex-col gap-1">
+          <label htmlFor={`${id}-tz`} className="text-sm font-medium text-fg">
+            {t('profile.timezone')}
+          </label>
+          <Select
+            id={`${id}-tz`}
+            name="timezone"
+            value={tz}
+            invalid={Boolean(errors.timezone)}
+            aria-describedby={`${id}-tz-help`}
+            onChange={(e) => setTz(e.target.value)}
+            options={zones.map((z) => ({ value: z, label: z.replaceAll('_', ' ') }))}
+          />
+          <p id={`${id}-tz-help`} className={errors.timezone ? 'text-sm text-danger' : 'text-sm text-fg-muted'}>
+            {errors.timezone ?? t('profile.timezoneHint')}
+          </p>
+        </div>
         {formError && (
           <p role="alert" className="text-sm text-danger">
             {formError}

@@ -531,7 +531,7 @@ export const en: Dict = {
     name: 'Display name',
     nameHint: 'This is how you appear in the team list.',
     timezone: 'Time zone',
-    timezoneHint: 'Defines your workday and your day. Region/City format, for example America/Bogota.',
+    timezoneHint: 'Defines your workday and your day. Choose your city or the closest one; this computer’s zone comes selected.',
     signOut: 'Sign out',
   },
   team: {
@@ -719,7 +719,7 @@ export const en: Dict = {
     passwordMax: 'The password can have at most {max} characters.',
     passwordRequired: 'Enter your password.',
     otp: 'The code has 6 to 10 digits. Check the email we sent you.',
-    timezone: 'That time zone does not exist. Use the Region/City format, for example America/Bogota.',
+    timezone: 'That time zone does not exist. Choose one from the list.',
     invitationCode: 'Enter the 8-character code from whoever invited you, for example K7PQ-4XMZ.',
     endAfterStart: 'The end must be after the start.',
     labels: 'Use up to {count} labels of at most {length} characters.',

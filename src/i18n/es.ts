@@ -530,7 +530,7 @@ export const es = {
     name: 'Nombre visible',
     nameHint: 'Así te ven en la lista del equipo.',
     timezone: 'Zona horaria',
-    timezoneHint: 'Define tu jornada y tu día. Formato Región/Ciudad, por ejemplo America/Bogota.',
+    timezoneHint: 'Define tu jornada y tu día. Elige tu ciudad o la más cercana; viene marcada la de este computador.',
     signOut: 'Cerrar sesión',
   },
   team: {
@@ -718,7 +718,7 @@ export const es = {
     passwordMax: 'La contraseña puede tener como máximo {max} caracteres.',
     passwordRequired: 'Escribe tu contraseña.',
     otp: 'El código tiene de 6 a 10 dígitos. Revisa el correo que te enviamos.',
-    timezone: 'La zona horaria no existe. Usa el formato Región/Ciudad, por ejemplo America/Bogota.',
+    timezone: 'Esa zona horaria no existe. Elige una de la lista.',
     invitationCode: 'Escribe el código de 8 caracteres que te dio quien te invitó, por ejemplo K7PQ-4XMZ.',
     endAfterStart: 'El fin debe ser posterior al inicio.',
     labels: 'Usa hasta {count} etiquetas de máximo {length} caracteres.',
