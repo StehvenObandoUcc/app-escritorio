@@ -20,9 +20,10 @@ import { ProyectosPage } from '@/pages/proyectos/ProyectosPage';
 import { MisTareasPage } from '@/pages/tareas/MisTareasPage';
 import { Button, Select } from '@/ui/atoms';
 import { KeyboardHelp, SyncStatus, ThemeToggle } from '@/ui/molecules';
-import { AlertBanner, AppNav, type NavItem } from '@/ui/organisms';
+import { AlertBanner, AppNav, TaskNoticeBanner, type NavItem } from '@/ui/organisms';
 import { AppShell } from '@/ui/templates';
 import { useNotAllowedAlerts } from './alerts';
+import { useTaskNotices } from './taskNotices';
 import { HelpContext, useAppKeyboard } from './keyboard';
 import { LocaleProvider } from './locale';
 import { SessionProvider, useSession } from './session';
@@ -77,6 +78,7 @@ function NavFooter({ onHelp }: { onHelp: () => void }) {
 function Gate() {
   const { user } = useSession();
   const { alerts, dismiss } = useNotAllowedAlerts(bridge);
+  const taskNotices = useTaskNotices();
   const [help, setHelp] = useState(false);
   const openHelp = useCallback(() => setHelp(true), []);
   useAppKeyboard(ROUTES, openHelp);
@@ -94,6 +96,7 @@ function Gate() {
     <HelpContext.Provider value={openHelp}>
       <AppShell nav={<AppNav items={nav()} footer={<NavFooter onHelp={openHelp} />} />}>
         <AlertBanner alerts={alerts} onDismiss={dismiss} />
+        <TaskNoticeBanner notices={taskNotices.notices} onDismiss={taskNotices.dismiss} />
         <KeyboardHelp open={help} onClose={() => setHelp(false)} sectionCount={ROUTES.length} />
         <Routes>
           <Route path="/" element={<Navigate to="/mi-dia" replace />} />
