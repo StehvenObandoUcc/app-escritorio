@@ -25,8 +25,61 @@
   }
 }
 .motion-enter,
-dialog[open] {
-  animation: motion-enter var(--prim-duration-base) var(--prim-ease-out) both;
+dialog[open],
+details[open] > :not(summary) {
+  animation: motion-enter var(--prim-duration-base) var(--prim-ease-out) backwards;
+}
+
+/* Cascada: los hijos entran uno tras otro (40 ms de diferencia, hasta el octavo; el resto, juntos). */
+.motion-stagger > * {
+  animation: motion-enter var(--prim-duration-base) var(--prim-ease-out) backwards;
+}
+.motion-stagger > :nth-child(2) { animation-delay: 40ms; }
+.motion-stagger > :nth-child(3) { animation-delay: 80ms; }
+.motion-stagger > :nth-child(4) { animation-delay: 120ms; }
+.motion-stagger > :nth-child(5) { animation-delay: 160ms; }
+.motion-stagger > :nth-child(6) { animation-delay: 200ms; }
+.motion-stagger > :nth-child(7) { animation-delay: 240ms; }
+.motion-stagger > :nth-child(n + 8) { animation-delay: 280ms; }
+
+/* Barras que crecen desde cero al mostrarse (progreso y gráficos). */
+@keyframes motion-grow-x {
+  from { transform: scaleX(0); }
+}
+@keyframes motion-grow-y {
+  from { transform: scaleY(0); }
+}
+.motion-grow-x {
+  transform-origin: left;
+  animation: motion-grow-x 400ms var(--prim-ease-out) backwards;
+}
+.motion-grow-y {
+  transform-origin: bottom;
+  animation: motion-grow-y 400ms var(--prim-ease-out) backwards;
+}
+
+/* Aviso breve: entra y se desvanece justo antes de irse (Toast se quita a los 3 s). */
+@keyframes motion-leave {
+  to {
+    opacity: 0;
+    transform: translateY(0.25rem);
+  }
+}
+.motion-toast {
+  animation:
+    motion-enter var(--prim-duration-base) var(--prim-ease-out) backwards,
+    motion-leave var(--prim-duration-base) ease-in 2800ms forwards;
+}
+
+/*
+ * Con «reducir movimiento», index.css acorta la duración pero no el retraso: sin esto, la cascada
+ * dejaría bloques invisibles un momento y el aviso se desvanecería en cuanto aparece.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .motion-stagger > *,
+  .motion-toast {
+    animation: none;
+  }
 }
 
 /* Trama para "seguimiento en pausa": no depende solo del color. */
