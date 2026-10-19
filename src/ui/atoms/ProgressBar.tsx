@@ -19,7 +19,7 @@ export function ProgressBar({ value, label, fill = 'bg-accent' }: ProgressBarPro
       aria-valuenow={percent}
       className="h-2 w-full overflow-hidden rounded-full bg-sunken"
     >
-      <div className={cx('h-full rounded-full', fill)} style={{ width: `${percent}%` }} />
+      <div className={cx('motion-grow-x h-full rounded-full', fill)} style={{ width: `${percent}%` }} />
     </div>
   );
 }

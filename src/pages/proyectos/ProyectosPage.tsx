@@ -1,6 +1,6 @@
 import { Plus } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { useSession } from '@/app/session';
 import { errorMessage, formatDate, t } from '@/i18n';
 import { forms } from '@/lib/forms';
@@ -9,7 +9,7 @@ import { canCreateProject, isOverdue } from '@/lib/tasks';
 import { useForm } from '@/lib/useForm';
 import { localDate } from '@/lib/time';
 import { Badge, Button, Surface } from '@/ui/atoms';
-import { EmptyState, FormField, ProjectCard, SegmentedControl } from '@/ui/molecules';
+import { DiscardDialog, EmptyState, FormField, ProjectCard, SegmentedControl } from '@/ui/molecules';
 import { PageLayout } from '@/ui/templates';
 import { useWork } from './useWork';
 
@@ -29,7 +29,7 @@ export function ProyectosPage() {
   if (blocked) {
     return (
       <PageLayout title={t('projects.title')} actions={sampleTag}>
-        <EmptyState title={blocked.title} description={blocked.description} />
+        <EmptyState title={blocked.title} description={blocked.description} action={blocked.action} />
       </PageLayout>
     );
   }
@@ -81,14 +81,14 @@ export function ProyectosPage() {
           {t('common.loading')}
         </p>
       ) : data.isError ? (
-        <EmptyState title={t('projects.loadError')} description={t('projects.loadErrorHint', { error: errorMessage(data.error) })} />
+        <EmptyState title={t('projects.loadError')} description={t('projects.loadErrorHint', { error: errorMessage(data.error) })} onRetry={() => void data.refetch()} />
       ) : projects.length === 0 ? (
         <EmptyState
           title={show === 'archived' ? t('projects.noArchived') : t('projects.empty')}
           description={show === 'archived' ? t('projects.noArchivedHint') : canCreate ? t('projects.emptyManager') : t('projects.emptyMember')}
         />
       ) : (
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        <div className="motion-stagger grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {projects.map((p) => (
             <ProjectCard key={p.id} project={p} overdue={overdueOf(p.id)} href={`#/proyectos/${p.id}`} />
           ))}
@@ -100,8 +100,15 @@ export function ProyectosPage() {
 
 /** Sin equipo o como observador no hay proyectos que mostrar. */
 export function noTeamState(role: string | null) {
-  if (role === null) return { title: t('projects.noTeam'), description: t('projects.noTeamHint') };
-  if (role === 'viewer') return { title: t('projects.viewer'), description: t('projects.viewerHint') };
+  if (role === null) {
+    const action = (
+      <Link to="/equipo" className="inline-flex h-control items-center gap-2 rounded-md bg-accent px-4 font-medium text-on-accent hover:bg-accent-hover">
+        {t('common.goToTeam')}
+      </Link>
+    );
+    return { title: t('projects.noTeam'), description: t('projects.noTeamHint'), action };
+  }
+  if (role === 'viewer') return { title: t('projects.viewer'), description: t('projects.viewerHint'), action: undefined };
   return null;
 }
 
@@ -115,10 +122,11 @@ export function OfflineNote({ savedAt }: { savedAt: string }) {
 
 function NewProject({ onCreate, onCancel }: { onCreate: (name: string) => Promise<void>; onCancel: () => void }) {
   const [name, setName] = useState('');
-  const { ref, errors, formError, busy, submit: send, onKeyDown } = useForm(forms.project, onCancel);
+  const { ref, errors, formError, busy, submit: send, onKeyDown, cancel, discard } = useForm(forms.project, onCancel);
   const submit = (e: FormEvent) => void send({ name }, (data) => onCreate(data.name), e);
   return (
     <Surface as="section" aria-label={t('projects.new')}>
+      <DiscardDialog discard={discard} />
       <form ref={ref} onSubmit={submit} onKeyDown={onKeyDown} className="flex flex-wrap items-end gap-3" noValidate>
         <div className="min-w-48 flex-1">
           <FormField
@@ -134,7 +142,7 @@ function NewProject({ onCreate, onCancel }: { onCreate: (name: string) => Promis
         <Button type="submit" variant="primary" disabled={busy}>
           {t('projects.create')}
         </Button>
-        <Button variant="ghost" onClick={onCancel}>
+        <Button variant="ghost" onClick={cancel}>
           {t('common.cancel')}
         </Button>
       </form>

@@ -58,11 +58,11 @@ function AiForm({ bridge, initial, onChanged }: { bridge: Bridge; initial: AiCon
   const save = (e: FormEvent) => {
     e.preventDefault();
     if (!baseUrl.trim() || !model.trim()) return setError(t('aiSettings.required'));
-    void act(t('aiSettings.save'), async () => {
+    void act(t('common.save'), async () => {
       await bridge.aiConfigSet(baseUrl, model, key || undefined);
       setKey('');
       await refresh();
-      return t('aiSettings.saved');
+      return t('common.saved');
     });
   };
   const test = () =>
@@ -124,7 +124,7 @@ function AiForm({ bridge, initial, onChanged }: { bridge: Bridge; initial: AiCon
         )}
         <div className="flex flex-wrap gap-2">
           <Button type="submit" variant="primary" disabled={Boolean(busy)}>
-            {t('aiSettings.save')}
+            {t('common.save')}
           </Button>
           <Button onClick={test} disabled={Boolean(busy) || !initial.baseUrl}>
             {busy === t('aiSettings.testing') ? t('aiSettings.testing') : t('aiSettings.test')}

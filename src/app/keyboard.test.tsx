@@ -1,9 +1,11 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ListChecks, Sun } from 'lucide-react';
 import { describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, useLocation } from 'react-router';
+import { TaskForm } from '@/ui/molecules';
 import { AppNav } from '@/ui/organisms';
+import { AppShell } from '@/ui/templates';
 import { useAppKeyboard } from './keyboard';
 
 const ROUTES = ['/mi-dia', '/tareas'];
@@ -103,6 +105,160 @@ describe('teclado en toda la app (ADR-0019)', () => {
     expect(screen.getByRole('button', { name: 'C' })).toHaveFocus();
     await userEvent.keyboard('{ArrowUp}');
     expect(screen.getByRole('button', { name: 'A' })).toHaveFocus();
+  });
+
+  it('Esc y Cancelar piden confirmar si el formulario cambió; sin cambios cancelan directo (F-01, H3)', async () => {
+    const onCancel = vi.fn();
+    const view = render(<TaskForm people={[]} manage isNew submitLabel="Crear tarea" onSubmit={async () => {}} onCancel={onCancel} />);
+    // Sin tocar nada, Esc cancela sin preguntar.
+    await userEvent.click(screen.getByLabelText('Descripción'));
+    await userEvent.keyboard('{Escape}');
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    view.unmount();
+
+    render(<TaskForm people={[]} manage isNew submitLabel="Crear tarea" onSubmit={async () => {}} onCancel={onCancel} />);
+    onCancel.mockClear();
+    await userEvent.type(screen.getByLabelText('Descripción'), 'Notas a medias');
+    await userEvent.keyboard('{Escape}');
+    const dialog = screen.getByRole('dialog', { name: '¿Descartar los cambios?' });
+    expect(onCancel).not.toHaveBeenCalled();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Seguir editando' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Descripción')).toHaveValue('Notas a medias');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+    await userEvent.click(within(screen.getByRole('dialog', { name: '¿Descartar los cambios?' })).getByRole('button', { name: 'Descartar' }));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('cambiar de pantalla con un formulario con cambios pide confirmar; sin cambios no (F-01, H3)', async () => {
+    function Screen() {
+      useAppKeyboard(ROUTES, () => {});
+      return (
+        <>
+          <AppNav
+            items={[
+              { to: '/mi-dia', label: 'Mi día', icon: Sun },
+              { to: '/tareas', label: 'Mis tareas', icon: ListChecks },
+            ]}
+          />
+          {useLocation().pathname === '/mi-dia' && <TaskForm people={[]} manage isNew submitLabel="Crear tarea" onSubmit={async () => {}} onCancel={() => {}} />}
+          <p data-testid="ruta">{useLocation().pathname}</p>
+        </>
+      );
+    }
+    render(
+      <MemoryRouter initialEntries={['/mi-dia']}>
+        <Screen />
+      </MemoryRouter>,
+    );
+    const ruta = screen.getByTestId('ruta');
+    await userEvent.type(screen.getByLabelText('Descripción'), 'Notas a medias');
+
+    // Clic en el menú: pregunta y no se va; «Seguir editando» conserva lo escrito.
+    await userEvent.click(screen.getByRole('link', { name: 'Mis tareas' }));
+    expect(ruta).toHaveTextContent('/mi-dia');
+    await userEvent.click(within(screen.getByRole('dialog', { name: '¿Descartar los cambios?' })).getByRole('button', { name: 'Seguir editando' }));
+    expect(ruta).toHaveTextContent('/mi-dia');
+    expect(screen.getByLabelText('Descripción')).toHaveValue('Notas a medias');
+
+    // Alt+número también pregunta; «Descartar» completa la salida.
+    await userEvent.keyboard('{Alt>}2{/Alt}');
+    expect(ruta).toHaveTextContent('/mi-dia');
+    await userEvent.click(within(screen.getByRole('dialog', { name: '¿Descartar los cambios?' })).getByRole('button', { name: 'Descartar' }));
+    expect(ruta).toHaveTextContent('/tareas');
+
+    // Sin formulario con cambios, el menú navega directo.
+    await userEvent.click(screen.getByRole('link', { name: 'Mi día' }));
+    expect(ruta).toHaveTextContent('/mi-dia');
+    await userEvent.click(screen.getByRole('link', { name: 'Mis tareas' }));
+    expect(ruta).toHaveTextContent('/tareas');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('«Saltar al contenido» es solo para Tab: las flechas no lo alcanzan (A-06, ADR-0021)', async () => {
+    function Keys() {
+      useAppKeyboard(ROUTES, () => {});
+      return null;
+    }
+    render(
+      <MemoryRouter>
+        <Keys />
+        <AppShell
+          nav={
+            <AppNav
+              items={[
+                { to: '/mi-dia', label: 'Mi día', icon: Sun },
+                { to: '/tareas', label: 'Mis tareas', icon: ListChecks },
+              ]}
+            />
+          }
+        >
+          <button>Algo</button>
+        </AppShell>
+      </MemoryRouter>,
+    );
+    const skip = screen.getByRole('link', { name: 'Saltar al contenido' });
+    // ↑ desde el primer ítem del menú no cae en el enlace.
+    screen.getByRole('link', { name: 'Mi día' }).focus();
+    await userEvent.keyboard('{ArrowUp}');
+    expect(skip).not.toHaveFocus();
+    // Tab desde el principio sigue llegando primero al enlace.
+    (document.activeElement as HTMLElement | null)?.blur();
+    await userEvent.tab();
+    expect(skip).toHaveFocus();
+  });
+
+  it('con campos obligatorios, Enter no pasa por los opcionales: envía cuando los obligatorios están llenos (F-14)', async () => {
+    const onSubmit = vi.fn();
+    function Keys() {
+      useAppKeyboard(ROUTES, () => {});
+      return null;
+    }
+    render(
+      <MemoryRouter>
+        <Keys />
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            onSubmit();
+          }}
+        >
+          <input aria-label="Título" required />
+          <input aria-label="Etiquetas" />
+          <button type="submit">Crear</button>
+        </form>
+      </MemoryRouter>,
+    );
+    await userEvent.type(screen.getByLabelText('Título'), 'Diseñar portada{Enter}');
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(screen.getByLabelText('Etiquetas')).not.toHaveFocus();
+  });
+
+  it('con el foco en el contenido y una pantalla larga, ↓ desplaza en lugar de saltar al primer elemento (F-14)', async () => {
+    function Keys() {
+      useAppKeyboard(ROUTES, () => {});
+      return null;
+    }
+    render(
+      <MemoryRouter>
+        <Keys />
+        <main id="contenido" tabIndex={-1}>
+          <button>Primero</button>
+        </main>
+      </MemoryRouter>,
+    );
+    const main = screen.getByRole('main');
+    Object.defineProperty(main, 'scrollHeight', { value: 2000, configurable: true });
+    Object.defineProperty(main, 'clientHeight', { value: 500, configurable: true });
+    main.focus();
+    await userEvent.keyboard('{ArrowDown}');
+    expect(main).toHaveFocus();
+    // Si no hay nada que desplazar, la flecha sigue llevando al primer elemento.
+    Object.defineProperty(main, 'scrollHeight', { value: 500, configurable: true });
+    await userEvent.keyboard('{ArrowDown}');
+    expect(screen.getByRole('button', { name: 'Primero' })).toHaveFocus();
   });
 
   it('las flechas recorren el menú de navegación', async () => {

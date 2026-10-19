@@ -59,7 +59,7 @@ export function StackedBarChart({ data, unit, formatValue, formatShort = formatV
                     {formatShort(total)}
                   </span>
                 )}
-                <div className="flex flex-col-reverse overflow-hidden rounded-xs" style={{ height: max === 0 ? '0%' : `${(total / max) * (showValues ? 85 : 100)}%` }}>
+                <div className="motion-grow-y flex flex-col-reverse overflow-hidden rounded-xs" style={{ height: max === 0 ? '0%' : `${(total / max) * (showValues ? 85 : 100)}%` }}>
                   {d.segments
                     .filter((s) => s.value > 0)
                     .map((s) => (

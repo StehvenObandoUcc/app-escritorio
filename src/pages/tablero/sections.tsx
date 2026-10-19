@@ -101,7 +101,7 @@ export function PresenceSection({ people }: { people: Presence[] }) {
       ) : (
         <ul aria-label={t('dashboard.presence.title')} className="grid gap-2 md:grid-cols-2">
           {people.map((p) => (
-            <li key={p.userId} className="flex items-center gap-3 rounded-md border border-line px-3 py-2">
+            <li key={p.userId} className="flex items-center gap-3 rounded-md bg-sunken px-3 py-2">
               <span className="min-w-0 flex-1 truncate font-medium text-fg">{personName(p.name)}</span>
               <Badge tone={p.state === 'active' ? 'success' : 'neutral'}>{t(`dashboard.presence.states.${p.state}`)}</Badge>
               {p.since && <span className="shrink-0 text-sm text-fg-muted tabular-nums">{t('dashboard.presence.since', { time: formatHour(p.since) })}</span>}

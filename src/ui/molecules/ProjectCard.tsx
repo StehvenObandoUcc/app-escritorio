@@ -7,7 +7,7 @@ import { Badge, ProgressBar } from '@/ui/atoms';
 export function ProjectCard({ project, overdue, href }: { project: Project; overdue: number; href: string }) {
   const done = t('projects.progress.done', { done: project.tasksDone, n: project.tasksTotal });
   return (
-    <a href={href} className="flex min-w-0 flex-col gap-3 rounded-lg border border-line bg-surface p-4 transition-colors hover:border-line-strong">
+    <a href={href} className="flex min-w-0 flex-col gap-3 rounded-lg bg-surface p-4 transition hover:-translate-y-0.5 hover:shadow-overlay">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="min-w-0 truncate font-display text-lg font-semibold text-fg">{project.name}</p>
         <Badge>{PROJECT_ROLE_LABEL[project.myRole]}</Badge>

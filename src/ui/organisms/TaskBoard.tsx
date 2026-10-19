@@ -13,7 +13,7 @@ import { TaskStatusCell, type TaskViewProps } from './TaskList';
 export function TaskBoard(props: TaskViewProps) {
   const cards = props.tree.flatMap(({ task, children }) => [{ task, parent: null as string | null }, ...children.map((c) => ({ task: c, parent: task.title }))]);
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="motion-stagger grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {TASK_STATUSES.map((status) => {
         const column = cards.filter((c) => c.task.status === status);
         return (
@@ -23,7 +23,7 @@ export function TaskBoard(props: TaskViewProps) {
             </Heading>
             <ul className="flex flex-col gap-2">
               {column.map(({ task, parent }) => (
-                <li key={task.id} className="flex flex-col gap-2 rounded-md border border-line bg-surface p-3">
+                <li key={task.id} className="flex flex-col gap-2 rounded-md bg-surface p-3">
                   {parent && <p className="truncate text-xs text-fg-muted">{t('tasks.subtaskOf', { title: parent })}</p>}
                   <button
                     type="button"

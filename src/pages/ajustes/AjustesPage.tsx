@@ -12,6 +12,7 @@ import { useOptionalSession } from '@/app/session';
 import { AiSection } from './AiSection';
 import { MiPrivacidadSection } from './MiPrivacidadSection';
 import { PerfilSection } from './PerfilSection';
+import { PreferenciasSection } from './PreferenciasSection';
 
 /** Días hacia atrás de los que se sacan las apps candidatas a ocultar. */
 const RECENT_DAYS = 7;
@@ -54,6 +55,7 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -89,7 +91,7 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
     return () => {
       cancelled = true;
     };
-  }, [bridge]);
+  }, [bridge, attempt]);
 
   // Candidatas: las usadas hace poco y, además, las que ya están ocultas (no aparecen con su nombre en los datos).
   const candidates = useMemo<AppCandidate[]>(() => {
@@ -128,6 +130,7 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
   return (
     <PageLayout title={t('nav.settings')} subtitle={t('settings.subtitle')} actions={sampleTag}>
       <PerfilSection />
+      <PreferenciasSection />
       <LanguageSection />
       {toastsOff && (
         <p role="note" className="rounded-md bg-sunken p-3 text-sm text-fg">
@@ -137,7 +140,11 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
       {loadError ? (
         <EmptyState
           title={t('settings.loadError')}
-          description={t('settings.loadErrorHint', { error: loadError })}
+          description={t('settings.loadErrorHint')}
+          onRetry={() => {
+            setLoadError(null);
+            setAttempt((a) => a + 1);
+          }}
         />
       ) : saved === null ? (
         <p className="text-fg-muted" role="status">
@@ -185,9 +192,15 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
       )}
       <MiPrivacidadSection bridge={bridge} />
       <AiSection bridge={bridge} />
+      {/* Antes era una tarjeta de relleno con un código de fase (F-11): ahora lleva a donde están esos ajustes. */}
       <EmptyState
         title={t('settings.moreLater')}
         description={t('settings.moreLaterHint')}
+        action={
+          <a href="#/equipo" className="inline-flex min-h-control items-center gap-2 rounded-md border border-line-strong bg-surface px-4 font-medium text-fg hover:bg-sunken">
+            {t('common.goToTeam')}
+          </a>
+        }
       />
     </PageLayout>
   );
@@ -203,6 +216,7 @@ function LanguageSection() {
       <label className="flex flex-col gap-1 text-sm font-medium text-fg">
         {t('settings.languageLabel')}
         <Select
+          id="idioma-ajustes"
           value={locale}
           onChange={(e) => {
             setError(null);

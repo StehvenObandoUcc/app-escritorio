@@ -21,6 +21,7 @@ type Loaded = { key: string; view: RangeView } | { key: string; error: string };
 function useRangeView(bridge: Bridge, range: DateRange) {
   const key = `${range.from}/${range.to}`;
   const [loaded, setLoaded] = useState<Loaded | null>(null);
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     let alive = true;
     bridge.rangeView(range.from, range.to).then(
@@ -30,8 +31,12 @@ function useRangeView(bridge: Bridge, range: DateRange) {
     return () => {
       alive = false;
     };
-  }, [bridge, key, range.from, range.to]);
-  return loaded?.key === key ? loaded : null;
+  }, [bridge, key, range.from, range.to, attempt]);
+  const retry = () => {
+    setLoaded(null);
+    setAttempt((a) => a + 1);
+  };
+  return { loaded: loaded?.key === key ? loaded : null, retry };
 }
 
 /** Título del periodo: «Del 5 al 11 de oct.» o «octubre de 2026». */
@@ -60,7 +65,7 @@ export function MyRangeView({
 }) {
   const session = useOptionalSession();
   const aiCounts = session?.activeTeam?.aiCountsAsProductive ?? false;
-  const loaded = useRangeView(bridge, range);
+  const { loaded, retry } = useRangeView(bridge, range);
   const title = rangeTitle(kind, range);
 
   const view = loaded && 'view' in loaded ? loaded.view : null;
@@ -93,7 +98,7 @@ export function MyRangeView({
           {t('myRange.loading')}
         </p>
       )}
-      {loaded && 'error' in loaded && <EmptyState title={t('myRange.readError')} description={t('myRange.readErrorHint', { error: loaded.error })} />}
+      {loaded && 'error' in loaded && <EmptyState title={t('myRange.readError')} description={t('myRange.readErrorHint')} onRetry={retry} />}
 
       {view && totals && (
         <>

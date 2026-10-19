@@ -10,7 +10,7 @@ import { LIMITS } from '@/lib/limits';
 import { allLabels, canManageProject, canReview, nextSteps, NO_FILTER, PROJECT_ROLE_LABEL, taskTree, type Step, type TaskFilter } from '@/lib/tasks';
 import { localDate } from '@/lib/time';
 import { Badge, Button, Heading, Input, Surface } from '@/ui/atoms';
-import { ConfirmDialog, EmptyState, ProjectProgress, SegmentedControl, TaskFilters, TaskForm, Toast } from '@/ui/molecules';
+import { ConfirmDialog, EmptyState, ProjectProgress, SegmentedControl, tabPanelLabel, TaskFilters, TaskForm, Toast } from '@/ui/molecules';
 import { ProjectMemberList, ReviewTemplateEditor, TaskBoard, TaskList } from '@/ui/organisms';
 import { PageLayout } from '@/ui/templates';
 import { noTeamState, OfflineNote } from './ProyectosPage';
@@ -18,6 +18,8 @@ import { useProject } from './useProject';
 
 type Tab = 'board' | 'list' | 'reviews' | 'members' | 'settings';
 const DAYS_30 = 30 * 24 * 3600 * 1000;
+/** Panel de las pestañas del proyecto (A-03). */
+const PANEL = 'proyecto-panel';
 
 export const taskPath = (projectId: string, taskId: string, action?: 'enviar' | 'completar') =>
   `/proyectos/${projectId}/tareas/${taskId}${action ? `?accion=${action}` : ''}`;
@@ -44,6 +46,8 @@ export function ProyectoPage() {
         <EmptyState
           title={blocked?.title ?? (ctx.loadError ? t('projects.loadError') : t('projects.notFound'))}
           description={blocked?.description ?? (ctx.loadError ? t('projects.loadErrorHint', { error: ctx.loadError }) : t('projects.notFoundHint'))}
+          action={blocked?.action}
+          onRetry={!blocked && ctx.loadError ? () => void ctx.data.refetch() : undefined}
         />
       </PageLayout>
     );
@@ -153,7 +157,7 @@ function ProjectView({ ctx, project, back }: { ctx: Ctx; project: Project; back:
       </Surface>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <SegmentedControl label={t('projects.tabs.label')} options={tabs} value={tab} onChange={setTab} />
+        <SegmentedControl label={t('projects.tabs.label')} options={tabs} value={tab} onChange={setTab} panelId={PANEL} />
         {writable && (tab === 'board' || tab === 'list') && !creating && (
           <Button variant="primary" icon={<Plus size={16} aria-hidden="true" />} onClick={() => setCreating(true)}>
             {t('tasks.new')}
@@ -179,6 +183,7 @@ function ProjectView({ ctx, project, back }: { ctx: Ctx; project: Project; back:
         </Surface>
       )}
 
+      <div role="tabpanel" id={PANEL} aria-labelledby={tabPanelLabel(PANEL, tab)} className="flex flex-col gap-5">
       {(tab === 'board' || tab === 'list') && (
         <Surface as="section" aria-label={tab === 'board' ? t('projects.tabs.board') : t('projects.tabs.list')} className="flex flex-col gap-3">
           <TaskFilters filter={filter} onChange={setFilter} people={projectPeople} labels={allLabels(tasks)} count={tree.reduce((n, x) => n + 1 + x.children.length, 0)} />
@@ -219,6 +224,7 @@ function ProjectView({ ctx, project, back }: { ctx: Ctx; project: Project; back:
           <ReviewTemplateEditor fields={project.reviewTemplate} onSave={(fields) => act(() => cloud.setReviewTemplate(project.id, fields), t('common.saved')).then(() => {})} />
         </Surface>
       )}
+      </div>
 
       <ConfirmDialog
         open={dialog === 'archive'}

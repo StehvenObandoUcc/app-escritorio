@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { setLocale, translateServerMessage } from '.';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { englishServerMessage, setLocale, translateServerMessage } from '.';
 
 /** Mensajes fijos para la persona: del servidor (raise exception) y de Rust (Err con texto en mayúscula). */
 function serverMessages(): string[] {
@@ -27,7 +27,7 @@ describe('mensajes del servidor y de Rust en inglés (ADR-0015, AC-35)', () => {
     setLocale('en');
     const messages = serverMessages();
     expect(messages.length).toBeGreaterThan(60);
-    const missing = messages.filter((m) => translateServerMessage(m) === m);
+    const missing = messages.filter((m) => !englishServerMessage(m));
     expect(missing).toEqual([]);
   });
 
@@ -35,6 +35,10 @@ describe('mensajes del servidor y de Rust en inglés (ADR-0015, AC-35)', () => {
     expect(translateServerMessage('No permitido')).toBe('No permitido');
     setLocale('en');
     expect(translateServerMessage('Falta completar «Qué se hizo» en el formulario de entrega')).toBe('“Qué se hizo” is missing in the delivery form');
-    expect(translateServerMessage('Un mensaje desconocido')).toBe('Un mensaje desconocido');
+    // Un mensaje que no está en la tabla no sale en español: se cambia por un aviso general (F-20).
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(translateServerMessage('Un mensaje desconocido')).toBe('The action could not be completed. Try again.');
+    expect(warn).toHaveBeenCalledWith('Mensaje sin traducir:', 'Un mensaje desconocido');
+    warn.mockRestore();
   });
 });

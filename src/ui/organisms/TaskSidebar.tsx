@@ -3,7 +3,7 @@ import { useState } from 'react';
 import type { Project, Task } from '@/cloud/contract';
 import { errorMessage, formatDate, t } from '@/i18n';
 import { canManagePeople, formatMinutes, timeRatio, TYPE_LABEL } from '@/lib/tasks';
-import { Badge, Button, Heading, ProgressBar, type SelectOption } from '@/ui/atoms';
+import { Badge, Button, Checkbox, Heading, ProgressBar, type SelectOption } from '@/ui/atoms';
 
 export interface TaskSidebarProps {
   task: Task;
@@ -54,7 +54,7 @@ export function TaskSidebar(p: TaskSidebarProps) {
                     .filter((o) => o.value !== task.assigneeId)
                     .map((o) => (
                       <label key={o.value} className="flex items-center gap-2">
-                        <input type="checkbox" checked={picked.includes(o.value)} onChange={(e) => setPicked((x) => (e.target.checked ? [...x, o.value] : x.filter((v) => v !== o.value)))} />
+                        <Checkbox checked={picked.includes(o.value)} onChange={(e) => setPicked((x) => (e.target.checked ? [...x, o.value] : x.filter((v) => v !== o.value)))} />
                         {o.label}
                       </label>
                     ))}

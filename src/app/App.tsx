@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ChartColumn, FolderKanban, LayoutDashboard, ListChecks, Settings, Sun, Users } from 'lucide-react';
+import { ChartColumn, FolderKanban, Keyboard, LayoutDashboard, ListChecks, Settings, Sun, Users } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router';
 import { bridge } from '@/bridge';
@@ -18,12 +18,12 @@ import { ProyectoPage } from '@/pages/proyectos/ProyectoPage';
 import { TareaPage } from '@/pages/proyectos/TareaPage';
 import { ProyectosPage } from '@/pages/proyectos/ProyectosPage';
 import { MisTareasPage } from '@/pages/tareas/MisTareasPage';
-import { Select } from '@/ui/atoms';
+import { Button, Select } from '@/ui/atoms';
 import { KeyboardHelp, SyncStatus, ThemeToggle } from '@/ui/molecules';
 import { AlertBanner, AppNav, type NavItem } from '@/ui/organisms';
 import { AppShell } from '@/ui/templates';
 import { useNotAllowedAlerts } from './alerts';
-import { useAppKeyboard } from './keyboard';
+import { HelpContext, useAppKeyboard } from './keyboard';
 import { LocaleProvider } from './locale';
 import { SessionProvider, useSession } from './session';
 
@@ -42,8 +42,8 @@ const cloud = createCloud(bridge);
 /** Rutas de la navegación en el mismo orden: Alt+1 … Alt+n abre la n-ésima (`nav()` y esta lista deben coincidir). */
 export const ROUTES = ['/mi-dia', '/tareas', '/proyectos', '/equipo', '/tablero', '/reportes', '/ajustes'];
 
-/** Pie de la navegación: equipo activo (D1), sincronización y tema. */
-function NavFooter() {
+/** Pie de la navegación: equipo activo (D1), sincronización, tema y ayuda de teclado (F-13). El idioma va en Ajustes y en el acceso. */
+function NavFooter({ onHelp }: { onHelp: () => void }) {
   const { theme, cycle } = useTheme();
   const { sync, teams, activeTeam, selectTeam } = useSession();
   return (
@@ -62,6 +62,10 @@ function NavFooter() {
       )}
       <SyncStatus phase={sync.phase} message={sync.message} lastSyncedAt={sync.lastSyncedAt} compact />
       <ThemeToggle theme={theme} onCycle={cycle} />
+      {/* Volvió con F-13 (se quitó en ADR-0021): sin él, los atajos solo se descubrían con «?». */}
+      <Button variant="ghost" size="sm" onClick={onHelp} title={t('keyboard.title')} icon={<Keyboard size={16} aria-hidden="true" />}>
+        <span className="md:sr-only lg:not-sr-only">{t('keyboard.open')}</span>
+      </Button>
     </div>
   );
 }
@@ -87,25 +91,27 @@ function Gate() {
   }
   if (user === null) return <AccesoPage />;
   return (
-    <AppShell nav={<AppNav items={nav()} footer={<NavFooter />} />}>
-      <AlertBanner alerts={alerts} onDismiss={dismiss} />
-      <KeyboardHelp open={help} onClose={() => setHelp(false)} sectionCount={ROUTES.length} />
-      <Routes>
-        <Route path="/" element={<Navigate to="/mi-dia" replace />} />
-        <Route path="/mi-dia" element={<MiDiaPage bridge={bridge} />} />
-        <Route path="/tareas" element={<MisTareasPage />} />
-        <Route path="/proyectos" element={<ProyectosPage />} />
-        <Route path="/proyectos/:id" element={<ProyectoPage />} />
-        <Route path="/proyectos/:id/tareas/:tarea" element={<TareaPage />} />
-        <Route path="/equipo" element={<EquipoPage />} />
-        <Route path="/equipo/privacidad" element={<PrivacidadPage />} />
-        <Route path="/tablero" element={<TableroPage />} />
-        <Route path="/reportes" element={<ReportesPage />} />
-        <Route path="/ajustes" element={<AjustesPage bridge={bridge} />} />
-        {import.meta.env.DEV && <Route path="/dev/galeria" element={<GaleriaPage />} />}
-        <Route path="*" element={<Navigate to="/mi-dia" replace />} />
-      </Routes>
-    </AppShell>
+    <HelpContext.Provider value={openHelp}>
+      <AppShell nav={<AppNav items={nav()} footer={<NavFooter onHelp={openHelp} />} />}>
+        <AlertBanner alerts={alerts} onDismiss={dismiss} />
+        <KeyboardHelp open={help} onClose={() => setHelp(false)} sectionCount={ROUTES.length} />
+        <Routes>
+          <Route path="/" element={<Navigate to="/mi-dia" replace />} />
+          <Route path="/mi-dia" element={<MiDiaPage bridge={bridge} />} />
+          <Route path="/tareas" element={<MisTareasPage />} />
+          <Route path="/proyectos" element={<ProyectosPage />} />
+          <Route path="/proyectos/:id" element={<ProyectoPage />} />
+          <Route path="/proyectos/:id/tareas/:tarea" element={<TareaPage />} />
+          <Route path="/equipo" element={<EquipoPage />} />
+          <Route path="/equipo/privacidad" element={<PrivacidadPage />} />
+          <Route path="/tablero" element={<TableroPage />} />
+          <Route path="/reportes" element={<ReportesPage />} />
+          <Route path="/ajustes" element={<AjustesPage bridge={bridge} />} />
+          {import.meta.env.DEV && <Route path="/dev/galeria" element={<GaleriaPage />} />}
+          <Route path="*" element={<Navigate to="/mi-dia" replace />} />
+        </Routes>
+      </AppShell>
+    </HelpContext.Provider>
   );
 }
 

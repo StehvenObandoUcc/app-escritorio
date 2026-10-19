@@ -12,7 +12,7 @@ import { LIMITS } from '@/lib/limits';
 import { useForm } from '@/lib/useForm';
 import { canSeeMembers, invitableRoles, ROLE_LABEL, type Role } from '@/lib/permissions';
 import { Badge, Button, Heading, Select, Surface } from '@/ui/atoms';
-import { ConfirmDialog, EmptyState, FormField, SegmentedControl, SyncStatus } from '@/ui/molecules';
+import { ConfirmDialog, DiscardDialog, EmptyState, FormField, SegmentedControl, SyncStatus, tabPanelLabel } from '@/ui/molecules';
 import { ConsentPanel, MemberList } from '@/ui/organisms';
 import { PageLayout } from '@/ui/templates';
 import { AuditoriaTab } from './AuditoriaTab';
@@ -73,7 +73,11 @@ export function EquipoPage() {
       ) : activeTeam ? (
         <TeamView team={activeTeam} key={activeTeam.id} />
       ) : (
-        <CreateTeam first />
+        // F-05: sin equipo hay dos caminos; unirse depende de una invitación hecha a este mismo correo.
+        <div className="grid items-start gap-5 lg:grid-cols-2">
+          <CreateTeam first />
+          <JoinTeam />
+        </div>
       )}
     </PageLayout>
   );
@@ -175,7 +179,7 @@ function MyInvitations() {
 function CreateTeam({ first = false, onDone }: { first?: boolean; onDone?: () => void }) {
   const { cloud, refresh, selectTeam } = useSession();
   const [name, setName] = useState('');
-  const { ref, errors, formError, busy, submit: send, onKeyDown } = useForm(forms.team, onDone);
+  const { ref, errors, formError, busy, submit: send, onKeyDown, cancel, discard } = useForm(forms.team, onDone);
   const submit = (e: FormEvent) =>
     void send(
       { name },
@@ -190,6 +194,7 @@ function CreateTeam({ first = false, onDone }: { first?: boolean; onDone?: () =>
     );
   return (
     <Surface as="section" aria-label={t('team.create')}>
+      <DiscardDialog discard={discard} />
       <form ref={ref} onSubmit={submit} onKeyDown={onKeyDown} className="flex max-w-prose flex-col gap-4" noValidate>
         <div>
           <Heading level={2}>{first ? t('team.createFirst') : t('team.createAnother')}</Heading>
@@ -201,7 +206,7 @@ function CreateTeam({ first = false, onDone }: { first?: boolean; onDone?: () =>
             {t('team.create')}
           </Button>
           {onDone && (
-            <Button variant="ghost" onClick={onDone}>
+            <Button variant="ghost" onClick={cancel}>
               {t('common.cancel')}
             </Button>
           )}
@@ -211,7 +216,41 @@ function CreateTeam({ first = false, onDone }: { first?: boolean; onDone?: () =>
   );
 }
 
+/**
+ * Unirse a un equipo (F-05). No hay campo de código suelto: `accept_invitation` exige que la invitación
+ * se haya hecho al correo de esta sesión, y el código se escribe en esa invitación (arriba, en MyInvitations).
+ */
+function JoinTeam() {
+  const { cloud, user } = useSession();
+  const queryClient = useQueryClient();
+  const [state, setState] = useState<'idle' | 'busy' | 'none'>('idle');
+  const email = user?.email ?? '';
+  const search = async () => {
+    setState('busy');
+    const list = await queryClient.fetchQuery({ queryKey: ['my-invitations', user?.id], queryFn: () => cloud.myInvitations(), staleTime: 0 }).catch(() => null);
+    setState(Array.isArray(list) && list.length === 0 ? 'none' : 'idle');
+  };
+  return (
+    <Surface as="section" aria-label={t('team.joinTitle')} className="flex flex-col gap-4">
+      <div>
+        <Heading level={2}>{t('team.joinTitle')}</Heading>
+        <p className="mt-1 max-w-prose text-sm text-fg-muted">{t('team.joinHint', { email })}</p>
+      </div>
+      <div>
+        <Button onClick={() => void search()} disabled={state === 'busy'}>
+          {state === 'busy' ? t('common.loading') : t('team.searchInvitations')}
+        </Button>
+      </div>
+      <p role="status" className="text-sm text-fg-muted">
+        {state === 'none' ? t('team.noInvitationsYet', { email }) : ''}
+      </p>
+    </Surface>
+  );
+}
+
 type TeamTab = 'members' | 'sites' | 'audit' | 'general';
+/** Panel de las pestañas del equipo (A-03). */
+const TEAM_PANEL = 'equipo-panel';
 
 function TeamView({ team }: { team: MyTeam }) {
   const { cloud, refresh, sync, syncNow } = useSession();
@@ -247,7 +286,8 @@ function TeamView({ team }: { team: MyTeam }) {
   // D2: la pantalla se divide en pestañas para no ser una lista larga.
   return (
     <>
-      <SegmentedControl label={t('team.tabs.label')} options={tabs} value={tab} onChange={setTab} />
+      <SegmentedControl label={t('team.tabs.label')} options={tabs} value={tab} onChange={setTab} panelId={TEAM_PANEL} />
+      <div role="tabpanel" id={TEAM_PANEL} aria-labelledby={tabPanelLabel(TEAM_PANEL, tab)} className="flex flex-col gap-5">
       {tab === 'members' && (
         <>
           <Members team={team} />
@@ -286,6 +326,7 @@ function TeamView({ team }: { team: MyTeam }) {
           )}
         </>
       )}
+      </div>
     </>
   );
 }

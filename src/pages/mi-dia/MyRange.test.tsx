@@ -38,7 +38,7 @@ async function signedIn(aiCountsAsProductive = false) {
   return { cloud, team };
 }
 
-const open = (name: 'Semana' | 'Mes') => userEvent.click(screen.getByRole('tab', { name }));
+const open = (name: 'Semana' | 'Mes') => userEvent.click(screen.getByRole('radio', { name }));
 
 // Solo se finge la fecha: los temporizadores y las promesas siguen reales.
 beforeEach(() => vi.useFakeTimers({ toFake: ['Date'] }));
@@ -52,9 +52,9 @@ describe('Mi día: Día · Semana · Mes (AC-18)', () => {
     vi.setSystemTime(new Date('2026-10-07T10:00:00'));
     const { bridge } = bridgeWithRange();
     renderWithSession(<MiDiaPage bridge={bridge} />, { bridge, cloud: (await signedIn()).cloud });
-    const tabs = within(screen.getByRole('tablist', { name: 'Periodo' })).getAllByRole('tab');
+    const tabs = within(screen.getByRole('radiogroup', { name: 'Periodo' })).getAllByRole('radio');
     expect(tabs.map((t) => t.textContent)).toEqual(['Día', 'Semana', 'Mes']);
-    expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
+    expect(tabs[0]).toHaveAttribute('aria-checked', 'true');
     expect(await screen.findByRole('heading', { name: 'Registro de tiempo' })).toBeInTheDocument();
   }, LONG);
 
@@ -143,7 +143,7 @@ describe('Mi día: Día · Semana · Mes (AC-18)', () => {
     await screen.findByRole('heading', { name: 'Registro de tiempo' });
     await open('Semana');
     expect(await screen.findByText('No se pudo leer tu actividad del periodo')).toBeInTheDocument();
-    expect(screen.getByText(/sensor no disponible/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reintentar' })).toBeInTheDocument();
   }, LONG);
 });
 
@@ -200,7 +200,7 @@ describe('Mi semana y Mi mes: tiempo por proyecto y tarea (AC-19)', () => {
     expect(screen.queryByText('Sin conexión')).not.toBeInTheDocument();
   }, LONG);
 
-  it('el visor ve que su rol no registra tiempo y no se consulta la nube', async () => {
+  it('el observador ve que su rol no registra tiempo y no se consulta la nube', async () => {
     vi.setSystemTime(new Date('2026-10-07T10:00:00'));
     const { cloud, team } = await signedIn();
     const vera = cloud.debug.addAccount('vera@pulso.test', 'secreto-123', 'Vera');
@@ -211,7 +211,7 @@ describe('Mi semana y Mi mes: tiempo por proyecto y tarea (AC-19)', () => {
     renderWithSession(<MiDiaPage bridge={bridge} />, { bridge, cloud });
     await screen.findByRole('heading', { name: 'Registro de tiempo' });
     await open('Semana');
-    expect(await screen.findByText('Tu rol de visor no registra tiempo por proyecto.')).toBeInTheDocument();
+    expect(await screen.findByText('Con el rol de observador no se registra tiempo por proyecto.')).toBeInTheDocument();
     expect(screen.queryByText(/Elige un equipo/)).not.toBeInTheDocument();
     expect(screen.getByText('Productivas')).toBeInTheDocument();
     expect(spy).not.toHaveBeenCalled();
