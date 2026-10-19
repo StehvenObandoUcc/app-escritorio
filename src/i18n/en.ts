@@ -723,6 +723,7 @@ export const en: Dict = {
   },
   forms: {
     required: 'This field is required.',
+    requiredLegend: 'Fields marked with * are required.',
     discardTitle: 'Discard your changes?',
     discardMessage: 'You entered data that has not been saved yet. If you leave now, it is lost.',
     discardConfirm: 'Discard',

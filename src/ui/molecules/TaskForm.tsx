@@ -78,10 +78,13 @@ export function TaskForm({
       noValidate
     >
       {parentTitle && <p className="text-sm text-fg-muted">{t('tasks.subtaskOf', { title: parentTitle })}</p>}
+      {/* F-17: el asterisco se explica; `required` también hace que Enter no pase por los campos opcionales (F-14). */}
+      <p className="text-sm text-fg-muted">{t('forms.requiredLegend')}</p>
       <div className="flex flex-wrap items-start gap-3">
         <div className="min-w-48 grow-2 basis-0">
           <FormField
             name="title"
+            required
             label={`${t('tasks.form.title')} *`}
             value={v.title}
             maxLength={LIMITS.taskTitle.max}

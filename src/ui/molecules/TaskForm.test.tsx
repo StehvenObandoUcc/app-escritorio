@@ -7,6 +7,12 @@ const renderForm = () =>
   render(<TaskForm people={[{ value: 'u1', label: 'Ana' }]} manage isNew submitLabel="Crear tarea" onSubmit={async () => {}} onCancel={() => {}} />);
 
 describe('TaskForm (Lote 4)', () => {
+  it('el asterisco se explica y el título es obligatorio también para el lector de pantalla (F-17)', () => {
+    renderForm();
+    expect(screen.getByText('Los campos con * son obligatorios.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Título *')).toBeRequired();
+  });
+
   it('el texto de ayuda o error de un área de texto queda asociado al campo (A-04)', () => {
     renderForm();
     expect(screen.getByLabelText('Criterios de aceptación')).toHaveAccessibleDescription(
