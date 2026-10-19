@@ -51,6 +51,16 @@ export function systemTimezone(): string {
   }
 }
 
+/**
+ * Zonas horarias IANA para elegir de una lista (F-16), con `extra` (la guardada y la del sistema) siempre
+ * incluidas aunque el motor no las liste (p. ej. «UTC»). Sin `Intl.supportedValuesOf` (motores anteriores a
+ * Chromium 99) la lista queda solo con esas.
+ */
+export function timeZones(...extra: string[]): string[] {
+  const all = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : [];
+  return [...new Set([...all, ...extra.filter(Boolean)])].sort();
+}
+
 /** Desfase (ms) de `timeZone` en el instante `ms`: hora de pared de esa zona menos el instante, ambos como UTC. */
 function zoneOffsetMs(ms: number, timeZone: string): number {
   const parts = new Intl.DateTimeFormat('en-US', {
