@@ -19,12 +19,12 @@ import { TareaPage } from '@/pages/proyectos/TareaPage';
 import { ProyectosPage } from '@/pages/proyectos/ProyectosPage';
 import { MisTareasPage } from '@/pages/tareas/MisTareasPage';
 import { Button, Select } from '@/ui/atoms';
-import { KeyboardHelp, LocaleSwitcher, SyncStatus, ThemeToggle } from '@/ui/molecules';
+import { KeyboardHelp, SyncStatus, ThemeToggle } from '@/ui/molecules';
 import { AlertBanner, AppNav, type NavItem } from '@/ui/organisms';
 import { AppShell } from '@/ui/templates';
 import { useNotAllowedAlerts } from './alerts';
 import { HelpContext, useAppKeyboard } from './keyboard';
-import { LocaleProvider, useLocale } from './locale';
+import { LocaleProvider } from './locale';
 import { SessionProvider, useSession } from './session';
 
 export const nav = (): NavItem[] => [
@@ -42,10 +42,9 @@ const cloud = createCloud(bridge);
 /** Rutas de la navegación en el mismo orden: Alt+1 … Alt+n abre la n-ésima (`nav()` y esta lista deben coincidir). */
 export const ROUTES = ['/mi-dia', '/tareas', '/proyectos', '/equipo', '/tablero', '/reportes', '/ajustes'];
 
-/** Pie de la navegación: equipo activo (D1), sincronización, idioma (F-03), tema y ayuda de teclado (F-13). */
+/** Pie de la navegación: equipo activo (D1), sincronización, tema y ayuda de teclado (F-13). El idioma va en Ajustes y en el acceso. */
 function NavFooter({ onHelp }: { onHelp: () => void }) {
   const { theme, cycle } = useTheme();
-  const { locale, change } = useLocale();
   const { sync, teams, activeTeam, selectTeam } = useSession();
   return (
     <div className="flex flex-col items-center gap-3 lg:items-stretch">
@@ -62,10 +61,6 @@ function NavFooter({ onHelp }: { onHelp: () => void }) {
         </div>
       )}
       <SyncStatus phase={sync.phase} message={sync.message} lastSyncedAt={sync.lastSyncedAt} compact />
-      {/* En el riel (640-1023 px) no cabe; ahí sigue en Ajustes → Idioma. */}
-      <div className="hidden lg:block">
-        <LocaleSwitcher id="idioma-menu" locale={locale} onChange={(l) => void change(l).catch(() => {})} />
-      </div>
       <ThemeToggle theme={theme} onCycle={cycle} />
       {/* Volvió con F-13 (se quitó en ADR-0021): sin él, los atajos solo se descubrían con «?». */}
       <Button variant="ghost" size="sm" onClick={onHelp} title={t('keyboard.title')} icon={<Keyboard size={16} aria-hidden="true" />}>
