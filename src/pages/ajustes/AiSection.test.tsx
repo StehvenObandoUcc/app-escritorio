@@ -16,14 +16,14 @@ describe('IA con tu propio proveedor', () => {
     await userEvent.clear(url);
     await userEvent.type(url, 'http://api.ejemplo.com/v1');
     await userEvent.type(screen.getByLabelText(/^Modelo/), 'modelo-x');
-    await userEvent.click(screen.getByRole('button', { name: 'Guardar' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('debe empezar por https://');
 
     await userEvent.selectOptions(screen.getByLabelText('Proveedor'), 'Ollama (en este computador)');
     expect(url).toHaveValue('http://localhost:11434/v1');
     await userEvent.type(screen.getByLabelText(/^Clave de API/), 'sk-secreta');
-    await userEvent.click(screen.getByRole('button', { name: 'Guardar' }));
-    expect(await screen.findByText('Configuración guardada')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+    expect(await screen.findByText('Cambios guardados')).toBeInTheDocument();
     expect(await screen.findByText(/Hay una clave guardada/)).toBeInTheDocument();
     expect(screen.getByLabelText(/^Clave de API/)).toHaveValue('');
     expect(document.body.textContent).not.toContain('sk-secreta');

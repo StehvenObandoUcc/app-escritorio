@@ -51,7 +51,7 @@ function PerfilForm({
       async (data) => {
         await session.cloud.saveProfile(data.name, data.timezone);
         await session.refresh();
-        setNotice(t('profile.saved'));
+        setNotice(t('common.saved'));
       },
       e,
     );
@@ -89,7 +89,7 @@ function PerfilForm({
         )}
         <div className="flex flex-wrap gap-2">
           <Button type="submit" variant="primary" disabled={busy}>
-            {t('profile.save')}
+            {t('common.save')}
           </Button>
           <Button onClick={() => void session.cloud.signOut()}>{t('profile.signOut')}</Button>
         </div>

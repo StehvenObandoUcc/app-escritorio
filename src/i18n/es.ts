@@ -522,7 +522,7 @@ export const es = {
     moreLaterHint: 'Las reglas y la jornada del equipo están en Equipo → General.',
     language: 'Idioma',
     languageLabel: 'Idioma de Pulso',
-    languageHint: 'Cambia toda la app y las notificaciones de Windows. Se guarda en este computador.',
+    languageHint: 'Se aplica al instante: cambia toda la app y las notificaciones de Windows. Se guarda en este computador.',
     languages: { es: 'Español', en: 'English' },
   },
   profile: {
@@ -531,8 +531,6 @@ export const es = {
     nameHint: 'Así te ven en la lista del equipo.',
     timezone: 'Zona horaria',
     timezoneHint: 'Define tu jornada y tu día. Formato Región/Ciudad, por ejemplo America/Bogota.',
-    saved: 'Perfil guardado.',
-    save: 'Guardar perfil',
     signOut: 'Cerrar sesión',
   },
   team: {
@@ -892,8 +890,6 @@ export const es = {
     key: 'Clave de API',
     keySaved: 'Hay una clave guardada. Escribe otra solo si quieres cambiarla.',
     keyHint: 'Una suscripción de chat (ChatGPT Plus, Gemini Advanced…) no trae clave de API: para eso usa el modo manual.',
-    save: 'Guardar',
-    saved: 'Configuración guardada',
     test: 'Probar conexión',
     testing: 'Probando…',
     testOk: 'Conexión correcta: el proveedor respondió.',
