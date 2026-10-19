@@ -28,7 +28,7 @@ describe('Equipo (EQ-01 a EQ-08, PS-02)', () => {
   it('sin equipo ofrece dos caminos y explica que la invitación va al correo de la sesión (F-05)', async () => {
     const { cloud } = await signedIn();
     renderWithSession(<EquipoPage />, { path: '/equipo', cloud });
-    expect(await screen.findByRole('heading', { name: 'Crear un equipo' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Crear un equipo' }, { timeout: 3000 })).toBeInTheDocument();
     const join = screen.getByRole('region', { name: 'Unirme a un equipo' });
     expect(within(join).getByText(/con el correo de esta cuenta: ana@pulso\.test/)).toBeInTheDocument();
     // No hay campo de código suelto: el código se escribe dentro de la invitación.

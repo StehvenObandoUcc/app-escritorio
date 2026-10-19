@@ -411,6 +411,17 @@ export const en: Dict = {
     title: 'Before sharing data with {team}',
     version: 'Version {version}. Without your consent, nothing leaves your computer.',
     agree: 'I read what is measured and who sees it, and I agree to share this data with {team}.',
+    summaryLabel: 'Summary',
+    summary: {
+      measuredLabel: 'Measured:',
+      measured: 'the app in the foreground and its category, the domain of the sites you visit in the browser (never the page or what you search), your active, idle, break and pause times, your recorded time and Pulso closures during the workday.',
+      neverLabel: 'Never:',
+      never: 'keystrokes, screenshots, or the content of documents or of your AI chats. Window titles stay encrypted on your computer and are never sent.',
+      whoLabel: 'Who sees it:',
+      who: 'owners and admins see your totals by category, app, website (domain) and AI use, and your Pulso closures; a viewer, only team totals without names; the detail with titles, only you; they can mark sites as not allowed, which count as distraction.',
+    },
+    details: 'Read the full details ({n} points)',
+    mustAgree: 'Check the box to continue.',
   },
   activity: {
     andMore: 'and {n} more',

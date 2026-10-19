@@ -410,6 +410,18 @@ export const es = {
     title: 'Antes de compartir datos con {team}',
     version: 'Versión {version}. Sin tu consentimiento, nada sale de tu computador.',
     agree: 'Leí qué se mide y quién lo ve, y acepto compartir estos datos con {team}.',
+    /** Resumen (F-18): sale de los puntos «Qué se mide», «Qué nunca se mide» y «Quién lo ve»; no los reemplaza. */
+    summaryLabel: 'Resumen',
+    summary: {
+      measuredLabel: 'Se mide:',
+      measured: 'la app en primer plano y su categoría, el dominio de los sitios que visitas en el navegador (nunca la página ni lo que buscas), tus tiempos de actividad, inactividad, descansos y pausas, tu tiempo registrado y los cierres de Pulso dentro de la jornada.',
+      neverLabel: 'Nunca:',
+      never: 'teclas, capturas de pantalla ni el contenido de documentos o de tus chats con IA. Los títulos de ventana se quedan cifrados en tu computador y nunca se envían.',
+      whoLabel: 'Lo ve:',
+      who: 'propietarios y administradores ven tus totales por categoría, app, sitio web (dominio) y uso de IA, y tus cierres de Pulso; un observador, solo totales del equipo sin nombres; el detalle con títulos, solo tú; pueden marcar sitios como no permitidos, que cuentan como distracción.',
+    },
+    details: 'Leer el detalle completo ({n} puntos)',
+    mustAgree: 'Marca la casilla para continuar.',
   },
   activity: {
     andMore: 'y {n} más',
