@@ -96,16 +96,23 @@ describe('Reglas y políticas (ADR-0009)', () => {
     expect(screen.queryByRole('region', { name: 'Reglas y políticas' })).not.toBeInTheDocument();
   });
 
-  it('con el consentimiento de una versión anterior, se pide aceptar la nueva antes de subir nada', async () => {
+  it('quien aceptó la v2 no sincroniza hasta aceptar la v3 (F6-9)', async () => {
     const cloud = createMockCloud();
     const ana = cloud.debug.addAccount('ana@pulso.test', 'secreto-123', 'Ana');
     const team = cloud.debug.addTeam('Equipo A', ana);
     await cloud.signIn('ana@pulso.test', 'secreto-123');
-    await cloud.giveConsent(team, '2026-10-v1');
+    // Quien aceptó la v2 (sin lo que ve un líder de proyecto, F6-9) vuelve a aceptar.
+    await cloud.giveConsent(team, '2026-10-v2');
     const bridge = createMockBridge();
     const active = vi.spyOn(bridge, 'activeTeamSet');
     renderWithSession(<EquipoPage />, { path: '/equipo', cloud, bridge });
     expect(await screen.findByRole('button', { name: 'Aceptar la versión nueva' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Resumen' })).toHaveTextContent(/quien lidera un proyecto, solo tu tiempo, tus horas de IA y tus tareas en curso de ese proyecto/);
     await waitFor(() => expect(active).toHaveBeenLastCalledWith(null, expect.any(String)));
+    // Al aceptar la v3, Rust recibe el equipo y vuelve a subir datos.
+    await userEvent.click(screen.getByRole('checkbox'));
+    await userEvent.click(screen.getByRole('button', { name: 'Aceptar la versión nueva' }));
+    await waitFor(() => expect(active).toHaveBeenLastCalledWith(team, expect.any(String)));
+    expect((await cloud.myTeams()).find((x) => x.id === team)?.consentVersion).toBe(CONSENT_VERSION);
   });
 });
