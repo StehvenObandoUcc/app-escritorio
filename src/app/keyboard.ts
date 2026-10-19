@@ -19,6 +19,8 @@ const isTyping = (el: EventTarget | null) =>
 /**
  * Enter en un campo de texto pasa al siguiente campo vacío del mismo formulario y solo envía cuando ya no
  * quedan vacíos; Ctrl+Enter envía desde un área de texto (AC-43). Devuelve true si atendió la tecla.
+ * Si el formulario marca campos obligatorios (`required`), Enter solo salta a los obligatorios vacíos y
+ * envía cuando están llenos, sin pasar por los opcionales (F-14).
  */
 export function enterToNextField(e: KeyboardEvent): boolean {
   const target = e.target;
@@ -32,7 +34,8 @@ export function enterToNextField(e: KeyboardEvent): boolean {
   }
   if (!(target instanceof HTMLInputElement) || !target.matches(FIELDS)) return false;
   const fields = [...form.querySelectorAll<HTMLInputElement>(FIELDS)];
-  const next = fields.slice(fields.indexOf(target) + 1).find((f) => !f.value);
+  const marked = fields.some((f) => f.required);
+  const next = fields.slice(fields.indexOf(target) + 1).find((f) => !f.value && (!marked || f.required));
   if (!next) return false;
   e.preventDefault();
   next.focus();
@@ -52,6 +55,9 @@ export function arrowToNearest(e: KeyboardEvent): boolean {
   const active = document.activeElement;
   // Sin foco, o con el foco en el contenedor de la pantalla, la flecha va al primer elemento del contenido.
   const from = active instanceof HTMLElement && active !== document.body && active.id !== 'contenido' ? active : null;
+  // F-14: con el foco en el contenedor y una pantalla que se puede desplazar, ↑ y ↓ desplazan (lo normal).
+  const content = document.getElementById('contenido');
+  if (content && active === content && dir[1] !== 0 && content.scrollHeight > content.clientHeight) return false;
   if (from?.matches(OWN_ARROWS)) return false;
   // En un campo de texto, izquierda y derecha mueven el cursor.
   if (from instanceof HTMLInputElement && dir[0] !== 0) return false;
