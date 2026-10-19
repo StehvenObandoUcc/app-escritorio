@@ -523,6 +523,7 @@ export const es = {
     language: 'Idioma',
     languageLabel: 'Idioma de Pulso',
     languageHint: 'Se aplica al instante: cambia toda la app y las notificaciones de Windows. Se guarda en este computador.',
+    preferences: 'Cuenta y preferencias',
     languages: { es: 'Español', en: 'English' },
   },
   profile: {

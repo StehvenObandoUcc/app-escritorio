@@ -12,6 +12,7 @@ import { useOptionalSession } from '@/app/session';
 import { AiSection } from './AiSection';
 import { MiPrivacidadSection } from './MiPrivacidadSection';
 import { PerfilSection } from './PerfilSection';
+import { PreferenciasSection } from './PreferenciasSection';
 
 /** Días hacia atrás de los que se sacan las apps candidatas a ocultar. */
 const RECENT_DAYS = 7;
@@ -129,6 +130,7 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
   return (
     <PageLayout title={t('nav.settings')} subtitle={t('settings.subtitle')} actions={sampleTag}>
       <PerfilSection />
+      <PreferenciasSection />
       <LanguageSection />
       {toastsOff && (
         <p role="note" className="rounded-md bg-sunken p-3 text-sm text-fg">

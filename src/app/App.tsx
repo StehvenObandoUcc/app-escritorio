@@ -23,7 +23,7 @@ import { KeyboardHelp, LocaleSwitcher, SyncStatus, ThemeToggle } from '@/ui/mole
 import { AlertBanner, AppNav, type NavItem } from '@/ui/organisms';
 import { AppShell } from '@/ui/templates';
 import { useNotAllowedAlerts } from './alerts';
-import { useAppKeyboard } from './keyboard';
+import { HelpContext, useAppKeyboard } from './keyboard';
 import { LocaleProvider, useLocale } from './locale';
 import { SessionProvider, useSession } from './session';
 
@@ -96,25 +96,27 @@ function Gate() {
   }
   if (user === null) return <AccesoPage />;
   return (
-    <AppShell nav={<AppNav items={nav()} footer={<NavFooter onHelp={openHelp} />} />}>
-      <AlertBanner alerts={alerts} onDismiss={dismiss} />
-      <KeyboardHelp open={help} onClose={() => setHelp(false)} sectionCount={ROUTES.length} />
-      <Routes>
-        <Route path="/" element={<Navigate to="/mi-dia" replace />} />
-        <Route path="/mi-dia" element={<MiDiaPage bridge={bridge} />} />
-        <Route path="/tareas" element={<MisTareasPage />} />
-        <Route path="/proyectos" element={<ProyectosPage />} />
-        <Route path="/proyectos/:id" element={<ProyectoPage />} />
-        <Route path="/proyectos/:id/tareas/:tarea" element={<TareaPage />} />
-        <Route path="/equipo" element={<EquipoPage />} />
-        <Route path="/equipo/privacidad" element={<PrivacidadPage />} />
-        <Route path="/tablero" element={<TableroPage />} />
-        <Route path="/reportes" element={<ReportesPage />} />
-        <Route path="/ajustes" element={<AjustesPage bridge={bridge} />} />
-        {import.meta.env.DEV && <Route path="/dev/galeria" element={<GaleriaPage />} />}
-        <Route path="*" element={<Navigate to="/mi-dia" replace />} />
-      </Routes>
-    </AppShell>
+    <HelpContext.Provider value={openHelp}>
+      <AppShell nav={<AppNav items={nav()} footer={<NavFooter onHelp={openHelp} />} />}>
+        <AlertBanner alerts={alerts} onDismiss={dismiss} />
+        <KeyboardHelp open={help} onClose={() => setHelp(false)} sectionCount={ROUTES.length} />
+        <Routes>
+          <Route path="/" element={<Navigate to="/mi-dia" replace />} />
+          <Route path="/mi-dia" element={<MiDiaPage bridge={bridge} />} />
+          <Route path="/tareas" element={<MisTareasPage />} />
+          <Route path="/proyectos" element={<ProyectosPage />} />
+          <Route path="/proyectos/:id" element={<ProyectoPage />} />
+          <Route path="/proyectos/:id/tareas/:tarea" element={<TareaPage />} />
+          <Route path="/equipo" element={<EquipoPage />} />
+          <Route path="/equipo/privacidad" element={<PrivacidadPage />} />
+          <Route path="/tablero" element={<TableroPage />} />
+          <Route path="/reportes" element={<ReportesPage />} />
+          <Route path="/ajustes" element={<AjustesPage bridge={bridge} />} />
+          {import.meta.env.DEV && <Route path="/dev/galeria" element={<GaleriaPage />} />}
+          <Route path="*" element={<Navigate to="/mi-dia" replace />} />
+        </Routes>
+      </AppShell>
+    </HelpContext.Provider>
   );
 }
 
