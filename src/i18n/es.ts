@@ -733,6 +733,7 @@ export const es = {
   },
   keyboard: {
     title: 'Atajos de teclado',
+    open: 'Atajos',
     close: 'Entendido',
     enter: 'Abrir lo enfocado; en un formulario, pasar al siguiente campo vacío y enviar en el último',
     ctrlEnter: 'Enviar el formulario desde un área de texto',

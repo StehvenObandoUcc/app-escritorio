@@ -734,6 +734,7 @@ export const en: Dict = {
   },
   keyboard: {
     title: 'Keyboard shortcuts',
+    open: 'Shortcuts',
     close: 'Got it',
     enter: 'Open the focused item; in a form, go to the next empty field and submit on the last one',
     ctrlEnter: 'Submit the form from a text area',

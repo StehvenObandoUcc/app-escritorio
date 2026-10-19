@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ChartColumn, FolderKanban, LayoutDashboard, ListChecks, Settings, Sun, Users } from 'lucide-react';
+import { ChartColumn, FolderKanban, Keyboard, LayoutDashboard, ListChecks, Settings, Sun, Users } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router';
 import { bridge } from '@/bridge';
@@ -18,7 +18,7 @@ import { ProyectoPage } from '@/pages/proyectos/ProyectoPage';
 import { TareaPage } from '@/pages/proyectos/TareaPage';
 import { ProyectosPage } from '@/pages/proyectos/ProyectosPage';
 import { MisTareasPage } from '@/pages/tareas/MisTareasPage';
-import { Select } from '@/ui/atoms';
+import { Button, Select } from '@/ui/atoms';
 import { KeyboardHelp, LocaleSwitcher, SyncStatus, ThemeToggle } from '@/ui/molecules';
 import { AlertBanner, AppNav, type NavItem } from '@/ui/organisms';
 import { AppShell } from '@/ui/templates';
@@ -42,8 +42,8 @@ const cloud = createCloud(bridge);
 /** Rutas de la navegación en el mismo orden: Alt+1 … Alt+n abre la n-ésima (`nav()` y esta lista deben coincidir). */
 export const ROUTES = ['/mi-dia', '/tareas', '/proyectos', '/equipo', '/tablero', '/reportes', '/ajustes'];
 
-/** Pie de la navegación: equipo activo (D1), sincronización, idioma (F-03) y tema. */
-function NavFooter() {
+/** Pie de la navegación: equipo activo (D1), sincronización, idioma (F-03), tema y ayuda de teclado (F-13). */
+function NavFooter({ onHelp }: { onHelp: () => void }) {
   const { theme, cycle } = useTheme();
   const { locale, change } = useLocale();
   const { sync, teams, activeTeam, selectTeam } = useSession();
@@ -67,6 +67,10 @@ function NavFooter() {
         <LocaleSwitcher id="idioma-menu" locale={locale} onChange={(l) => void change(l).catch(() => {})} />
       </div>
       <ThemeToggle theme={theme} onCycle={cycle} />
+      {/* Volvió con F-13 (se quitó en ADR-0021): sin él, los atajos solo se descubrían con «?». */}
+      <Button variant="ghost" size="sm" onClick={onHelp} title={t('keyboard.title')} icon={<Keyboard size={16} aria-hidden="true" />}>
+        <span className="md:sr-only lg:not-sr-only">{t('keyboard.open')}</span>
+      </Button>
     </div>
   );
 }
@@ -92,7 +96,7 @@ function Gate() {
   }
   if (user === null) return <AccesoPage />;
   return (
-    <AppShell nav={<AppNav items={nav()} footer={<NavFooter />} />}>
+    <AppShell nav={<AppNav items={nav()} footer={<NavFooter onHelp={openHelp} />} />}>
       <AlertBanner alerts={alerts} onDismiss={dismiss} />
       <KeyboardHelp open={help} onClose={() => setHelp(false)} sectionCount={ROUTES.length} />
       <Routes>
