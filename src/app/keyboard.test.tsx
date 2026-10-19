@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, useLocation } from 'react-router';
 import { TaskForm } from '@/ui/molecules';
 import { AppNav } from '@/ui/organisms';
+import { AppShell } from '@/ui/templates';
 import { useAppKeyboard } from './keyboard';
 
 const ROUTES = ['/mi-dia', '/tareas'];
@@ -174,6 +175,39 @@ describe('teclado en toda la app (ADR-0019)', () => {
     await userEvent.click(screen.getByRole('link', { name: 'Mis tareas' }));
     expect(ruta).toHaveTextContent('/tareas');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('«Saltar al contenido» es solo para Tab: las flechas no lo alcanzan (A-06, ADR-0021)', async () => {
+    function Keys() {
+      useAppKeyboard(ROUTES, () => {});
+      return null;
+    }
+    render(
+      <MemoryRouter>
+        <Keys />
+        <AppShell
+          nav={
+            <AppNav
+              items={[
+                { to: '/mi-dia', label: 'Mi día', icon: Sun },
+                { to: '/tareas', label: 'Mis tareas', icon: ListChecks },
+              ]}
+            />
+          }
+        >
+          <button>Algo</button>
+        </AppShell>
+      </MemoryRouter>,
+    );
+    const skip = screen.getByRole('link', { name: 'Saltar al contenido' });
+    // ↑ desde el primer ítem del menú no cae en el enlace.
+    screen.getByRole('link', { name: 'Mi día' }).focus();
+    await userEvent.keyboard('{ArrowUp}');
+    expect(skip).not.toHaveFocus();
+    // Tab desde el principio sigue llegando primero al enlace.
+    (document.activeElement as HTMLElement | null)?.blur();
+    await userEvent.tab();
+    expect(skip).toHaveFocus();
   });
 
   it('las flechas recorren el menú de navegación', async () => {
