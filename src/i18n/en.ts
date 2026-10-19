@@ -29,7 +29,7 @@ export const en: Dict = {
   consent: {
     measured: { title: 'What is measured', text: 'The app in the foreground, its category (productive, neutral, distraction or AI), the domain of the sites you visit in the browser (for example perplexity.ai, never the page or what you search), your active, idle, break and pause times, your recorded time and Pulso closures during the workday.' },
     never: { title: 'What is never measured', text: 'Keystrokes, screenshots, the content of documents or of your AI chats. Window titles stay encrypted on your computer and are never sent.' },
-    who: { title: 'Who sees it', text: 'Owners and admins see your totals by category, app, website (domain) and AI use, and your Pulso closures. They can mark sites as not allowed: they count as distraction, they are not blocked. A viewer only sees team totals without names. Only you see the detail with titles.' },
+    who: { title: 'Who sees it', text: 'Owners and admins see your totals by category, app, website (domain) and AI use, and your Pulso closures. They can mark sites as not allowed: they count as distraction, they are not blocked. Whoever leads a project you take part in sees, only for that project, your recorded time on its tasks, your AI hours during that time and your tasks in progress; they do not see your apps, sites or categories. A viewer only sees team totals without names. Only you see the detail with titles.' },
     ai: { title: 'AI and where data lives', text: 'AI reports use calculated figures, with pseudonyms instead of names. In free mode the provider is DeepSeek; the team can use another one. Data may be processed outside Colombia.' },
     purpose: { title: 'What it is for', text: 'Reports are indicative: automatic measurements have errors and are not disciplinary evidence.' },
     control: { title: 'Your control', text: 'You can pause tracking and leave the team whenever you want. You can hide apps unless your team turns it off; then they are recorded by name from that moment. When you leave, your activity in that team is deleted; your recorded time is kept as “Former member”.' },
@@ -418,7 +418,7 @@ export const en: Dict = {
       neverLabel: 'Never:',
       never: 'keystrokes, screenshots, or the content of documents or of your AI chats. Window titles stay encrypted on your computer and are never sent.',
       whoLabel: 'Who sees it:',
-      who: 'owners and admins see your totals by category, app, website (domain) and AI use, and your Pulso closures; a viewer, only team totals without names; the detail with titles, only you; they can mark sites as not allowed, which count as distraction.',
+      who: 'owners and admins see your totals by category, app, website (domain) and AI use, and your Pulso closures, and they can mark sites as not allowed, which count as distraction; whoever leads a project, only your time, your AI hours and your tasks in progress in that project; a viewer, only team totals without names; the detail with titles, only you.',
     },
     details: 'Read the full details ({n} points)',
     mustAgree: 'Check the box to continue.',

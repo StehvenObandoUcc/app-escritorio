@@ -27,7 +27,7 @@ export const es = {
   consent: {
     measured: { title: 'Qué se mide', text: 'La app que tienes en primer plano, su categoría (productivo, neutro, distracción o IA), el dominio de los sitios que visitas en el navegador (por ejemplo perplexity.ai, nunca la página ni lo que buscas), tus tiempos de actividad, inactividad, descansos y pausas, tu tiempo registrado y los cierres de Pulso dentro de la jornada.' },
     never: { title: 'Qué nunca se mide', text: 'Teclas, capturas de pantalla, el contenido de documentos ni de tus chats con IA. Los títulos de ventana se quedan cifrados en tu computador y nunca se envían.' },
-    who: { title: 'Quién lo ve', text: 'Propietarios y administradores ven tus totales por categoría, app, sitio web (dominio) y uso de IA, y tus cierres de Pulso. Pueden marcar sitios como no permitidos: se registran como distracción, no se bloquean. Un observador solo ve totales del equipo sin nombres. El detalle con títulos solo lo ves tú.' },
+    who: { title: 'Quién lo ve', text: 'Propietarios y administradores ven tus totales por categoría, app, sitio web (dominio) y uso de IA, y tus cierres de Pulso. Pueden marcar sitios como no permitidos: se registran como distracción, no se bloquean. Quien lidera un proyecto en el que participas ve, solo de ese proyecto, tu tiempo registrado en sus tareas, tus horas de IA durante ese tiempo y tus tareas en curso; no ve tus apps, sitios ni categorías. Un observador solo ve totales del equipo sin nombres. El detalle con títulos solo lo ves tú.' },
     ai: { title: 'IA y lugar de los datos', text: 'Los reportes con IA usan cifras calculadas, con seudónimos en lugar de nombres. En el modo gratis el proveedor es DeepSeek; el equipo puede usar otro. Los datos pueden procesarse fuera de Colombia.' },
     purpose: { title: 'Para qué sirve', text: 'Los reportes son indicativos: las mediciones automáticas tienen errores y no son una prueba disciplinaria.' },
     control: { title: 'Tu control', text: 'Puedes pausar el seguimiento y salir del equipo cuando quieras. Puedes ocultar apps, salvo que tu equipo lo desactive; en ese caso se registran con su nombre desde ese momento. Al salir se borra tu actividad en ese equipo; tu tiempo registrado se conserva como «Exmiembro».' },
@@ -418,7 +418,7 @@ export const es = {
       neverLabel: 'Nunca:',
       never: 'teclas, capturas de pantalla ni el contenido de documentos o de tus chats con IA. Los títulos de ventana se quedan cifrados en tu computador y nunca se envían.',
       whoLabel: 'Lo ve:',
-      who: 'propietarios y administradores ven tus totales por categoría, app, sitio web (dominio) y uso de IA, y tus cierres de Pulso; un observador, solo totales del equipo sin nombres; el detalle con títulos, solo tú; pueden marcar sitios como no permitidos, que cuentan como distracción.',
+      who: 'propietarios y administradores ven tus totales por categoría, app, sitio web (dominio) y uso de IA, y tus cierres de Pulso, y pueden marcar sitios como no permitidos, que cuentan como distracción; quien lidera un proyecto, solo tu tiempo, tus horas de IA y tus tareas en curso de ese proyecto; un observador, solo totales del equipo sin nombres; el detalle con títulos, solo tú.',
     },
     details: 'Leer el detalle completo ({n} puntos)',
     mustAgree: 'Marca la casilla para continuar.',
