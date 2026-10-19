@@ -523,7 +523,7 @@ export const en: Dict = {
     moreLaterHint: 'Team rules and workday are in Team → General.',
     language: 'Language',
     languageLabel: 'Pulso language',
-    languageHint: 'Changes the whole app and the Windows notifications. Saved on this computer.',
+    languageHint: 'Applies right away: changes the whole app and the Windows notifications. Saved on this computer.',
     languages: { es: 'Español', en: 'English' },
   },
   profile: {
@@ -532,8 +532,6 @@ export const en: Dict = {
     nameHint: 'This is how you appear in the team list.',
     timezone: 'Time zone',
     timezoneHint: 'Defines your workday and your day. Region/City format, for example America/Bogota.',
-    saved: 'Profile saved.',
-    save: 'Save profile',
     signOut: 'Sign out',
   },
   team: {
@@ -893,8 +891,6 @@ export const en: Dict = {
     key: 'API key',
     keySaved: 'A key is saved. Type another one only if you want to change it.',
     keyHint: 'A chat subscription (ChatGPT Plus, Gemini Advanced…) does not include an API key: use manual mode for that.',
-    save: 'Save',
-    saved: 'Settings saved',
     test: 'Test connection',
     testing: 'Testing…',
     testOk: 'Connection works: the provider answered.',

@@ -1,11 +1,23 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { Bridge } from '@/bridge/contract';
 import { createMockBridge } from '@/bridge/mock';
 import { AjustesPage } from './AjustesPage';
 
+/** Hay un «Guardar cambios» por tarjeta (F-15): el de Seguimiento. */
+const saveTracking = () => within(screen.getByRole('region', { name: 'Seguimiento' })).getByRole('button', { name: 'Guardar cambios' });
+
 describe('Ajustes', () => {
+  it('todas las tarjetas guardan con el mismo texto y el idioma dice que se aplica al instante (F-15)', async () => {
+    render(<AjustesPage bridge={createMockBridge()} />);
+    await screen.findByLabelText('Minutos de inactividad');
+    const saves = screen.getAllByRole('button', { name: /^Guardar/ });
+    expect(saves.length).toBeGreaterThan(1);
+    expect(new Set(saves.map((b) => b.textContent))).toEqual(new Set(['Guardar cambios']));
+    expect(screen.getByText(/^Se aplica al instante/)).toBeInTheDocument();
+  });
+
   it('muestra los valores actuales', async () => {
     render(<AjustesPage bridge={createMockBridge()} />);
     expect(await screen.findByLabelText('Minutos de inactividad')).toHaveValue(5);
@@ -27,12 +39,12 @@ describe('Ajustes', () => {
     await userEvent.type(screen.getByLabelText('Añadir otra app'), 'keepass{Enter}');
     // KeePass está instalado: sale con su nombre real del registro y queda marcada.
     expect(screen.getByRole('checkbox', { name: /KeePass/ })).toBeChecked();
-    await userEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+    await userEvent.click(saveTracking());
     expect(await screen.findByText('Cambios guardados')).toBeInTheDocument();
     expect(await bridge.settingsGet()).toEqual({ idleMinutes: 10, hiddenApps: ['slack', 'keepass'], language: 'es' });
     // Desmarcar deja de ocultarla.
     await userEvent.click(screen.getByRole('checkbox', { name: /Slack/ }));
-    await userEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+    await userEvent.click(saveTracking());
     await waitFor(async () => expect((await bridge.settingsGet()).hiddenApps).toEqual(['keepass']));
   });
 
@@ -41,7 +53,7 @@ describe('Ajustes', () => {
     const minutes = await screen.findByLabelText('Minutos de inactividad');
     await userEvent.clear(minutes);
     if (value) await userEvent.type(minutes, value);
-    await userEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+    await userEvent.click(saveTracking());
     expect(await screen.findByRole('alert')).toHaveTextContent('entre 3 y 15');
   });
 
@@ -52,7 +64,7 @@ describe('Ajustes', () => {
     };
     render(<AjustesPage bridge={bridge} />);
     await screen.findByLabelText('Minutos de inactividad');
-    await userEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+    await userEvent.click(saveTracking());
     expect(await screen.findByRole('alert')).toHaveTextContent('disco lleno');
   });
 
