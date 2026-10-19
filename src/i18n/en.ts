@@ -351,6 +351,12 @@ export const en: Dict = {
     body: 'You entered at {time}. Your team marked it as not allowed: Pulso does not block it and the time counts as distraction.',
     ok: 'Got it',
   },
+  taskNotices: {
+    toReview: 'You have a task to review: “{title}”',
+    returned: 'Changes were requested on “{title}”',
+    approved: '“{title}” was approved',
+    open: 'Open task',
+  },
   cloud: {
     wrongCode: 'The code does not match or the invitation expired. Check it with whoever invited you: after 5 attempts the invitation is cancelled.',
     timeout: 'The server did not respond in time (error {status}). Wait a minute and try again.',

@@ -350,6 +350,12 @@ export const es = {
     body: 'Entraste a las {time}. Tu equipo lo marcó como no permitido: Pulso no lo bloquea y el tiempo cuenta como distracción.',
     ok: 'Entendido',
   },
+  taskNotices: {
+    toReview: 'Tienes una tarea por revisar: «{title}»',
+    returned: 'Te pidieron cambios en «{title}»',
+    approved: 'Aprobaron «{title}»',
+    open: 'Ver tarea',
+  },
   cloud: {
     wrongCode: 'El código no coincide o la invitación ya venció. Revísalo con quien te invitó: tras 5 intentos la invitación se anula.',
     timeout: 'El servidor no respondió a tiempo (error {status}). Espera un minuto e inténtalo de nuevo.',
