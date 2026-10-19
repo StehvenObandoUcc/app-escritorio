@@ -723,6 +723,7 @@ export const es = {
   },
   forms: {
     required: 'Este campo es obligatorio.',
+    requiredLegend: 'Los campos con * son obligatorios.',
     discardTitle: '¿Descartar los cambios?',
     discardMessage: 'Escribiste datos que todavía no se guardaron. Si sales ahora, se pierden.',
     discardConfirm: 'Descartar',
