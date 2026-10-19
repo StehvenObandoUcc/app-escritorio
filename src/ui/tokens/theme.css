@@ -79,8 +79,9 @@
 
   --radius-xs: var(--prim-radius-4);
   --radius-sm: var(--prim-radius-6);
-  --radius-md: var(--prim-radius-8);
-  --radius-lg: var(--prim-radius-12);
+  /* Estilo redondeado (18-oct): tarjetas de 24 px y controles de 12 px; antes 12 y 8. Los botones son píldoras. */
+  --radius-md: var(--prim-radius-12);
+  --radius-lg: var(--prim-radius-24);
   --radius-full: var(--prim-radius-pill);
 
   --shadow-overlay: var(--sem-shadow-overlay);

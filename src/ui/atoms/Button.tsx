@@ -38,7 +38,7 @@ export function Button({
     <button
       type={type}
       className={cx(
-        'inline-flex max-w-full shrink-0 items-center justify-center gap-2 rounded-md text-center leading-tight font-medium transition-colors [&>svg]:shrink-0',
+        'inline-flex max-w-full shrink-0 items-center justify-center gap-2 rounded-full text-center leading-tight font-medium transition active:scale-98 disabled:active:scale-100 [&>svg]:shrink-0',
         'disabled:cursor-not-allowed disabled:opacity-50',
         VARIANT[variant],
         SIZE[size],

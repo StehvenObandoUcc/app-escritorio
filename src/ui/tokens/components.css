@@ -14,6 +14,21 @@
   --cmp-auth-width: 25rem; /* formulario de acceso */
 }
 
+/*
+ * Movimiento de entrada: solo opacidad y transform (no recalcula la disposición). Con
+ * «reducir movimiento» del sistema se apaga por la regla global de index.css.
+ */
+@keyframes motion-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.25rem);
+  }
+}
+.motion-enter,
+dialog[open] {
+  animation: motion-enter var(--prim-duration-base) var(--prim-ease-out) both;
+}
+
 /* Trama para "seguimiento en pausa": no depende solo del color. */
 .pattern-paused {
   background-image: repeating-linear-gradient(
