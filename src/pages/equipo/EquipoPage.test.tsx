@@ -25,6 +25,24 @@ const acceptConsent = async (button: string) => {
 };
 
 describe('Equipo (EQ-01 a EQ-08, PS-02)', () => {
+  it('sin equipo ofrece dos caminos y explica que la invitación va al correo de la sesión (F-05)', async () => {
+    const { cloud } = await signedIn();
+    renderWithSession(<EquipoPage />, { path: '/equipo', cloud });
+    expect(await screen.findByRole('heading', { name: 'Crear un equipo' })).toBeInTheDocument();
+    const join = screen.getByRole('region', { name: 'Unirme a un equipo' });
+    expect(within(join).getByText(/con el correo de esta cuenta: ana@pulso\.test/)).toBeInTheDocument();
+    // No hay campo de código suelto: el código se escribe dentro de la invitación.
+    expect(within(join).queryByRole('textbox')).not.toBeInTheDocument();
+    await userEvent.click(within(join).getByRole('button', { name: 'Buscar invitaciones' }));
+    expect(await within(join).findByText('Todavía no hay invitaciones para ana@pulso.test.')).toBeInTheDocument();
+
+    // Si mientras tanto alguien la invita, «Buscar invitaciones» la hace aparecer sin recargar.
+    const bea = cloud.debug.addAccount('bea@pulso.test', 'secreto-123', 'Bea');
+    cloud.debug.invite(cloud.debug.addTeam('Equipo B', bea), 'ana@pulso.test', 'member', bea);
+    await userEvent.click(within(join).getByRole('button', { name: 'Buscar invitaciones' }));
+    expect(await screen.findByRole('button', { name: 'Ver y responder' })).toBeInTheDocument();
+  });
+
   it('crea un equipo, pide el consentimiento y solo entonces activa la subida (AC-6, AC-13)', async () => {
     const { cloud } = await signedIn();
     const bridge = createMockBridge();
@@ -124,7 +142,7 @@ describe('Equipo (EQ-01 a EQ-08, PS-02)', () => {
     renderWithSession(<EquipoPage />, { path: '/equipo', cloud });
     await userEvent.click(await screen.findByRole('button', { name: 'Ver y responder' }));
     await userEvent.click(screen.getByRole('button', { name: 'Rechazar invitación' }));
-    expect(await screen.findByRole('heading', { name: 'Crea tu primer equipo' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Crear un equipo' })).toBeInTheDocument();
     expect(await cloud.myInvitations()).toEqual([]);
   });
 

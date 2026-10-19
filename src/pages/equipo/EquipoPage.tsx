@@ -73,7 +73,11 @@ export function EquipoPage() {
       ) : activeTeam ? (
         <TeamView team={activeTeam} key={activeTeam.id} />
       ) : (
-        <CreateTeam first />
+        // F-05: sin equipo hay dos caminos; unirse depende de una invitación hecha a este mismo correo.
+        <div className="grid items-start gap-5 lg:grid-cols-2">
+          <CreateTeam first />
+          <JoinTeam />
+        </div>
       )}
     </PageLayout>
   );
@@ -208,6 +212,38 @@ function CreateTeam({ first = false, onDone }: { first?: boolean; onDone?: () =>
           )}
         </div>
       </form>
+    </Surface>
+  );
+}
+
+/**
+ * Unirse a un equipo (F-05). No hay campo de código suelto: `accept_invitation` exige que la invitación
+ * se haya hecho al correo de esta sesión, y el código se escribe en esa invitación (arriba, en MyInvitations).
+ */
+function JoinTeam() {
+  const { cloud, user } = useSession();
+  const queryClient = useQueryClient();
+  const [state, setState] = useState<'idle' | 'busy' | 'none'>('idle');
+  const email = user?.email ?? '';
+  const search = async () => {
+    setState('busy');
+    const list = await queryClient.fetchQuery({ queryKey: ['my-invitations', user?.id], queryFn: () => cloud.myInvitations(), staleTime: 0 }).catch(() => null);
+    setState(Array.isArray(list) && list.length === 0 ? 'none' : 'idle');
+  };
+  return (
+    <Surface as="section" aria-label={t('team.joinTitle')} className="flex flex-col gap-4">
+      <div>
+        <Heading level={2}>{t('team.joinTitle')}</Heading>
+        <p className="mt-1 max-w-prose text-sm text-fg-muted">{t('team.joinHint', { email })}</p>
+      </div>
+      <div>
+        <Button onClick={() => void search()} disabled={state === 'busy'}>
+          {state === 'busy' ? t('common.loading') : t('team.searchInvitations')}
+        </Button>
+      </div>
+      <p role="status" className="text-sm text-fg-muted">
+        {state === 'none' ? t('team.noInvitationsYet', { email }) : ''}
+      </p>
     </Surface>
   );
 }
