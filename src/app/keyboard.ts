@@ -1,6 +1,10 @@
-import { useEffect } from 'react';
+import { createContext, useContext, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { blockLeave } from '@/lib/useForm';
+
+/** Abre la ayuda de atajos desde cualquier pantalla (botón «Atajos» de Ajustes, F-09); null fuera de la app. */
+export const HelpContext = createContext<(() => void) | null>(null);
+export const useOpenHelp = () => useContext(HelpContext);
 
 /** Campos que Enter recorre dentro de un formulario. */
 const FIELDS = 'input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=file]):not([type=submit]):not([type=button]):not(:disabled), select:not(:disabled), textarea:not(:disabled)';

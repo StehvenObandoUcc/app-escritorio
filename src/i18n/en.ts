@@ -524,6 +524,7 @@ export const en: Dict = {
     language: 'Language',
     languageLabel: 'Pulso language',
     languageHint: 'Applies right away: changes the whole app and the Windows notifications. Saved on this computer.',
+    preferences: 'Account and preferences',
     languages: { es: 'Español', en: 'English' },
   },
   profile: {
