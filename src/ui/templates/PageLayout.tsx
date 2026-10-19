@@ -23,7 +23,7 @@ export function PageLayout({
 }) {
   useWindowTitle(title);
   return (
-    <div className="mx-auto flex w-full max-w-content flex-col gap-5 p-4 md:p-6 lg:p-8">
+    <div className="motion-enter mx-auto flex w-full max-w-content flex-col gap-5 p-4 md:p-6 lg:p-8">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <Heading level={1}>{title}</Heading>

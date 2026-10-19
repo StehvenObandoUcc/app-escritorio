@@ -57,7 +57,7 @@ export function SegmentedControl<T extends string>({
             onClick={() => onChange(o.value)}
             onKeyDown={move}
             className={cx(
-              'h-control-sm rounded-md border border-b-3 px-3 text-sm font-medium transition-colors',
+              'h-control-sm rounded-full border border-b-3 px-3 text-sm font-medium transition-colors',
               active ? 'border-line border-b-accent bg-surface text-fg' : 'border-transparent text-fg-muted hover:text-fg',
             )}
           >

@@ -23,7 +23,7 @@ export function Select({ options, size = 'md', invalid = false, className, ...re
       <select
         aria-invalid={invalid || undefined}
         className={cx(
-          'w-full min-w-0 cursor-pointer appearance-none rounded-md border bg-surface pr-9 pl-3 text-fg transition-colors',
+          'w-full min-w-0 cursor-pointer appearance-none rounded-full border bg-surface pr-9 pl-4 text-fg transition-colors',
           'hover:border-fg-muted disabled:cursor-not-allowed disabled:opacity-50',
           invalid ? 'border-danger' : 'border-line-strong',
           size === 'md' ? 'h-control text-base' : 'h-control-sm text-sm',
