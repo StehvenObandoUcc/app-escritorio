@@ -1,3 +1,4 @@
+import { ShieldCheck } from 'lucide-react';
 import { useId, useState } from 'react';
 import type { Bridge } from '@/bridge/contract';
 import { useOptionalSession } from '@/app/session';
@@ -58,6 +59,11 @@ export function MiPrivacidadSection({ bridge }: { bridge: Bridge }) {
       <div>
         <Heading level={2}>{t('myPrivacy.title')}</Heading>
         <p className="mt-1 text-sm text-fg-muted">{t('myPrivacy.hint')}</p>
+        {/* F-13: la explicación completa vive en Equipo; desde aquí se llega sin buscarla. */}
+        <a href="#/equipo/privacidad" className="mt-2 inline-flex items-center gap-2 rounded-xs text-sm font-medium text-accent-text hover:underline">
+          <ShieldCheck size={16} aria-hidden="true" />
+          {t('privacy.title')}
+        </a>
       </div>
       {canShare && team && (
         <div className="flex flex-col gap-1">
