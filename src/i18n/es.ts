@@ -313,6 +313,8 @@ export const es = {
   },
   nav: {
     main: 'Principal',
+    more: 'Más',
+    moreCurrent: '(estás en {section})',
     myDay: 'Mi día',
     myTasks: 'Mis tareas',
     projects: 'Proyectos',

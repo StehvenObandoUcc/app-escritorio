@@ -315,6 +315,8 @@ export const en: Dict = {
   },
   nav: {
     main: 'Main',
+    more: 'More',
+    moreCurrent: '(you are in {section})',
     myDay: 'My day',
     myTasks: 'My tasks',
     projects: 'Projects',
