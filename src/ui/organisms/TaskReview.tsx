@@ -64,7 +64,7 @@ export function TaskReview({
   };
 
   return (
-    <section aria-label={t('review.pending')} className="flex flex-col gap-3 rounded-lg border border-line p-4">
+    <section aria-label={t('review.pending')} className="flex flex-col gap-3 rounded-lg bg-sunken p-4">
       <Heading level={2}>{t('review.pending')}</Heading>
       <p className="text-sm text-fg-muted">
         {t('review.submittedBy', { name: nameOf(r.submittedBy) ?? t('common.exMember'), date: when(r.createdAt) })}

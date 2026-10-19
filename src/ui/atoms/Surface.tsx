@@ -8,12 +8,12 @@ export interface SurfaceProps extends HTMLAttributes<HTMLElement> {
   children: ReactNode;
 }
 
-/** Contenedor base: fondo de superficie + borde. Sin sombra: la jerarquía la da el borde. */
+/** Contenedor base: fondo de superficie sobre el lienzo, sin borde ni sombra: la jerarquía la da el fondo. */
 export function Surface({ as: Tag = 'div', padding = 'md', className, children, ...rest }: SurfaceProps) {
   return (
     <Tag
       className={cx(
-        'rounded-lg border border-line bg-surface',
+        'rounded-lg bg-surface',
         padding === 'md' && 'p-4 md:p-5',
         className,
       )}

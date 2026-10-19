@@ -1,4 +1,4 @@
-import { useId, useRef, type KeyboardEvent } from 'react';
+import { useId, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
 import { cx } from '@/lib/cx';
 
 export interface Segment<T extends string> {
@@ -12,7 +12,8 @@ export interface Segment<T extends string> {
  * - con `panelId`, son pestañas que cambian el contenido de ese panel (`tablist`/`tab` + `aria-controls`);
  *   el panel lleva `role="tabpanel"` e `id={panelId}` y se nombra con `tabPanelLabel(panelId, value)`;
  * - sin `panelId`, es una elección de filtro o vista (`radiogroup`/`radio`).
- * La opción activa lleva una barra inferior, no solo un fondo distinto (A-02, WCAG 1.4.1).
+ * La opción activa va sobre un indicador de acento relleno (4,62:1) y en negrita, no solo con otro tono (A-02).
+ * El indicador se desliza a la opción elegida con transform (solo tras la primera medida, para no animar al cargar).
  */
 export function SegmentedControl<T extends string>({
   label,
@@ -29,6 +30,26 @@ export function SegmentedControl<T extends string>({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const fallbackId = useId();
+  const [pill, setPill] = useState<CSSProperties | null>(null);
+  const [animate, setAnimate] = useState(false);
+  useLayoutEffect(() => {
+    const box = ref.current;
+    if (!box) return;
+    const place = () => {
+      const el = box.querySelector<HTMLElement>(`[data-value="${CSS.escape(value)}"]`);
+      if (!el) return;
+      setPill({ width: el.offsetWidth, height: el.offsetHeight, transform: `translate(${el.offsetLeft}px, ${el.offsetTop}px)` });
+    };
+    place();
+    const timer = requestAnimationFrame(() => setAnimate(true));
+    // Si cambia el ancho (ventana, idioma) el indicador se vuelve a colocar.
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(place);
+    observer?.observe(box);
+    return () => {
+      cancelAnimationFrame(timer);
+      observer?.disconnect();
+    };
+  }, [value, options.length]);
   const tabs = Boolean(panelId);
   const move = (e: KeyboardEvent<HTMLButtonElement>) => {
     const i = options.findIndex((o) => o.value === value);
@@ -40,7 +61,14 @@ export function SegmentedControl<T extends string>({
     ref.current?.querySelector<HTMLButtonElement>(`[data-value="${CSS.escape(target.value)}"]`)?.focus();
   };
   return (
-    <div ref={ref} role={tabs ? 'tablist' : 'radiogroup'} aria-label={label} className="inline-flex max-w-full flex-wrap gap-1 rounded-lg bg-sunken p-1">
+    <div ref={ref} role={tabs ? 'tablist' : 'radiogroup'} aria-label={label} className="relative inline-flex max-w-full flex-wrap gap-1 rounded-lg bg-sunken p-1">
+      {pill && (
+        <span
+          aria-hidden="true"
+          style={pill}
+          className={cx('pointer-events-none absolute top-0 left-0 rounded-full bg-accent', animate && 'transition-all duration-200')}
+        />
+      )}
       {options.map((o) => {
         const active = value === o.value;
         return (
@@ -57,8 +85,8 @@ export function SegmentedControl<T extends string>({
             onClick={() => onChange(o.value)}
             onKeyDown={move}
             className={cx(
-              'h-control-sm rounded-full border border-b-3 px-3 text-sm font-medium transition-colors',
-              active ? 'border-line border-b-accent bg-surface text-fg' : 'border-transparent text-fg-muted hover:text-fg',
+              'relative h-control-sm rounded-full px-3 text-sm font-medium transition active:scale-95',
+              active ? 'font-semibold text-on-accent' : 'text-fg-muted hover:text-fg',
             )}
           >
             {o.label}

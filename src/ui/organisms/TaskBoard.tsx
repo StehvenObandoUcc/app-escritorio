@@ -23,7 +23,7 @@ export function TaskBoard(props: TaskViewProps) {
             </Heading>
             <ul className="flex flex-col gap-2">
               {column.map(({ task, parent }) => (
-                <li key={task.id} className="flex flex-col gap-2 rounded-md border border-line bg-surface p-3">
+                <li key={task.id} className="flex flex-col gap-2 rounded-md bg-surface p-3">
                   {parent && <p className="truncate text-xs text-fg-muted">{t('tasks.subtaskOf', { title: parent })}</p>}
                   <button
                     type="button"

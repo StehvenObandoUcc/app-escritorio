@@ -58,7 +58,7 @@ export function ConfirmDialog({
         onCancel();
       }}
       aria-labelledby={titleId}
-      className="m-auto w-full max-w-auth rounded-lg border border-line bg-surface p-5 text-fg shadow-overlay"
+      className="m-auto w-full max-w-auth rounded-lg bg-surface p-5 text-fg shadow-overlay"
     >
       {open && (
         <form
