@@ -42,7 +42,7 @@ export function TaskWorkflow({
 }) {
   const current = TASK_STATUSES.indexOf(task.status);
   return (
-    <section aria-label={t('tasks.flow.label')} className="flex flex-col gap-4 rounded-lg border border-line bg-surface p-4 md:p-5">
+    <section aria-label={t('tasks.flow.label')} className="flex flex-col gap-4 rounded-lg bg-surface p-4 md:p-5">
       <ol className="grid grid-cols-4 gap-2">
         {TASK_STATUSES.map((status, i) => {
           const done = i < current || task.status === 'done';

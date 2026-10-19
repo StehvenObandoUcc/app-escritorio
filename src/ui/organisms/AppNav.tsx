@@ -21,9 +21,10 @@ export function AppNav({ items, footer }: { items: NavItem[]; footer?: ReactNode
     <nav
       aria-label={t('nav.main')}
       className={cx(
-        'flex min-w-0 shrink-0 border-line bg-surface',
-        'border-t px-1 py-1',
-        'md:w-rail md:flex-col md:gap-1 md:border-t-0 md:border-r md:px-2 md:py-3',
+        // Sin línea de separación: el menú se distingue del contenido por su fondo.
+        'flex min-w-0 shrink-0 bg-surface',
+        'px-1 py-1',
+        'md:w-rail md:flex-col md:gap-1 md:px-2 md:py-3',
         'lg:w-nav lg:px-3',
       )}
     >
@@ -42,14 +43,12 @@ export function AppNav({ items, footer }: { items: NavItem[]; footer?: ReactNode
               title={`${label} (Alt+${i + 1})`}
               className={({ isActive }) =>
                 cx(
-                  'flex min-h-touch min-w-0 flex-col items-center justify-center gap-1 rounded-md px-0.5 text-xs font-medium transition-colors',
-                  'md:min-h-control md:px-2 lg:flex-row lg:justify-start lg:gap-3 lg:px-3 lg:text-base',
-                  // Barra de 3 px en el activo (abajo en la barra inferior, a la izquierda en el riel y la barra
-                  // lateral): no depende solo del fondo (A-02, WCAG 1.4.1). Los inactivos la tienen transparente.
-                  'border-b-3 md:border-b-0 md:border-l-3',
-                  isActive
-                    ? 'border-accent bg-accent-soft text-accent-text'
-                    : 'border-transparent text-fg-muted hover:bg-sunken hover:text-fg',
+                  'flex min-h-touch min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-0.5 text-xs font-medium transition active:scale-95',
+                  // Riel (640-1023 px): círculos de icono; barra lateral (≥ 1024 px): píldoras con texto.
+                  'md:mx-auto md:size-11 md:min-h-0 md:rounded-full md:px-0',
+                  'lg:mx-0 lg:h-auto lg:min-h-control lg:w-full lg:flex-row lg:justify-start lg:gap-3 lg:px-3 lg:text-base',
+                  // Activo relleno de acento (4,62:1 sobre la superficie) y en negrita: no depende solo del tono (A-02).
+                  isActive ? 'bg-accent font-semibold text-on-accent' : 'text-fg-muted hover:bg-sunken hover:text-fg',
                 )
               }
             >

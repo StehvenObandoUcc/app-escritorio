@@ -36,7 +36,7 @@ export function ReportView({ report, title, onExport }: { report: ReportRun; tit
         ) : (
           <dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {report.facts.map((f) => (
-              <div key={f.id} className="flex flex-col rounded-md border border-line bg-surface px-3 py-2">
+              <div key={f.id} className="flex flex-col rounded-md bg-sunken px-3 py-2">
                 <dt className="text-sm text-fg-muted">{factLabel(f)}</dt>
                 <dd className="text-lg font-semibold text-fg tabular-nums">{factValue(f)}</dd>
               </div>

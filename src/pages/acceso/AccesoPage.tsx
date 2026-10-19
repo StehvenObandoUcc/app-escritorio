@@ -142,7 +142,7 @@ export function AccesoPage() {
       )}
 
       {needsCode && (
-        <div className="flex items-start gap-3 rounded-lg border border-line bg-surface p-3">
+        <div className="flex items-start gap-3 rounded-lg bg-surface p-3">
           <Mail size={20} aria-hidden="true" className="mt-1 shrink-0 text-accent-text" />
           <p className="min-w-0 text-sm text-fg-muted">
             {email.trim() ? (

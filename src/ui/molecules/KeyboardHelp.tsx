@@ -36,7 +36,7 @@ export function KeyboardHelp({ open, onClose, sectionCount = DEFAULT_SECTIONS }:
         e.preventDefault();
         onClose();
       }}
-      className="m-auto w-full max-w-auth rounded-lg border border-line bg-surface p-5 text-fg shadow-overlay"
+      className="m-auto w-full max-w-auth rounded-lg bg-surface p-5 text-fg shadow-overlay"
     >
       {open && (
         <div className="flex flex-col gap-4">
