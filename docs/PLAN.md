@@ -165,6 +165,7 @@ Funcionalidades: EN-01, EN-02, PS-10, TA-12.
 - Clasificación de errores: **P0** (cierre, fuga de datos, un rol ve lo que no debe) se arregla el mismo día; **P1** (rompe el guion) antes del domingo; **P2** después de la entrega.
 
 **Puerta G6 (criterio de entrega)**: el guion de §6 pasa tres veces seguidas en un Windows limpio.
+- [x] Sustituida por decisión del responsable (19 oct): el instalador se probó en varios Windows de terceros (12 pasos en OK) y no se repiten los ensayos; se refina después de la entrega.
 
 ## 4. Si una fase se atrasa
 
