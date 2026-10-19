@@ -39,7 +39,7 @@ export function HorizontalBarList({ items, label, formatValue, fill = 'bg-accent
               <span className="ml-auto shrink-0 text-fg-muted tabular-nums">{formatValue(item.value)}</span>
             </div>
             <div aria-hidden="true" className={cx('w-full overflow-hidden rounded-full bg-sunken', nested ? 'h-1' : 'h-2')}>
-              <div className={cx('h-full rounded-full', fill)} style={{ width: `${max === 0 ? 0 : (item.value / max) * 100}%` }} />
+              <div className={cx('motion-grow-x h-full rounded-full', fill)} style={{ width: `${max === 0 ? 0 : (item.value / max) * 100}%` }} />
             </div>
           </li>
         );
