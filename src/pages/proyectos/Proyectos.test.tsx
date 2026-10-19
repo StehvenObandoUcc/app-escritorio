@@ -70,6 +70,29 @@ describe('Proyectos (F3)', () => {
     expect(screen.queryByRole('button', { name: 'Nuevo proyecto' })).not.toBeInTheDocument();
   });
 
+  it('si no se pueden leer los proyectos, «Reintentar» los vuelve a pedir (F-10, H9)', async () => {
+    const { cloud } = await setup('ana');
+    const read = vi.spyOn(cloud, 'teamWork').mockRejectedValue(new CloudError('El servidor no respondió.', 'unknown'));
+    renderWithSession(<ProyectosPage />, { path: '/proyectos', cloud });
+    expect(await screen.findByRole('heading', { name: 'No se pudieron cargar los proyectos' })).toBeInTheDocument();
+    const before = read.mock.calls.length;
+    read.mockRestore();
+    const again = vi.spyOn(cloud, 'teamWork');
+    await userEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
+    expect(await screen.findByRole('link', { name: /Sitio web/ })).toBeInTheDocument();
+    expect(before).toBeGreaterThan(0);
+    expect(again).toHaveBeenCalled();
+  }, LONG);
+
+  it('sin equipo, el estado vacío enlaza a Equipo (F-10)', async () => {
+    const cloud = createMockCloud();
+    cloud.debug.addAccount('solo@pulso.test', 'secreto-123', 'Solo');
+    await cloud.signIn('solo@pulso.test', 'secreto-123');
+    renderWithSession(<ProyectosPage />, { path: '/proyectos', cloud });
+    await userEvent.click(await screen.findByRole('link', { name: 'Ir a Equipo' }));
+    expect(screen.getByTestId('ruta')).toHaveTextContent(/^\/equipo$/);
+  });
+
   it('crea una tarea asignada a alguien del equipo fuera del proyecto, estimada en días (AC-21, AC-30)', async () => {
     const { cloud, project, team, caro } = await setup('ana');
     openProject(cloud, project);

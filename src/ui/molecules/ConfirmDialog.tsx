@@ -12,6 +12,7 @@ export function ConfirmDialog({
   title,
   message,
   confirmLabel,
+  cancelLabel,
   danger = false,
   busy = false,
   confirmDisabled = false,
@@ -24,6 +25,8 @@ export function ConfirmDialog({
   title: string;
   message: string;
   confirmLabel: string;
+  /** Texto del botón que cierra sin confirmar (por defecto «Cancelar»). */
+  cancelLabel?: string;
   danger?: boolean;
   busy?: boolean;
   confirmDisabled?: boolean;
@@ -55,7 +58,7 @@ export function ConfirmDialog({
         onCancel();
       }}
       aria-labelledby={titleId}
-      className="m-auto w-full max-w-auth rounded-lg border border-line bg-surface p-5 text-fg shadow-overlay"
+      className="m-auto w-full max-w-auth rounded-lg bg-surface p-5 text-fg shadow-overlay"
     >
       {open && (
         <form
@@ -78,7 +81,7 @@ export function ConfirmDialog({
           )}
           <div className="flex flex-wrap justify-end gap-2">
             <Button variant="ghost" onClick={onCancel} disabled={busy}>
-              {t('common.cancel')}
+              {cancelLabel ?? t('common.cancel')}
             </Button>
             <Button type="submit" variant={danger ? 'danger' : 'primary'} disabled={confirmDisabled || busy}>
               {confirmLabel}

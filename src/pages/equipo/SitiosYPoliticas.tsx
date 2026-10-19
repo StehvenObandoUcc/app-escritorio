@@ -8,7 +8,7 @@ import { ALERT_REPEATS } from '@/bridge/contract';
 import type { MyTeam } from '@/cloud/contract';
 import { appColor } from '@/lib/apps';
 import { formatShortDuration } from '@/lib/time';
-import { Button, Heading, ProgressBar, Select, Surface } from '@/ui/atoms';
+import { Button, Checkbox, Heading, ProgressBar, Select, Surface } from '@/ui/atoms';
 import { FormField, SegmentedControl } from '@/ui/molecules';
 import { ReglasPorApp } from './ReglasPorApp';
 
@@ -113,9 +113,8 @@ export function SitiosYPoliticas({ team }: { team: MyTeam }) {
       </div>
 
       <label className="flex items-start gap-3">
-        <input
-          type="checkbox"
-          className="mt-1 size-4 accent-accent"
+        <Checkbox
+          className="mt-1"
           checked={team.allowHiddenApps}
           disabled={busy}
           onChange={(e) =>
@@ -138,9 +137,8 @@ export function SitiosYPoliticas({ team }: { team: MyTeam }) {
         <p className="text-sm text-fg-muted">{t('sites.notAllowedHint')}</p>
         <div className="flex flex-col gap-2 rounded-md bg-sunken p-3">
           <label className="flex items-start gap-3">
-            <input
-              type="checkbox"
-              className="mt-1 size-4 accent-accent"
+            <Checkbox
+              className="mt-1"
               checked={team.alertNotAllowed}
               disabled={busy}
               onChange={(e) =>

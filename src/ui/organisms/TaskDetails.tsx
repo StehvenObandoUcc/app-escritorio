@@ -1,12 +1,12 @@
 import { evidenceLabel } from '@/lib/evidence';
 import { CheckCircle2, Circle, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import type { Task } from '@/cloud/contract';
 import { errorMessage, t } from '@/i18n';
 import { fieldErrors, forms } from '@/lib/forms';
 import { LIMITS } from '@/lib/limits';
 import { STATUS_LABEL } from '@/lib/tasks';
-import { Badge, Button, Heading } from '@/ui/atoms';
+import { Badge, Button, Heading, Textarea } from '@/ui/atoms';
 
 /**
  * Columna principal de la tarea (D-16): descripción, etiquetas, criterios de aceptación y subtareas.
@@ -35,6 +35,7 @@ export function TaskDetails({
 }) {
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(task.criteria.map((c) => c.text).join('\n'));
+  const criteriaHelpId = useId();
   const [error, setError] = useState<string | null>(null);
   const done = subtasks.filter((s) => s.status === 'done').length;
 
@@ -82,21 +83,23 @@ export function TaskDetails({
         <Heading level={2}>{t('tasks.panel.criteria')}</Heading>
         {editing ? (
           <>
-            <textarea
+            <Textarea
               aria-label={t('tasks.form.criteria')}
               rows={5}
               autoFocus
               value={text}
-              aria-invalid={Boolean(error) || undefined}
+              invalid={Boolean(error)}
+              aria-describedby={criteriaHelpId}
               maxLength={LIMITS.criteria.count * (LIMITS.criteria.length + 1)}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Escape') setEditing(false);
                 if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) void saveCriteria();
               }}
-              className={`w-full rounded-md border bg-surface px-3 py-2 text-base text-fg ${error ? 'border-danger' : 'border-line-strong'}`}
             />
-            <p className={error ? 'text-sm text-danger' : 'text-sm text-fg-muted'}>{error ?? t('tasks.form.criteriaHint')}</p>
+            <p id={criteriaHelpId} className={error ? 'text-sm text-danger' : 'text-sm text-fg-muted'}>
+              {error ?? t('tasks.form.criteriaHint')}
+            </p>
             <div className="flex gap-2">
               <Button size="sm" variant="primary" onClick={() => void saveCriteria()}>
                 {t('common.save')}

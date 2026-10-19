@@ -7,3 +7,5 @@ export * from './Input';
 export * from './ProgressBar';
 export * from './Surface';
 export * from './Select';
+export * from './Checkbox';
+export * from './Textarea';

@@ -4,7 +4,8 @@
  */
 import { t } from '@/i18n';
 
-export const CONSENT_VERSION = '2026-10-v2';
+// v3 (F6-9, 19 oct): «Quién lo ve» añade lo que ve quien lidera un proyecto; todo el equipo vuelve a aceptar.
+export const CONSENT_VERSION = '2026-10-v3';
 
 const POINTS = ['measured', 'never', 'who', 'ai', 'purpose', 'control'] as const;
 

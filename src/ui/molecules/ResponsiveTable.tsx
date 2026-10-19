@@ -40,7 +40,7 @@ export function ResponsiveTable<T>({ label, rows, rowKey, columns }: ResponsiveT
       </thead>
       <tbody role="rowgroup" className="flex flex-col gap-3 md:table-row-group">
         {rows.map((row) => (
-          <tr key={rowKey(row)} role="row" className="flex flex-col gap-1 rounded-md border border-line p-3 md:table-row md:rounded-none md:border-0 md:border-t md:p-0">
+          <tr key={rowKey(row)} role="row" className="flex flex-col gap-1 rounded-md bg-sunken p-3 md:table-row md:rounded-none md:border-t md:border-line md:bg-transparent md:p-0">
             <th role="rowheader" scope="row" className="text-left font-medium text-fg md:px-3 md:py-3 md:align-top">
               {first.render(row)}
             </th>

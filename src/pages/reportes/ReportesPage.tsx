@@ -5,7 +5,7 @@ import { useSession } from '@/app/session';
 import { REPORT_MODES, REPORT_PERIODS, TrialError, type ReportFacts, type ReportMode, type ReportPeriod, type ReportRequest, type ReportRun } from '@/cloud/contract';
 import { errorMessage, getLocale, t } from '@/i18n';
 import { describeError, downloadText, finishManual, generateWithOwnKey, ManualAnswerError, prepareManual, toCsvFile, toJson, toMarkdown, type ValidationError } from '@/lib/reports';
-import { Badge, Button, Heading, Select, Surface } from '@/ui/atoms';
+import { Badge, Button, Heading, Select, Surface, Textarea } from '@/ui/atoms';
 import { EmptyState, Toast } from '@/ui/molecules';
 import { ReportHistory, ReportView, type ExportFormat } from '@/ui/organisms';
 import { PageLayout } from '@/ui/templates';
@@ -216,17 +216,18 @@ export function ReportesPage() {
               <form onSubmit={(e) => void submitManual(e)} className="flex flex-col gap-2">
                 <label className="flex flex-col gap-1 text-sm text-fg">
                   {t('reports.manual.step2')}
-                  <textarea
+                  <Textarea
                     aria-label={t('reports.manual.answer')}
                     rows={8}
                     value={answer}
-                    aria-invalid={answerErrors ? true : undefined}
+                    invalid={Boolean(answerErrors)}
+                    aria-describedby={answerErrors ? 'respuesta-manual-error' : undefined}
                     onChange={(e) => setAnswer(e.target.value)}
-                    className={`w-full rounded-md border bg-surface px-3 py-2 font-mono text-sm text-fg ${answerErrors ? 'border-danger' : 'border-line-strong'}`}
+                    mono
                   />
                 </label>
                 {answerErrors && (
-                  <div role="alert" className="flex flex-col gap-1 text-sm text-danger">
+                  <div id="respuesta-manual-error" role="alert" className="flex flex-col gap-1 text-sm text-danger">
                     <p>{answer.trim() ? t('reports.manual.invalid') : t('reports.manual.empty')}</p>
                     {answer.trim() && (
                       <ul className="list-disc pl-5">

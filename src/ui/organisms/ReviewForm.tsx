@@ -6,9 +6,9 @@ import { deliveryFields, formatsOf, type DeliveryField } from '@/lib/evidence';
 import { fileProblem, isHttpUrl } from '@/lib/forms';
 import { EVIDENCE_TYPES, LIMITS } from '@/lib/limits';
 import { useForm } from '@/lib/useForm';
-import { Button, Input, Select, type SelectOption } from '@/ui/atoms';
+import { Button, Checkbox, Input, Select, Textarea, type SelectOption } from '@/ui/atoms';
+import { DiscardDialog } from '@/ui/molecules';
 
-const textarea = 'w-full rounded-md border bg-surface px-3 py-2 text-base text-fg';
 const IMAGE_TYPES = EVIDENCE_TYPES.filter((type) => type.startsWith('image/'));
 const isUpload = (f: ReviewField) => f.kind === 'image' || f.kind === 'file';
 const acceptOf = (f: DeliveryField) => f.accept ?? (f.kind === 'image' ? IMAGE_TYPES : EVIDENCE_TYPES);
@@ -65,11 +65,12 @@ export function ReviewForm({
   const [met, setMet] = useState<string[]>([]);
   const [reviewer, setReviewer] = useState('');
   const schema = useCallback(() => deliverySchema(deliveryFields(template, task.evidence), task.criteria), [template, task.evidence, task.criteria]);
-  const { ref, errors: err, formError, busy, submit, onKeyDown } = useForm(schema, onCancel);
+  const { ref, errors: err, formError, busy, submit, onKeyDown, cancel, discard } = useForm(schema, onCancel);
   const answer = (key: string, value: string) => setAnswers((a) => ({ ...a, [key]: value }));
   const values = { ...Object.fromEntries(fields.map((f) => [f.key, isUpload(f) ? (files[f.key] ?? []) : (answers[f.key] ?? '')])), criteria: met };
 
   return (
+    <>
     <form
       ref={ref}
       onKeyDown={onKeyDown}
@@ -100,7 +101,7 @@ export function ReviewForm({
           return (
             <div key={f.key} className="flex flex-col gap-1">
               <label className="flex items-center gap-2 text-sm text-fg">
-                <input type="checkbox" name={f.key} checked={answers[f.key] === 'true'} onChange={(e) => answer(f.key, e.target.checked ? 'true' : 'false')} />
+                <Checkbox name={f.key} checked={answers[f.key] === 'true'} onChange={(e) => answer(f.key, e.target.checked ? 'true' : 'false')} />
                 {label}
               </label>
               {help}
@@ -140,17 +141,16 @@ export function ReviewForm({
               {label}
             </label>
             {f.kind === 'text' ? (
-              <textarea
+              <Textarea
                 id={fieldId}
                 name={f.key}
                 rows={4}
                 autoFocus={i === 0}
                 maxLength={LIMITS.answer.length}
                 value={answers[f.key] ?? ''}
-                aria-invalid={Boolean(error) || undefined}
+                invalid={Boolean(error)}
                 aria-describedby={error ? `${fieldId}-help` : undefined}
                 onChange={(e) => answer(f.key, e.target.value)}
-                className={`${textarea} ${error ? 'border-danger' : 'border-line-strong'}`}
               />
             ) : (
               <Input
@@ -176,8 +176,7 @@ export function ReviewForm({
           <legend className="mb-1 text-sm font-medium text-fg">{t('review.criteria')} *</legend>
           {task.criteria.map((c, i) => (
             <label key={c.id} className="flex items-center gap-2 text-sm text-fg">
-              <input
-                type="checkbox"
+              <Checkbox
                 name={i === 0 ? 'criteria' : undefined}
                 checked={met.includes(c.id)}
                 onChange={(e) => setMet((m) => (e.target.checked ? [...m, c.id] : m.filter((x) => x !== c.id)))}
@@ -205,11 +204,13 @@ export function ReviewForm({
         <Button type="submit" variant="primary" disabled={busy}>
           {mode === 'submit' ? t('review.submit') : t('review.complete')}
         </Button>
-        <Button variant="ghost" onClick={onCancel} disabled={busy}>
+        <Button variant="ghost" onClick={cancel} disabled={busy}>
           {t('common.cancel')}
         </Button>
         <span className="text-xs text-fg-muted">{t('forms.keysHint')}</span>
       </div>
     </form>
+    <DiscardDialog discard={discard} />
+    </>
   );
 }

@@ -2,6 +2,7 @@ import { errorMessage, t } from '@/i18n';
 import { ArrowLeft, Mail } from 'lucide-react';
 import { useCallback, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
+import { useLocale } from '@/app/locale';
 import { useSession } from '@/app/session';
 import { CloudError } from '@/cloud/contract';
 import { MOCK_CODE } from '@/cloud/mock';
@@ -10,7 +11,7 @@ import { LIMITS } from '@/lib/limits';
 import { useForm } from '@/lib/useForm';
 import { useTheme } from '@/lib/theme';
 import { Badge, Button } from '@/ui/atoms';
-import { FormField, PasswordField, SegmentedControl, ThemeToggle } from '@/ui/molecules';
+import { FormField, LocaleSwitcher, PasswordField, SegmentedControl, ThemeToggle } from '@/ui/molecules';
 import { AuthLayout } from '@/ui/templates';
 
 type Mode = 'entrar' | 'registro' | 'verificar' | 'recuperar' | 'nueva-clave';
@@ -31,6 +32,7 @@ const MODE_KEY = {
 export function AccesoPage() {
   const { cloud } = useSession();
   const { theme, cycle } = useTheme();
+  const { locale, change } = useLocale();
   const navigate = useNavigate();
   const [mode, setMode] = useState<Mode>('entrar');
   const [name, setName] = useState('');
@@ -112,7 +114,12 @@ export function AccesoPage() {
     <AuthLayout
       title={title}
       subtitle={subtitle}
-      corner={<ThemeToggle theme={theme} onCycle={cycle} />}
+      corner={
+        <div className="flex items-center gap-2">
+          <LocaleSwitcher id="idioma-acceso" locale={locale} onChange={(l) => void change(l).catch(() => {})} />
+          <ThemeToggle theme={theme} onCycle={cycle} />
+        </div>
+      }
       footer={
         cloud.source === 'mock' && (
           <div className="flex flex-wrap items-center gap-2 text-sm text-fg-muted">
@@ -135,7 +142,7 @@ export function AccesoPage() {
       )}
 
       {needsCode && (
-        <div className="flex items-start gap-3 rounded-lg border border-line bg-surface p-3">
+        <div className="flex items-start gap-3 rounded-lg bg-surface p-3">
           <Mail size={20} aria-hidden="true" className="mt-1 shrink-0 text-accent-text" />
           <p className="min-w-0 text-sm text-fg-muted">
             {email.trim() ? (

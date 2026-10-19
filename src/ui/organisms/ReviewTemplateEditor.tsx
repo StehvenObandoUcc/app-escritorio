@@ -3,7 +3,7 @@ import { useState } from 'react';
 import type { ReviewField } from '@/cloud/contract';
 import { errorMessage, t } from '@/i18n';
 import { LIMITS } from '@/lib/limits';
-import { Button, Input, Select } from '@/ui/atoms';
+import { Button, Checkbox, Input, Select } from '@/ui/atoms';
 
 const KINDS: ReviewField['kind'][] = ['text', 'url', 'image', 'file', 'checklist'];
 /** Campo fijo del formulario de entrega (ADR-0016). */
@@ -48,7 +48,7 @@ export function ReviewTemplateEditor({ fields, onSave }: { fields: ReviewField[]
                 options={KINDS.map((k) => ({ value: k, label: t(`projects.template.kind.${k}`) }))}
               />
               <label className="flex items-center gap-1 text-sm text-fg">
-                <input type="checkbox" checked={f.required} disabled={locked} onChange={(e) => update(i, { required: e.target.checked })} />
+                <Checkbox checked={f.required} disabled={locked} onChange={(e) => update(i, { required: e.target.checked })} />
                 {t('projects.template.required')}
               </label>
               {locked ? (

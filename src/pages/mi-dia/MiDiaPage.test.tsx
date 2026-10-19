@@ -19,13 +19,13 @@ describe('Mi día', () => {
     // Por defecto, el tiempo por app; el detalle conserva todos los bloques.
     const byApp = screen.getByRole('list', { name: 'Tiempo por app' });
     expect(within(byApp).getAllByRole('listitem')[0]).toHaveTextContent('Visual Studio Code');
-    await userEvent.click(screen.getByRole('tab', { name: 'Detalle' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Detalle' }));
     const list = screen.getByRole('list', { name: 'Bloques de actividad' });
     expect(within(list).getAllByRole('listitem')).toHaveLength(11);
-    await userEvent.click(screen.getByRole('tab', { name: 'Línea de tiempo' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Línea de tiempo' }));
     expect(screen.getByRole('list', { name: 'Línea de tiempo' })).toBeInTheDocument();
     // Por sitio: dominios de los bloques de navegador del ejemplo, nunca rutas.
-    await userEvent.click(screen.getByRole('tab', { name: 'Por sitio' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Por sitio' }));
     const sites = screen.getByRole('list', { name: 'Tiempo por sitio' });
     const domains = ['claude.ai', 'youtube.com', 'chatgpt.com'];
     const rows = within(sites).getAllByRole('listitem').map((li) => domains.find((d) => li.textContent?.includes(d)));
@@ -75,14 +75,15 @@ describe('Mi día', () => {
     expect(screen.getByRole('button', { name: 'Reanudar seguimiento' })).toBeInTheDocument();
   });
 
-  it('si el sensor falla, explica qué pasó', async () => {
-    const broken: Bridge = {
-      ...createMockBridge(),
-      dayView: () => Promise.reject(new Error('sensor no disponible')),
-    };
+  it('si el sensor falla, explica qué pasó y «Reintentar» vuelve a pedir el día (F-04)', async () => {
+    const dayView = vi.fn(() => Promise.reject(new Error('sensor no disponible')));
+    const broken: Bridge = { ...createMockBridge(), dayView };
     render(<MiDiaPage bridge={broken} date={DATE} />);
     expect(await screen.findByText('No se pudo leer tu actividad')).toBeInTheDocument();
-    expect(screen.getByText(/sensor no disponible/)).toBeInTheDocument();
+    expect(screen.getByText(/Pulso sigue registrando/)).toBeInTheDocument();
+    const before = dayView.mock.calls.length;
+    await userEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
+    await waitFor(() => expect(dayView.mock.calls.length).toBeGreaterThan(before));
   });
 
   it('con el sensor real desaparece la etiqueta «Datos de ejemplo» (AC-16)', async () => {
@@ -147,10 +148,10 @@ describe('Mi día', () => {
       fill('Fin', '10:00');
       await userEvent.click(screen.getByRole('button', { name: 'Guardar entrada' }));
       await userEvent.click(
-        await screen.findByRole('button', { name: /Eliminar entrada de 09:00–10:00/ }),
+        await screen.findByRole('button', { name: /Borrar entrada de 09:00–10:00/ }),
       );
-      expect(screen.getByText('¿Eliminar esta entrada?')).toBeInTheDocument();
-      await userEvent.click(screen.getByRole('button', { name: 'Sí, eliminar' }));
+      expect(screen.getByText('¿Borrar esta entrada de tiempo?')).toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Sí, borrar' }));
       expect(await screen.findByText('Sin entradas de tiempo')).toBeInTheDocument();
     });
 

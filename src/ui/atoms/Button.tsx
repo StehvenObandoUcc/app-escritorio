@@ -19,9 +19,10 @@ const VARIANT: Record<Variant, string> = {
   danger: 'bg-danger-soft text-danger hover:bg-sunken',
 };
 
+// Alto mínimo (no fijo): un texto largo en un espacio estrecho pasa a dos líneas en vez de salirse del botón.
 const SIZE: Record<Size, string> = {
-  md: 'h-control px-4 text-base',
-  sm: 'h-control-sm px-3 text-sm',
+  md: 'min-h-control py-1.5 px-4 text-base',
+  sm: 'min-h-control-sm py-1 px-3 text-sm',
 };
 
 export function Button({
@@ -37,7 +38,7 @@ export function Button({
     <button
       type={type}
       className={cx(
-        'inline-flex shrink-0 items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap transition-colors',
+        'inline-flex max-w-full shrink-0 items-center justify-center gap-2 rounded-full text-center leading-tight font-medium transition active:scale-98 disabled:active:scale-100 [&>svg]:shrink-0',
         'disabled:cursor-not-allowed disabled:opacity-50',
         VARIANT[variant],
         SIZE[size],
