@@ -20,4 +20,4 @@ Fecha: 2026-10-08 · Estado: aceptado (por StehvenObando). Reemplaza en parte AD
 ## Nota (18 de octubre de 2026)
 - **«Saltar al contenido» volvió** por el hallazgo A-06 de la auditoría de usabilidad: sin él, quien usa Tab recorre todo el menú en cada pantalla.
 - El motivo de quitarlo seguía vigente: las flechas globales lo trataban como un destino más y el enlace aparecía sin buscarlo. Ahora `arrowToNearest` ignora los elementos con `data-skip-arrows`, que lleva el enlace: es lo primero con Tab y las flechas nunca lo alcanzan (prueba en `src/app/keyboard.test.tsx`).
-- El botón «Atajos» sigue fuera; la ayuda se abre con «?».
+- El botón «Atajos» también volvió (hallazgo F-13, 18 de octubre): está en el pie del menú y en Ajustes → Cuenta y preferencias, y abre la misma ayuda que «?». Va al final del menú, no al inicio, así que no se interpone al recorrer la pantalla.
