@@ -210,6 +210,57 @@ describe('teclado en toda la app (ADR-0019)', () => {
     expect(skip).toHaveFocus();
   });
 
+  it('con campos obligatorios, Enter no pasa por los opcionales: envía cuando los obligatorios están llenos (F-14)', async () => {
+    const onSubmit = vi.fn();
+    function Keys() {
+      useAppKeyboard(ROUTES, () => {});
+      return null;
+    }
+    render(
+      <MemoryRouter>
+        <Keys />
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            onSubmit();
+          }}
+        >
+          <input aria-label="Título" required />
+          <input aria-label="Etiquetas" />
+          <button type="submit">Crear</button>
+        </form>
+      </MemoryRouter>,
+    );
+    await userEvent.type(screen.getByLabelText('Título'), 'Diseñar portada{Enter}');
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(screen.getByLabelText('Etiquetas')).not.toHaveFocus();
+  });
+
+  it('con el foco en el contenido y una pantalla larga, ↓ desplaza en lugar de saltar al primer elemento (F-14)', async () => {
+    function Keys() {
+      useAppKeyboard(ROUTES, () => {});
+      return null;
+    }
+    render(
+      <MemoryRouter>
+        <Keys />
+        <main id="contenido" tabIndex={-1}>
+          <button>Primero</button>
+        </main>
+      </MemoryRouter>,
+    );
+    const main = screen.getByRole('main');
+    Object.defineProperty(main, 'scrollHeight', { value: 2000, configurable: true });
+    Object.defineProperty(main, 'clientHeight', { value: 500, configurable: true });
+    main.focus();
+    await userEvent.keyboard('{ArrowDown}');
+    expect(main).toHaveFocus();
+    // Si no hay nada que desplazar, la flecha sigue llevando al primer elemento.
+    Object.defineProperty(main, 'scrollHeight', { value: 500, configurable: true });
+    await userEvent.keyboard('{ArrowDown}');
+    expect(screen.getByRole('button', { name: 'Primero' })).toHaveFocus();
+  });
+
   it('las flechas recorren el menú de navegación', async () => {
     setup();
     screen.getByRole('link', { name: 'Mi día' }).focus();
