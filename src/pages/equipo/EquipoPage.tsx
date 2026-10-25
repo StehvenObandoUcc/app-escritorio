@@ -35,7 +35,7 @@ const formatDate = (iso: string) => formatIntlDate(iso, { day: 'numeric', month:
 /** Equipo: invitaciones recibidas, crear equipo, consentimiento, miembros e invitaciones (F2). */
 export function EquipoPage() {
   const session = useSession();
-  const { cloud, user, teams, teamsLoading, teamsError, activeTeam } = session;
+  const { cloud, user, teams, teamsLoading, teamsError, activeTeam, profile } = session;
   const sampleTag = cloud.source === 'mock' && <Badge tone="accent">{t('common.sample')}</Badge>;
 
   // La app solo se muestra con sesión (Gate en App.tsx); esto cubre el instante en que se cierra.
@@ -73,11 +73,21 @@ export function EquipoPage() {
       ) : activeTeam ? (
         <TeamView team={activeTeam} key={activeTeam.id} />
       ) : (
-        // F-05: sin equipo hay dos caminos; unirse depende de una invitación hecha a este mismo correo.
-        <div className="grid items-start gap-5 lg:grid-cols-2">
-          <CreateTeam first />
-          <JoinTeam />
-        </div>
+        <>
+          {/* Primera vez: qué hace ya Pulso y cuál es el siguiente paso, antes de los dos caminos. */}
+          {teams.length === 0 && (
+            <section aria-label={t('welcome.label')} className="flex max-w-prose flex-col gap-2">
+              <Heading level={2}>{profile?.displayName ? t('welcome.titleNamed', { name: profile.displayName }) : t('welcome.title')}</Heading>
+              <p className="text-fg">{t('welcome.local')}</p>
+              <p className="text-fg-muted">{t('welcome.next')}</p>
+            </section>
+          )}
+          {/* F-05: sin equipo hay dos caminos; unirse depende de una invitación hecha a este mismo correo. */}
+          <div className="grid items-start gap-5 lg:grid-cols-2">
+            <CreateTeam first />
+            <JoinTeam />
+          </div>
+        </>
       )}
     </PageLayout>
   );

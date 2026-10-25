@@ -2,6 +2,14 @@ import type { Dict } from '.';
 
 /** Textos en inglés (ADR-0015). El tipo obliga a tener las mismas claves que es.ts. */
 export const en: Dict = {
+  welcome: {
+    label: 'Welcome',
+    title: 'Welcome to Pulso',
+    titleNamed: 'Welcome to Pulso, {name}',
+    local: 'Pulso already records your activity on this computer and keeps it here only. You can see it in My day.',
+    next: 'To organize projects and tasks with other people, create a team or join one. We will ask for your consent before any data is shared.',
+  },
+  pulseStrip: { legend: 'Strip legend' },
   common: {
     sample: 'Sample data',
     cancel: 'Cancel',

@@ -1,5 +1,13 @@
 /** Textos en español: la fuente (ADR-0015). Cada clave nueva va también en en.ts. */
 export const es = {
+  welcome: {
+    label: 'Bienvenida',
+    title: 'Te damos la bienvenida a Pulso',
+    titleNamed: 'Te damos la bienvenida a Pulso, {name}',
+    local: 'Pulso ya registra tu actividad en este computador y la guarda solo aquí. Puedes verla en Mi día.',
+    next: 'Para organizar proyectos y tareas con otras personas, crea un equipo o únete a uno. Antes de compartir cualquier dato te pediremos tu consentimiento.',
+  },
+  pulseStrip: { legend: 'Leyenda de la franja' },
   common: {
     sample: 'Datos de ejemplo',
     cancel: 'Cancelar',
