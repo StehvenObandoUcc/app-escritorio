@@ -566,7 +566,7 @@ export const en: Dict = {
     moreLaterHint: 'Team rules and workday are in Team → General.',
     language: 'Language',
     languageLabel: 'Pulso language',
-    languageHint: 'Applies right away: changes the whole app and the Windows notifications. Saved on this computer.',
+    languageHint: 'Applies right away: changes the whole app and the Windows notifications. Saved on this computer. Date and time fields take the new format the next time you open Pulso.',
     preferences: 'Theme, shortcuts and sync',
     languages: { es: 'Español', en: 'English' },
   },
