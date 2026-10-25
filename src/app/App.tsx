@@ -49,9 +49,10 @@ function NavFooter({ onHelp }: { onHelp: () => void }) {
   const { theme, cycle } = useTheme();
   const { sync, teams, activeTeam, selectTeam } = useSession();
   return (
-    <div className="flex flex-col items-center gap-3 lg:items-stretch">
+    // En la barra lateral todo alineado a la izquierda; estirados, los botones centraban su texto (Atajos).
+    <div className="flex flex-col items-center gap-3 lg:items-start">
       {teams.length > 1 && activeTeam && (
-        <div className="hidden lg:block">
+        <div className="hidden lg:block lg:self-stretch">
           <Select
             size="sm"
             aria-label={t('nav.activeTeam')}

@@ -34,7 +34,7 @@ export function TareaPage() {
   const blocked = noTeamState(ctx.activeTeam?.role ?? null);
   if (blocked || ctx.loadError || (!ctx.data.isPending && (!ctx.project || !task))) {
     return (
-      <PageLayout title={t('tasks.page.title')} actions={back}>
+      <PageLayout title={t('tasks.page.title')} back={back}>
         <EmptyState
           title={blocked?.title ?? (ctx.loadError ? t('projects.loadError') : t('tasks.page.notFound'))}
           description={blocked?.description ?? (ctx.loadError ? t('projects.loadErrorHint', { error: ctx.loadError }) : t('tasks.page.notFoundHint'))}
@@ -46,7 +46,7 @@ export function TareaPage() {
   }
   if (!ctx.project || !task) {
     return (
-      <PageLayout title={t('tasks.page.title')} actions={back}>
+      <PageLayout title={t('tasks.page.title')} back={back}>
         <p role="status" className="text-fg-muted">
           {t('common.loading')}
         </p>
@@ -142,7 +142,7 @@ function TaskView({ ctx, project, task, back }: { ctx: Ctx; project: Project; ta
       complete: t('review.completeLabel'),
     };
     return (
-      <PageLayout title={titles[mode]} subtitle={project.name} actions={back}>
+      <PageLayout title={titles[mode]} subtitle={project.name} back={back}>
         <Surface as="section" aria-label={titles[mode]} className="mx-auto w-full max-w-prose">
           {mode === 'edit' && (
             <TaskForm
@@ -202,15 +202,14 @@ function TaskView({ ctx, project, task, back }: { ctx: Ctx; project: Project; ta
     <PageLayout
       title={task.title}
       subtitle={parent ? t('tasks.subtaskOf', { title: parent.title }) : project.name}
+      back={back}
       actions={
-        <div className="flex flex-wrap items-center gap-2">
-          {back}
-          {writable && manager && (
-            <Button size="sm" icon={<Pencil size={16} aria-hidden="true" />} onClick={() => setMode('edit')}>
-              {t('tasks.panel.edit')}
-            </Button>
-          )}
-        </div>
+        writable &&
+        manager && (
+          <Button size="sm" icon={<Pencil size={16} aria-hidden="true" />} onClick={() => setMode('edit')}>
+            {t('tasks.panel.edit')}
+          </Button>
+        )
       }
     >
       {offline && <OfflineNote savedAt={ctx.work?.savedAt ?? ''} />}
