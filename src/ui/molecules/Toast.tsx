@@ -8,7 +8,7 @@ export function Toast({ message, onDone }: { message: string | null; onDone: () 
     return () => clearTimeout(timer);
   }, [message, onDone]);
   return (
-    <div role="status" aria-live="polite" className="pointer-events-none fixed inset-x-4 bottom-20 z-20 flex justify-center md:bottom-6">
+    <div role="status" aria-live="polite" className="pointer-events-none fixed inset-x-4 bottom-20 z-20 flex justify-center max-md:group-has-data-timer/shell:bottom-32 md:bottom-6">
       {message && <p key={message} className="motion-toast rounded-md bg-fg px-4 py-2 text-sm text-canvas shadow-overlay">{message}</p>}
     </div>
   );

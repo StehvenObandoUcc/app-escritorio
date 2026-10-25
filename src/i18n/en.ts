@@ -413,6 +413,7 @@ export const en: Dict = {
     pauseFor: 'Pause {min} min',
     resume: 'Resume tracking',
     onTask: 'On task: {title}',
+    stoppedWith: '{done} · timer stopped',
   },
   consentPanel: {
     label: 'Consent for {team}',

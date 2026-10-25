@@ -18,6 +18,7 @@ import {
   PasswordField,
   ProjectCard,
   ProjectProgress,
+  RunningTimer,
   SegmentedControl,
   StackedBarChart,
   SyncStatus,
@@ -190,6 +191,11 @@ export function GaleriaPage() {
           pauseMinutes={0}
           pauseDisabledReason={t('pause.capReached', { min: 30 })}
         />
+        {/* Temporizador en marcha de la navegación: aquí con el ancho de la barra lateral y sin tarea. */}
+        <div className="flex max-w-60 flex-col gap-2">
+          <RunningTimer elapsedSeconds={5048} taskTitle="Informe trimestral de ventas para la junta" href="#/mi-dia" onStop={noop} />
+          <RunningTimer elapsedSeconds={42} taskTitle={null} href="#/mi-dia" onStop={noop} />
+        </div>
         <div className="max-w-96">
           <CategoryBreakdown
             totals={day.totals}
