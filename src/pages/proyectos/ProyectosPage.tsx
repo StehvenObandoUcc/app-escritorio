@@ -86,6 +86,14 @@ export function ProyectosPage() {
         <EmptyState
           title={show === 'archived' ? t('projects.noArchived') : t('projects.empty')}
           description={show === 'archived' ? t('projects.noArchivedHint') : canCreate ? t('projects.emptyManager') : t('projects.emptyMember')}
+          action={
+            show !== 'archived' && canCreate && !creating ? (
+              // Secundario: el principal de la pantalla es «Nuevo proyecto», arriba.
+              <Button icon={<Plus size={16} aria-hidden="true" />} onClick={() => setCreating(true)}>
+                {t('projects.createFirst')}
+              </Button>
+            ) : undefined
+          }
         />
       ) : (
         <div className="motion-stagger grid gap-3 md:grid-cols-2 lg:grid-cols-3">
@@ -99,15 +107,17 @@ export function ProyectosPage() {
 }
 
 /** Sin equipo o como observador no hay proyectos que mostrar. */
+/** Enlace con forma de botón principal a Equipo: donde se crea o elige equipo y se invita a personas. */
+export function GoToTeam({ label = t('common.goToTeam') }: { label?: string }) {
+  return (
+    <Link to="/equipo" className="inline-flex h-control items-center gap-2 rounded-md bg-accent px-4 font-medium text-on-accent hover:bg-accent-hover">
+      {label}
+    </Link>
+  );
+}
+
 export function noTeamState(role: string | null) {
-  if (role === null) {
-    const action = (
-      <Link to="/equipo" className="inline-flex h-control items-center gap-2 rounded-md bg-accent px-4 font-medium text-on-accent hover:bg-accent-hover">
-        {t('common.goToTeam')}
-      </Link>
-    );
-    return { title: t('projects.noTeam'), description: t('projects.noTeamHint'), action };
-  }
+  if (role === null) return { title: t('projects.noTeam'), description: t('projects.noTeamHint'), action: <GoToTeam /> };
   if (role === 'viewer') return { title: t('projects.viewer'), description: t('projects.viewerHint'), action: undefined };
   return null;
 }

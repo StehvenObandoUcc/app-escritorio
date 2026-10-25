@@ -114,7 +114,8 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
     const today = localDate();
     const limit = today > date ? today : date;
     return (
-      <PageLayout title={t('nav.myDay')} subtitle={rangeTitle(period, range)} actions={sampleTag}>
+      // El título dice el periodo que se ve (Mi semana, Mi mes), no «Mi día».
+      <PageLayout title={t(`myRange.title.${period}`)} subtitle={rangeTitle(period, range)} actions={sampleTag}>
         {selector}
         <MyRangeView
           bridge={bridge}

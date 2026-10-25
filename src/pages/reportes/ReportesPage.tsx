@@ -9,6 +9,7 @@ import { Badge, Button, Heading, Select, Surface, Textarea } from '@/ui/atoms';
 import { EmptyState, Toast } from '@/ui/molecules';
 import { ReportHistory, ReportView, type ExportFormat } from '@/ui/organisms';
 import { PageLayout } from '@/ui/templates';
+import { GoToTeam } from '../proyectos/ProyectosPage';
 import { useWork } from '../proyectos/useWork';
 
 const EXTENSION: Record<Exclude<ExportFormat, 'pdf'>, [string, string]> = {
@@ -47,7 +48,7 @@ export function ReportesPage() {
   if (!activeTeam || !teamId) {
     return (
       <PageLayout title={t('reports.title')} actions={sampleTag}>
-        <EmptyState title={t('reports.title')} description={t('reports.noTeam')} />
+        <EmptyState title={t('reports.title')} description={t('reports.noTeam')} action={<GoToTeam />} />
       </PageLayout>
     );
   }

@@ -18,7 +18,7 @@ const isTyping = (el: EventTarget | null) =>
 
 /**
  * Enter en un campo de texto pasa al siguiente campo vacío del mismo formulario y solo envía cuando ya no
- * quedan vacíos; Ctrl+Enter envía desde un área de texto (AC-43). Devuelve true si atendió la tecla.
+ * quedan vacíos; Ctrl+Enter envía desde cualquier campo (AC-43). Devuelve true si atendió la tecla.
  * Si el formulario marca campos obligatorios (`required`), Enter solo salta a los obligatorios vacíos y
  * envía cuando están llenos, sin pasar por los opcionales (F-14).
  */
@@ -26,12 +26,13 @@ export function enterToNextField(e: KeyboardEvent): boolean {
   const target = e.target;
   const form = target instanceof HTMLElement ? target.closest('form') : null;
   if (!form || e.key !== 'Enter' || e.defaultPrevented) return false;
-  if (target instanceof HTMLTextAreaElement) {
-    if (!(e.ctrlKey || e.metaKey)) return false;
+  // Ctrl+Enter guarda desde cualquier campo (lo que promete la pista «Ctrl+Enter: guardar»), no solo desde un área de texto.
+  if (e.ctrlKey || e.metaKey) {
     e.preventDefault();
     form.requestSubmit();
     return true;
   }
+  if (target instanceof HTMLTextAreaElement) return false;
   if (!(target instanceof HTMLInputElement) || !target.matches(FIELDS)) return false;
   const fields = [...form.querySelectorAll<HTMLInputElement>(FIELDS)];
   const marked = fields.some((f) => f.required);

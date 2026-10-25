@@ -15,6 +15,9 @@ export const OTP_CODE = /^\d{6,10}$/;
 
 const text = (min: number, max: number, key: Parameters<typeof t>[0]) =>
   z.string().trim().min(min, t(key, { min, max })).max(max, t(key, { min, max }));
+/** Como `text`, pero vacío dice qué falta («Escribe un título…») en vez de un rango que empieza en 1. */
+const named = (min: number, max: number, empty: Parameters<typeof t>[0]) =>
+  z.string().trim().min(1, t(empty)).min(min, t('forms.length', { min, max })).max(max, t('forms.length', { min, max }));
 const email = () => z.string().trim().max(LIMITS.email.max, t('forms.email')).regex(EMAIL, t('forms.email'));
 const password = () => z.string().min(LIMITS.password.min, t('forms.password', { min: LIMITS.password.min })).max(LIMITS.password.max, t('forms.passwordMax', { max: LIMITS.password.max }));
 
@@ -30,7 +33,7 @@ export const forms = {
       timezone: z.string().trim().refine(validTimezone, t('forms.timezone')),
     }),
   team: () => z.object({ name: text(LIMITS.teamName.min, LIMITS.teamName.max, 'forms.length') }),
-  project: () => z.object({ name: text(LIMITS.projectName.min, LIMITS.projectName.max, 'forms.length') }),
+  project: () => z.object({ name: named(LIMITS.projectName.min, LIMITS.projectName.max, 'forms.projectNameRequired') }),
   invite: () => z.object({ email: email() }),
   invitationCode: () => z.object({ code: z.string().trim().toUpperCase().regex(INVITATION_CODE, t('forms.invitationCode')) }),
   timeEntry: () =>
@@ -39,7 +42,7 @@ export const forms = {
       .refine((v) => v.end > v.start, { message: t('forms.endAfterStart'), path: ['end'] }),
   task: () =>
     z.object({
-      title: text(LIMITS.taskTitle.min, LIMITS.taskTitle.max, 'forms.length'),
+      title: named(LIMITS.taskTitle.min, LIMITS.taskTitle.max, 'forms.taskTitleRequired'),
       description: z.string().max(LIMITS.taskDescription.max, t('forms.max', { max: LIMITS.taskDescription.max })),
       labels: z
         .string()
