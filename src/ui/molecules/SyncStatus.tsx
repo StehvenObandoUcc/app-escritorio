@@ -9,7 +9,7 @@ const VIEW: Record<SyncPhase, { icon: typeof CloudCheck; tone: string }> = {
   off: { icon: CloudOff, tone: 'text-fg-muted' },
   syncing: { icon: RefreshCw, tone: 'text-fg-muted' },
   pending: { icon: CloudUpload, tone: 'text-fg-muted' },
-  synced: { icon: CloudCheck, tone: 'text-accent-text' },
+  synced: { icon: CloudCheck, tone: 'text-fg' },
   error: { icon: TriangleAlert, tone: 'text-danger' },
 };
 

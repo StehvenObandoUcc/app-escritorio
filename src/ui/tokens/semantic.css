@@ -22,7 +22,8 @@
   --sem-accent-hover: var(--prim-pulse-600);
   --sem-accent-soft: var(--prim-pulse-50);
   --sem-accent-text: var(--prim-pulse-600);
-  --sem-focus: var(--prim-pulse-500);
+  /* Foco en tinta, no en acento: se ve sobre lo activo (relleno de acento) y no se confunde con un error. */
+  --sem-focus: var(--prim-ink-900);
 
   --sem-danger: var(--prim-red-600);
   --sem-danger-soft: var(--prim-red-50);
@@ -65,7 +66,7 @@
 
     --sem-accent-soft: var(--prim-pulse-900);
     --sem-accent-text: var(--prim-pulse-300);
-    --sem-focus: var(--prim-pulse-400);
+    --sem-focus: var(--prim-ink-100);
 
     --sem-danger: var(--prim-red-400);
     --sem-danger-soft: var(--prim-red-900);
@@ -104,7 +105,7 @@
 
   --sem-accent-soft: var(--prim-pulse-900);
   --sem-accent-text: var(--prim-pulse-300);
-  --sem-focus: var(--prim-pulse-400);
+  --sem-focus: var(--prim-ink-100);
 
   --sem-danger: var(--prim-red-400);
   --sem-danger-soft: var(--prim-red-900);
