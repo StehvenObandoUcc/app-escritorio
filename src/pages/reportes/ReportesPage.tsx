@@ -256,6 +256,12 @@ export function ReportesPage() {
               <ReportView report={selected} title={titleOf(selected)} onExport={exportReport} />
             </Surface>
           )}
+          {/* Sin esto, dos tercios de la pantalla quedaban vacíos hasta abrir un reporte. */}
+          {!selected && !manual && (
+            <div className="print:hidden">
+              <EmptyState title={t('reports.viewer.empty')} description={t('reports.viewer.emptyHint')} />
+            </div>
+          )}
         </div>
       </div>
       <Toast message={notice} onDone={() => setNotice(null)} />

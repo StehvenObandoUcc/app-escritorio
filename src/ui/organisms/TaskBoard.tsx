@@ -28,7 +28,9 @@ export function TaskBoard(props: TaskViewProps) {
                   <button
                     type="button"
                     onClick={() => props.onOpen(task)}
-                    className="truncate rounded-xs text-left font-medium text-fg hover:underline"
+                    title={task.title}
+                    // Dos líneas: en columnas estrechas una sola cortaba casi todos los títulos.
+                    className="line-clamp-2 rounded-xs text-left font-medium break-words text-fg hover:underline"
                   >
                     {task.title}
                   </button>

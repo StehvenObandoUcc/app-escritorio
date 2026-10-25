@@ -793,6 +793,10 @@ export const es = {
     subtitle: 'Las cifras las calcula Pulso con tus registros; la IA solo redacta el resumen y las recomendaciones.',
     noTeam: 'Elige o crea un equipo para ver sus reportes.',
     viewerNote: 'Como observador ves los reportes de equipo ya generados.',
+    viewer: {
+      empty: 'Ningún reporte abierto',
+      emptyHint: 'Genera uno o elige uno del historial: aquí verás sus cifras, el resumen y las recomendaciones.',
+    },
     generate: {
       title: 'Generar un reporte',
       about: 'Sobre',
@@ -997,6 +1001,8 @@ export const es = {
     sessions: { one: '{n} sesión', other: '{n} sesiones' },
     totals: {
       title: 'Totales del equipo',
+      time: 'Tiempo',
+      work: 'Trabajo',
       active: 'Horas activas',
       productive: 'Productivas',
       ai: 'IA',

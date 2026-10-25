@@ -34,7 +34,7 @@ export function ReportView({ report, title, onExport }: { report: ReportRun; tit
         {report.facts.length === 0 ? (
           <p className="text-sm text-fg-muted">{t('reports.view.noFigures')}</p>
         ) : (
-          <dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <dl className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
             {report.facts.map((f) => (
               <div key={f.id} className="flex flex-col rounded-md bg-sunken px-3 py-2">
                 <dt className="text-sm text-fg-muted">{factLabel(f)}</dt>

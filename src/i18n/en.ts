@@ -793,6 +793,10 @@ export const en: Dict = {
     subtitle: 'Pulso calculates the figures from your records; the AI only writes the summary and the recommendations.',
     noTeam: 'Choose or create a team to see its reports.',
     viewerNote: 'As a viewer you see the team reports already generated.',
+    viewer: {
+      empty: 'No report open',
+      emptyHint: 'Generate one or pick one from the history: its figures, summary and recommendations will show here.',
+    },
     generate: {
       title: 'Generate a report',
       about: 'About',
@@ -997,6 +1001,8 @@ export const en: Dict = {
     sessions: { one: '{n} session', other: '{n} sessions' },
     totals: {
       title: 'Team totals',
+      time: 'Time',
+      work: 'Work',
       active: 'Active hours',
       productive: 'Productive',
       ai: 'AI',
