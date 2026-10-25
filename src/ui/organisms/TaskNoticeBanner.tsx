@@ -10,11 +10,14 @@ export interface TaskNoticeItem {
   title: string;
 }
 
-/** Avisos de revisión de tareas (F6-3), en cualquier pantalla y hasta que la persona los cierra. */
+/**
+ * Avisos de revisión de tareas (F6-3), en cualquier pantalla y hasta que la persona los cierra.
+ * En compacto van por encima de la barra de navegación inferior (como el Toast), sin taparla.
+ */
 export function TaskNoticeBanner({ notices, onDismiss }: { notices: TaskNoticeItem[]; onDismiss: (key: string) => void }) {
   if (notices.length === 0) return null;
   return (
-    <div className="pointer-events-none fixed inset-x-4 bottom-4 z-50 flex flex-col gap-2 md:left-auto md:w-full md:max-w-auth">
+    <div className="pointer-events-none fixed inset-x-4 bottom-20 z-50 flex flex-col gap-2 md:bottom-4 md:left-auto md:w-full md:max-w-auth">
       {notices.map((n) => (
         <div key={n.key} role="status" className="pointer-events-auto flex items-start gap-3 rounded-lg border border-accent bg-surface p-3 shadow-overlay">
           <ClipboardCheck size={20} aria-hidden="true" className="mt-1 shrink-0 text-accent" />

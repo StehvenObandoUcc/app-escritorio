@@ -17,12 +17,16 @@ export type TaskSnapshot = Record<string, { status: TaskStatus; review: string |
 export const snapshotOf = (work: TeamWork): TaskSnapshot =>
   Object.fromEntries(work.tasks.map((x) => [x.id, { status: x.status, review: x.pendingReview?.id ?? null, by: x.pendingReview?.submittedBy ?? null }]));
 
+/** Revisiones decididas desde esta app: de esas ya avisa el Toast de quien decide. */
+const decidedHere = new Set<string>();
+export const markDecidedHere = (reviewId: string) => void decidedHere.add(reviewId);
+
 /**
  * F6-3: avisos de revisión comparando con lo último visto.
  * - toReview: llegó una revisión que decido yo (me eligieron, o no eligieron a nadie y gestiono o lidero el proyecto).
- * - returned / approved: se decidió una revisión que envié yo.
+ * - returned / approved: otra persona decidió una revisión que envié yo (`skip`: las que decidí yo).
  */
-export function taskNotices(prev: TaskSnapshot, work: TeamWork, me: string): TaskNotice[] {
+export function taskNotices(prev: TaskSnapshot, work: TeamWork, me: string, skip: ReadonlySet<string> = decidedHere): TaskNotice[] {
   const roles = new Map(work.projects.map((p) => [p.id, p.myRole]));
   const out: TaskNotice[] = [];
   for (const x of work.tasks) {
@@ -32,7 +36,7 @@ export function taskNotices(prev: TaskSnapshot, work: TeamWork, me: string): Tas
     if (r && r.id !== before?.review && r.submittedBy !== me) {
       const mine = r.reviewerId === me || (r.reviewerId === null && roles.get(x.projectId) !== 'contributor');
       if (mine) out.push({ ...base, kind: 'toReview', key: `r:${r.id}` });
-    } else if (!r && before?.review && before.by === me) {
+    } else if (!r && before?.review && before.by === me && !skip.has(before.review)) {
       out.push({ ...base, kind: x.status === 'done' ? 'approved' : 'returned', key: `d:${before.review}` });
     }
   }
