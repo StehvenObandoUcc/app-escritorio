@@ -251,7 +251,7 @@ describe('Tablero (F5)', () => {
     vi.spyOn(cloud, 'teamPresence').mockResolvedValue(PRESENCE);
     renderWithSession(<TableroPage />, { path: '/tablero', cloud });
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('No se pudo cargar el tablero');
+    expect(alert).toHaveTextContent('No se pudo cargar el panel');
     expect(alert).toHaveTextContent('No permitido');
     await userEvent.click(within(alert).getByRole('button', { name: 'Reintentar' }));
     await section('Totales del equipo');
@@ -412,7 +412,7 @@ describe('Imprimir / PDF y navegación (AC-17)', () => {
     expect(print).toHaveBeenCalledTimes(1);
   }, LONG);
 
-  it('la navegación real de la app va dentro de un contenedor print:hidden y «Tablero» lleva a /tablero', () => {
+  it('la navegación real de la app va dentro de un contenedor print:hidden y «Panel» lleva a /tablero', () => {
     render(
       <MemoryRouter>
         <AppShell nav={<AppNav items={nav()} />}>
@@ -422,7 +422,7 @@ describe('Imprimir / PDF y navegación (AC-17)', () => {
     );
     const navEl = screen.getByRole('navigation', { name: 'Principal' });
     expect(navEl.closest('.print\\:hidden')).not.toBeNull();
-    expect(screen.getByRole('link', { name: 'Tablero' })).toHaveAttribute('href', '/tablero');
+    expect(screen.getByRole('link', { name: 'Panel' })).toHaveAttribute('href', '/tablero');
     // Los atajos Alt+n siguen la misma lista que la navegación, y la ayuda dice cuántos hay.
     expect(nav().map((i) => i.to)).toEqual(ROUTES);
     expect(ROUTES).toContain('/tablero');
