@@ -5,6 +5,7 @@ import { renderWithSession } from '@/app/testing';
 import { createMockBridge } from '@/bridge/mock';
 import { createMockCloud } from '@/cloud/mock';
 import { CONSENT_VERSION } from '@/lib/consent';
+import { EMPTY_TASK } from '@/ui/molecules';
 import { EquipoPage } from './EquipoPage';
 import { PrivacidadPage } from './PrivacidadPage';
 
@@ -204,6 +205,30 @@ describe('Equipo (EQ-01 a EQ-08, PS-02)', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Dejar de ser propietario' }));
     await waitFor(async () => expect((await cloud.myTeams())[0]?.role).toBe('admin'));
     expect(await screen.findByText('Tu rol: Administrador')).toBeInTheDocument();
+  });
+
+  it('pasar a alguien a observador pide confirmar y dice qué tareas quedan sin responsable (F6-4)', async () => {
+    const { cloud, id } = await signedIn();
+    const team = cloud.debug.addTeam('Equipo A', id);
+    await cloud.giveConsent(team, CONSENT_VERSION);
+    const beto = cloud.debug.addAccount('beto@pulso.test', 'secreto-123', 'Beto');
+    cloud.debug.addMember(team, beto, 'member', true);
+    const project = await cloud.createProject(team, 'Web');
+    await cloud.setProjectMember(project, beto, 'contributor');
+    await cloud.createTask(project, { ...EMPTY_TASK, title: 'Portada', assigneeId: beto });
+    await cloud.createTask(project, { ...EMPTY_TASK, title: 'Logo', assigneeId: beto });
+    renderWithSession(<EquipoPage />, { path: '/equipo', cloud });
+
+    await userEvent.selectOptions(await screen.findByLabelText('Rol de Beto'), 'viewer');
+    const dialog = await screen.findByRole('dialog', { name: '¿Pasar a Beto a observador?' });
+    await waitFor(() => expect(dialog).toHaveTextContent('Sus 2 tareas sin terminar quedan sin responsable.'));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
+    expect((await cloud.members(team)).find((m) => m.userId === beto)?.role).toBe('member');
+
+    await userEvent.selectOptions(screen.getByLabelText('Rol de Beto'), 'viewer');
+    await userEvent.click(within(await screen.findByRole('dialog', { name: '¿Pasar a Beto a observador?' })).getByRole('button', { name: 'Sí, pasar a observador' }));
+    await waitFor(async () => expect((await cloud.members(team)).find((m) => m.userId === beto)?.role).toBe('viewer'));
+    expect((await cloud.teamWork(team)).tasks.every((x) => x.assigneeId === null)).toBe(true);
   });
 
   it('el último owner no puede salir: se explica por qué', async () => {
