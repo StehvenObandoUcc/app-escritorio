@@ -30,6 +30,10 @@ describe('taskNotices (F6-3)', () => {
     expect(taskNotices(prev, work('done', null), ME)).toMatchObject([{ kind: 'approved' }]);
     expect(taskNotices(prev, work('doing', null), OTHER)).toEqual([]);
   });
+  it('no avisa de una revisión que decidí yo (ya lo dice el Toast)', () => {
+    const prev = snapshotOf(work('review', review(ME, null), 'lead'));
+    expect(taskNotices(prev, work('done', null, 'lead'), ME, new Set([R]))).toEqual([]);
+  });
   it('no repite el aviso si nada cambió', () => {
     const now = work('review', review(OTHER, ME));
     expect(taskNotices(snapshotOf(now), now, ME)).toEqual([]);

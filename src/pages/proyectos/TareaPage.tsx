@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
+import { markDecidedHere } from '@/app/taskNotices';
 import { useAction } from '@/app/useAction';
 import type { Project, Task } from '@/cloud/contract';
 import { errorMessage, t } from '@/i18n';
@@ -228,7 +229,11 @@ function TaskView({ ctx, project, task, back }: { ctx: Ctx; project: Project; ta
               me={me}
               readOnly={!writable}
               nameOf={nameOf}
-              onDecide={(approve, comment) => persist(() => cloud.reviewTask(task.pendingReview!.id, approve, comment), approve ? t('review.approved') : t('review.changesRequested'))}
+              onDecide={(approve, comment) => {
+                const id = task.pendingReview!.id;
+                markDecidedHere(id);
+                return persist(() => cloud.reviewTask(id, approve, comment), approve ? t('review.approved') : t('review.changesRequested'));
+              }}
               onOpenLink={openLink}
               onOpenEvidence={openEvidence}
             />
