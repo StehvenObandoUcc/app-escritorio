@@ -25,11 +25,11 @@ export function RunningTimer({ elapsedSeconds, taskTitle, href, onStop }: Runnin
     <section
       data-timer
       aria-label={t('timer.running')}
-      className="flex min-w-0 items-center gap-2 rounded-lg bg-sunken py-1 pr-1 pl-3 md:flex-col md:gap-1 md:px-1 md:py-2 lg:flex-row lg:gap-2 lg:py-1 lg:pr-1 lg:pl-3"
+      className="motion-enter flex min-w-0 items-center gap-2 rounded-lg bg-sunken py-1 pr-1 pl-3 md:flex-col md:gap-1 md:px-1 md:py-2 lg:flex-row lg:gap-2 lg:py-1 lg:pr-1 lg:pl-3"
     >
       <a href={href} title={name} className="flex min-w-0 flex-1 items-center gap-2 rounded-xs md:flex-col md:gap-0 lg:items-start">
         <span role="timer" aria-label={t('timer.label')} className="flex items-center gap-2 font-display font-semibold text-fg tabular-nums md:flex-col md:gap-1 md:text-sm lg:flex-row lg:gap-2 lg:text-base">
-          <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-accent" />
+          <span aria-hidden="true" className="motion-pulse relative size-2 shrink-0 rounded-full bg-accent" />
           <span className="md:hidden lg:inline">{formatClock(elapsedSeconds)}</span>
           <span className="hidden md:inline lg:hidden">{formatCompactClock(elapsedSeconds)}</span>
         </span>
