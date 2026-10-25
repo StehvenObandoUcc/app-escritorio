@@ -614,6 +614,13 @@ export const es = {
     roleOf: 'Rol de {name}',
     membersError: 'No se pudo leer la lista: {error}',
     confirmRemove: 'Quitar del equipo',
+    toViewer: {
+      title: '¿Pasar a {name} a observador?',
+      message: 'Un observador no participa en proyectos: {name} sale de los proyectos del equipo, deja de ser persona de apoyo y sus revisiones pendientes quedan para quien gestiona.',
+      tasks: { one: 'Su tarea sin terminar queda sin responsable.', other: 'Sus {n} tareas sin terminar quedan sin responsable.' },
+      noTasks: 'No tiene tareas sin terminar asignadas.',
+      confirm: 'Sí, pasar a observador',
+    },
     removeQuestion: '¿Quitar a {name} del equipo? Se borrará su actividad en este equipo; su tiempo registrado se conserva como «Exmiembro».',
     remove: 'Quitar del equipo',
     stopOwning: 'Dejar de ser propietario',
