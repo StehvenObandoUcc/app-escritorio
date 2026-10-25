@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Copy } from 'lucide-react';
+import { Calculator, Copy, Download, FileText } from 'lucide-react';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { useSession } from '@/app/session';
 import { REPORT_MODES, REPORT_PERIODS, TrialError, type ReportFacts, type ReportMode, type ReportPeriod, type ReportRequest, type ReportRun } from '@/cloud/contract';
@@ -258,11 +258,7 @@ export function ReportesPage() {
             </Surface>
           )}
           {/* Sin esto, dos tercios de la pantalla quedaban vacíos hasta abrir un reporte. */}
-          {!selected && !manual && (
-            <div className="print:hidden">
-              <EmptyState title={t('reports.viewer.empty')} description={t('reports.viewer.emptyHint')} />
-            </div>
-          )}
+          {!selected && !manual && <ReportPreview reports={history.data ?? []} titleOf={titleOf} onOpen={(r) => show(r, false)} />}
         </div>
       </div>
       <Toast message={notice} onDone={() => setNotice(null)} />
@@ -289,5 +285,41 @@ function Labeled({ label, children }: { label: string; children: ReactNode }) {
       {label}
       {children}
     </label>
+  );
+}
+
+const PREVIEW = [
+  { key: 'figures', icon: Calculator },
+  { key: 'narrative', icon: FileText },
+  { key: 'export', icon: Download },
+] as const;
+
+/**
+ * Lo que ocupa la columna del reporte mientras no hay uno abierto: qué trae un reporte y, si ya hay alguno,
+ * abrir el más reciente. Ocupa todo el alto de la columna para no dejar un hueco bajo un aviso corto.
+ */
+function ReportPreview({ reports, titleOf, onOpen }: { reports: ReportRun[]; titleOf: (r: ReportRun) => string; onOpen: (r: ReportRun) => void }) {
+  const latest = reports.reduce<ReportRun | null>((a, r) => (!a || r.createdAt > a.createdAt ? r : a), null);
+  return (
+    <section aria-label={t('reports.viewer.empty')} className="flex flex-col gap-6 rounded-lg border border-dashed border-line-strong p-6 lg:flex-1 print:hidden">
+      <div>
+        <Heading level={2}>{t('reports.viewer.empty')}</Heading>
+        <p className="mt-1 max-w-prose text-fg-muted">{t('reports.viewer.emptyHint')}</p>
+      </div>
+      <ul className="grid gap-5 md:grid-cols-3">
+        {PREVIEW.map(({ key, icon: Icon }) => (
+          <li key={key} className="flex flex-col gap-2">
+            <Icon size={20} aria-hidden="true" className="text-fg-muted" />
+            <p className="font-semibold text-fg">{t(`reports.viewer.${key}`)}</p>
+            <p className="text-sm text-fg-muted">{t(`reports.viewer.${key}Hint`)}</p>
+          </li>
+        ))}
+      </ul>
+      {latest && (
+        <div>
+          <Button onClick={() => onOpen(latest)}>{t('reports.viewer.openLatest', { title: titleOf(latest) })}</Button>
+        </div>
+      )}
+    </section>
   );
 }
