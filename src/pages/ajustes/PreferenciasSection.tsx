@@ -7,7 +7,7 @@ import { Button, Heading, Select, Surface } from '@/ui/atoms';
 import { SyncStatus, ThemeToggle } from '@/ui/molecules';
 
 /**
- * Cuenta y preferencias (F-09): lo que vive en el pie del menú (equipo activo, sincronización, tema y
+ * Tema, atajos y sincronización (F-09; antes «Cuenta y preferencias», que se confundía con el grupo Cuenta): lo que vive en el pie del menú (equipo activo, sincronización, tema y
  * atajos) también aquí, porque el pie no se ve en ventanas de menos de 640 px. Mismos componentes.
  */
 export function PreferenciasSection() {
