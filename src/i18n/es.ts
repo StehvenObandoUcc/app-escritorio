@@ -566,7 +566,7 @@ export const es = {
     moreLaterHint: 'Las reglas y la jornada del equipo están en Equipo → General.',
     language: 'Idioma',
     languageLabel: 'Idioma de Pulso',
-    languageHint: 'Se aplica al instante: cambia toda la app y las notificaciones de Windows. Se guarda en este computador.',
+    languageHint: 'Se aplica al instante: cambia toda la app y las notificaciones de Windows. Se guarda en este computador. Los campos de fecha y hora toman el formato nuevo al volver a abrir Pulso.',
     preferences: 'Tema, atajos y sincronización',
     languages: { es: 'Español', en: 'English' },
   },

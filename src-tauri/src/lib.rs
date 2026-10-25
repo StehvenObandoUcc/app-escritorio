@@ -68,6 +68,29 @@ fn notify_not_allowed(handle: &AppHandle, alert: &tracker::Alert) {
   }
 }
 
+/// Idioma de WebView2 para cada idioma de Pulso. Español de España: fecha dd/mm/aaaa y hora en 24 h,
+/// como el resto de la app (es-CO pondría «a. m.»).
+fn webview_lang(language: &str) -> &'static str {
+  match language {
+    "en" => "en-US",
+    _ => "es-ES",
+  }
+}
+
+/// F6-1: los campos nativos de fecha y hora de WebView2 siguen el idioma del navegador, no el `lang` del
+/// documento. Por eso la ventana (`create: false` en tauri.conf.json) se crea aquí con `--lang` según el
+/// idioma guardado; un cambio en Ajustes se ve en esos campos al volver a abrir Pulso.
+fn create_main_window(app: &tauri::App, language: &str) -> tauri::Result<()> {
+  let Some(config) = app.config().app.windows.iter().find(|w| w.label == "main") else {
+    return Ok(());
+  };
+  let base = config.additional_browser_args.clone().unwrap_or_default();
+  tauri::WebviewWindowBuilder::from_config(app.handle(), config)?
+    .additional_browser_args(&format!("{base} --lang={}", webview_lang(language)))
+    .build()?;
+  Ok(())
+}
+
 /// Hilo del sensor: lee la ventana y la inactividad y alimenta al servicio.
 fn spawn_sensor(tracker: Arc<tracker::Tracker>, handle: AppHandle) {
   std::thread::Builder::new()
@@ -150,6 +173,9 @@ pub fn run() {
         log::error!("al registrar el cierre anterior: {e}");
       }
 
+      let language = tracker.settings_get().map(|s| s.language).unwrap_or_else(|_| "es".into());
+      create_main_window(app, &language)?;
+
       spawn_sensor(tracker.clone(), app.handle().clone());
       app.manage(tracker);
       log::info!("inicio: sensor en marcha");
@@ -206,4 +232,17 @@ pub fn run() {
     }
     _ => {}
   });
+}
+
+#[cfg(test)]
+mod tests {
+  use super::webview_lang;
+
+  #[test]
+  fn webview_lang_da_formato_de_fecha_del_idioma_elegido() {
+    assert_eq!(webview_lang("es"), "es-ES");
+    assert_eq!(webview_lang("en"), "en-US");
+    // Un valor desconocido no deja la ventana sin idioma: se usa el de por defecto.
+    assert_eq!(webview_lang("fr"), "es-ES");
+  }
 }
