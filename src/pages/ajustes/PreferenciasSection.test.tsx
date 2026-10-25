@@ -7,7 +7,7 @@ import { createMockCloud } from '@/cloud/mock';
 import { CONSENT_VERSION } from '@/lib/consent';
 import { PreferenciasSection } from './PreferenciasSection';
 
-describe('Ajustes: Cuenta y preferencias (F-09)', () => {
+describe('Ajustes: Tema, atajos y sincronización (F-09)', () => {
   it('reúne equipo activo, sincronización, tema y atajos, que en ventanas estrechas no están en el menú', async () => {
     const cloud = createMockCloud();
     const ana = cloud.debug.addAccount('ana@pulso.test', 'secreto-123', 'Ana');
@@ -22,7 +22,7 @@ describe('Ajustes: Cuenta y preferencias (F-09)', () => {
       </HelpContext.Provider>,
       { cloud },
     );
-    const card = screen.getByRole('region', { name: 'Cuenta y preferencias' });
+    const card = screen.getByRole('region', { name: 'Tema, atajos y sincronización' });
     const team = await within(card).findByRole('combobox', { name: 'Equipo activo' });
     expect(within(team).getAllByRole('option').map((o) => o.textContent)).toEqual(['Equipo A', 'Equipo B']);
     expect(within(card).getByRole('status')).toBeInTheDocument();
