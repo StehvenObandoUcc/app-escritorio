@@ -148,6 +148,7 @@ export const en: Dict = {
       labels: 'Labels',
       labelsHint: 'Comma separated, for example: design, client',
       criteria: 'Acceptance criteria',
+      more: 'More details',
       criteriaHint: 'One per line. All must be checked to submit the task for review.',
     },
     panel: {

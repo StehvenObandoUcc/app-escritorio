@@ -155,6 +155,20 @@ describe('Mi día', () => {
       expect(await screen.findByText('Sin entradas de tiempo')).toBeInTheDocument();
     });
 
+    it('con entradas, el formulario queda detrás de «Añadir tiempo manualmente» (distill)', async () => {
+      render(<MiDiaPage bridge={createMockBridge()} date={DATE} />);
+      await screen.findByText('Sin entradas de tiempo');
+      fill('Inicio', '09:00');
+      fill('Fin', '10:00');
+      await userEvent.click(screen.getByRole('button', { name: 'Guardar entrada' }));
+      const add = await screen.findByRole('button', { name: 'Añadir tiempo manualmente' });
+      expect(screen.queryByRole('button', { name: 'Guardar entrada' })).not.toBeInTheDocument();
+      await userEvent.click(add);
+      expect(screen.getByRole('button', { name: 'Guardar entrada' })).toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+      expect(screen.getByRole('button', { name: 'Añadir tiempo manualmente' })).toBeInTheDocument();
+    });
+
     it('el temporizador aparece como entrada «en curso» sin acciones', async () => {
       render(<MiDiaPage bridge={createMockBridge()} />);
       await userEvent.click(await screen.findByRole('button', { name: 'Iniciar temporizador' }));

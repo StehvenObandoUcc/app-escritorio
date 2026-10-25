@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { TaskForm } from './TaskForm';
@@ -30,5 +30,17 @@ describe('TaskForm (Lote 4)', () => {
     expect(summary.closest('details')).toHaveAttribute('open');
     await userEvent.click(screen.getAllByRole('checkbox').at(-1)!);
     expect(summary).toHaveTextContent('(1 seleccionada)');
+  });
+
+  it('al crear, «Más detalles» empieza plegado; un error ahí lo abre y enfoca el campo (distill)', async () => {
+    renderForm();
+    const more = screen.getByRole('button', { name: 'Más detalles' });
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByLabelText('Etiquetas')).not.toBeVisible();
+    await userEvent.type(screen.getByLabelText('Título *'), 'Informe');
+    fireEvent.change(screen.getByLabelText('Etiquetas'), { target: { value: 'x'.repeat(300) } });
+    await userEvent.click(screen.getByRole('button', { name: 'Crear tarea' }));
+    expect(more).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByLabelText('Etiquetas')).toHaveFocus();
   });
 });

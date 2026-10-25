@@ -206,14 +206,9 @@ function TaskView({ ctx, project, task, back }: { ctx: Ctx; project: Project; ta
         <div className="flex flex-wrap items-center gap-2">
           {back}
           {writable && manager && (
-            <>
-              <Button size="sm" icon={<Pencil size={16} aria-hidden="true" />} onClick={() => setMode('edit')}>
-                {t('tasks.panel.edit')}
-              </Button>
-              <Button size="sm" variant="danger" icon={<Trash2 size={16} aria-hidden="true" />} onClick={() => setConfirmDelete(true)}>
-                {t('tasks.sidebar.delete')}
-              </Button>
-            </>
+            <Button size="sm" icon={<Pencil size={16} aria-hidden="true" />} onClick={() => setMode('edit')}>
+              {t('tasks.panel.edit')}
+            </Button>
           )}
         </div>
       }
@@ -256,6 +251,14 @@ function TaskView({ ctx, project, task, back }: { ctx: Ctx; project: Project; ta
             onOpenTask={(sub) => navigate(taskPath(project.id, sub))}
           />
           <TaskHistoryList history={history.data ?? null} onLoad={() => setHistoryOpen(true)} />
+          {/* Al final y no junto a Editar: borrar es raro y no se deshace (pide confirmación). */}
+          {writable && manager && (
+            <div>
+              <Button size="sm" variant="danger" icon={<Trash2 size={16} aria-hidden="true" />} onClick={() => setConfirmDelete(true)}>
+                {t('tasks.sidebar.delete')}
+              </Button>
+            </div>
+          )}
         </div>
         <Surface className="h-fit">
           <TaskSidebar

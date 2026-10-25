@@ -1,3 +1,4 @@
+import { Plus } from 'lucide-react';
 import { errorMessage, t } from '@/i18n';
 import { useEffect, useMemo, useState } from 'react';
 import type { Bridge, Category } from '@/bridge/contract';
@@ -7,7 +8,7 @@ import { HIDDEN_APP } from '@/lib/apps';
 import { parseTasksCache } from '@/lib/tasks';
 import { WORK_CATEGORIES } from '@/lib/categories';
 import { formatDuration, formatHour, formatLongDate, formatShortDuration, localDate, localDateTimeToIso } from '@/lib/time';
-import { Badge, Checkbox, Heading, Surface } from '@/ui/atoms';
+import { Badge, Button, Checkbox, Heading, Surface } from '@/ui/atoms';
 import { CategoryBreakdown, EmptyState, SegmentedControl, TimeEntryForm, TimerControl } from '@/ui/molecules';
 import { ActivityList, ActivityTimeline, AppSummary, PulseStrip, TimeEntryList } from '@/ui/organisms';
 import { PageLayout } from '@/ui/templates';
@@ -84,6 +85,7 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
   const [anchor, setAnchor] = useState(date);
   const [showHidden, setShowHidden] = useState(true);
   const [tagError, setTagError] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
   const allBlocks = state.phase === 'ready' ? state.day.blocks : null;
   const hasHidden = useMemo(() => Boolean(allBlocks?.some((b) => b.appName === HIDDEN_APP)), [allBlocks]);
   // Solo cambia lo que se ve: los totales del día (franja y reparto) siguen incluyendo las apps ocultas.
@@ -194,18 +196,30 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
       </div>
 
       <section className="flex flex-col gap-3">
-        <Heading level={2}>{t('myDay.timeLog')}</Heading>
-        <Surface as="section" aria-label={t('myDay.addManual')}>
-          <TimeEntryForm
-            initial={{ date, start: '', end: '' }}
-            submitLabel={t('myDay.saveEntry')}
-            clearOnSuccess
-            onSubmit={async (v) => {
-              await bridge.timeEntryAdd(localDateTimeToIso(v.date, v.start), localDateTimeToIso(v.date, v.end));
-              reload();
-            }}
-          />
-        </Surface>
+        {/* Sin entradas, el formulario está a la vista (es lo que toca hacer); con entradas, detrás de un botón. */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Heading level={2}>{t('myDay.timeLog')}</Heading>
+          {entries.length > 0 && !adding && (
+            <Button size="sm" icon={<Plus size={16} aria-hidden="true" />} onClick={() => setAdding(true)}>
+              {t('myDay.addManual')}
+            </Button>
+          )}
+        </div>
+        {(entries.length === 0 || adding) && (
+          <Surface as="section" aria-label={t('myDay.addManual')}>
+            <TimeEntryForm
+              initial={{ date, start: '', end: '' }}
+              submitLabel={t('myDay.saveEntry')}
+              clearOnSuccess
+              onCancel={entries.length > 0 ? () => setAdding(false) : undefined}
+              onSubmit={async (v) => {
+                await bridge.timeEntryAdd(localDateTimeToIso(v.date, v.start), localDateTimeToIso(v.date, v.end));
+                setAdding(false);
+                reload();
+              }}
+            />
+          </Surface>
+        )}
         {entries.length === 0 ? (
           <EmptyState
             title={t('myDay.noEntries')}

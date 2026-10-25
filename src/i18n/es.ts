@@ -146,6 +146,7 @@ export const es = {
       labels: 'Etiquetas',
       labelsHint: 'Separadas por comas, por ejemplo: diseño, cliente',
       criteria: 'Criterios de aceptación',
+      more: 'Más detalles',
       criteriaHint: 'Uno por línea. Hay que marcarlos todos para enviar la tarea a revisión.',
     },
     panel: {
