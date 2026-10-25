@@ -17,8 +17,8 @@ export function PreferenciasSection() {
   const teams = session?.teams ?? [];
   const active = session?.activeTeam ?? null;
   return (
-    <Surface as="section" aria-label={t('settings.preferences')} className="flex max-w-prose flex-col gap-4">
-      <Heading level={2}>{t('settings.preferences')}</Heading>
+    <Surface as="section" aria-label={t('settings.preferences')} className="flex flex-col gap-4">
+      <Heading level={3} className="text-lg">{t('settings.preferences')}</Heading>
       {session && active && (
         <div className="flex flex-col gap-1">
           {teams.length > 1 ? (

@@ -85,7 +85,7 @@ function AiForm({ bridge, initial, onChanged }: { bridge: Bridge; initial: AiCon
     <Surface as="section" aria-label={t('aiSettings.title')}>
       <form onSubmit={save} className="flex max-w-prose flex-col gap-4" noValidate>
         <div>
-          <Heading level={2}>{t('aiSettings.title')}</Heading>
+          <Heading level={3} className="text-lg">{t('aiSettings.title')}</Heading>
           <p className="mt-1 text-sm text-fg-muted">{t('aiSettings.hint')}</p>
         </div>
         <label className="flex flex-col gap-1 text-sm font-medium text-fg">
