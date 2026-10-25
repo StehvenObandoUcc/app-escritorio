@@ -84,6 +84,32 @@ export function useForm<S extends z.ZodType>(schema: () => S, onCancel?: () => v
     initial.current = snapshot(ref.current);
   }, []);
 
+  // Al escribir en un campo con error, el error se va: no queda a la vista un aviso que ya no aplica.
+  // Se vuelve a validar al enviar. Va en un setTimeout: si se actualiza antes que el onChange del campo,
+  // React repone el valor controlado anterior y se pierde la primera tecla.
+  useEffect(() => {
+    const form = ref.current;
+    if (!form) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const clear = (e: Event) => {
+      const name = e.target instanceof HTMLElement ? e.target.getAttribute('name') : null;
+      if (!name) return;
+      timer = setTimeout(() =>
+        setErrors((prev) => {
+          if (!(name in prev)) return prev;
+          const next = { ...prev };
+          delete next[name];
+          return next;
+        }),
+      );
+    };
+    form.addEventListener('input', clear);
+    return () => {
+      form.removeEventListener('input', clear);
+      clearTimeout(timer);
+    };
+  }, []);
+
   // Solo los formularios que se pueden cancelar (abiertos para una tarea concreta) avisan al salir.
   useEffect(() => {
     if (!onCancel) return;

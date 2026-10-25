@@ -2,6 +2,14 @@ import type { Dict } from '.';
 
 /** Textos en inglés (ADR-0015). El tipo obliga a tener las mismas claves que es.ts. */
 export const en: Dict = {
+  welcome: {
+    label: 'Welcome',
+    title: 'Welcome to Pulso',
+    titleNamed: 'Welcome to Pulso, {name}',
+    local: 'Pulso already records your activity on this computer and keeps it here only. You can see it in My day.',
+    next: 'To organize projects and tasks with other people, create a team or join one. We will ask for your consent before any data is shared.',
+  },
+  pulseStrip: { legend: 'Strip legend' },
   common: {
     sample: 'Sample data',
     cancel: 'Cancel',
@@ -148,6 +156,7 @@ export const en: Dict = {
       labels: 'Labels',
       labelsHint: 'Comma separated, for example: design, client',
       criteria: 'Acceptance criteria',
+      more: 'More details',
       criteriaHint: 'One per line. All must be checked to submit the task for review.',
     },
     panel: {
@@ -237,11 +246,12 @@ export const en: Dict = {
     archivedTab: 'Archived',
     archived: 'Archived',
     back: 'Projects',
-    role: { manager: 'Team management', lead: 'Lead', contributor: 'Contributor' },
+    role: { manager: 'Team admin', lead: 'Lead', contributor: 'Contributor' },
     pendingReviews: { one: '{n} pending review', other: '{n} pending reviews' },
     overdue: { one: '{n} overdue', other: '{n} overdue' },
+    createFirst: 'Create the first project',
     empty: 'There are no projects yet',
-    emptyManager: 'Create the first project with “New project” and assign tasks to your team.',
+    emptyManager: 'A project groups the tasks you assign to your team and the time they take.',
     emptyMember: 'When someone adds you to a project or assigns you a task, it will show up here.',
     noArchived: 'There are no archived projects',
     noArchivedHint: 'An archived project keeps its tasks and history read-only.',
@@ -312,6 +322,7 @@ export const en: Dict = {
     toReview: 'To review',
     toReviewCount: 'To review ({n})',
     empty: 'You have no pending tasks. The ones assigned to you or that you help with will show up here.',
+    goToProjects: 'See unassigned tasks in the projects',
   },
   nav: {
     main: 'Main',
@@ -350,6 +361,12 @@ export const en: Dict = {
     title: 'Site not allowed: {domain}',
     body: 'You entered at {time}. Your team marked it as not allowed: Pulso does not block it and the time counts as distraction.',
     ok: 'Got it',
+  },
+  taskNotices: {
+    toReview: 'You have a task to review: “{title}”',
+    returned: 'Changes were requested on “{title}”',
+    approved: '“{title}” was approved',
+    open: 'Open task',
   },
   cloud: {
     wrongCode: 'The code does not match or the invitation expired. Check it with whoever invited you: after 5 attempts the invitation is cancelled.',
@@ -407,6 +424,7 @@ export const en: Dict = {
     pauseFor: 'Pause {min} min',
     resume: 'Resume tracking',
     onTask: 'On task: {title}',
+    stoppedWith: '{done} · timer stopped',
   },
   consentPanel: {
     label: 'Consent for {team}',
@@ -522,6 +540,18 @@ export const en: Dict = {
     noSites: 'No websites recorded today yet. Pulso reads the domain from the address bar of Brave, Chrome, Edge, Opera, Vivaldi and Firefox; never the page or what you search.',
   },
   settings: {
+    groups: {
+      index: 'Settings sections',
+      account: 'Account',
+      accountHint: 'How your team sees you and your time zone. Applies on any computer where you sign in.',
+      app: 'App',
+      appHint: 'Language, theme, shortcuts and the team you are working with now.',
+      tracking: 'Tracking and privacy',
+      trackingHint: 'What Pulso records on this computer and what you share with your team.',
+      ai: 'AI',
+      aiHint: 'To generate reports with your own account at an AI provider. Optional.',
+      team: 'Team',
+    },
     subtitle: 'Account and tracking on this computer',
     toastsOff: 'Windows notifications are off: if you enter a site that is not allowed, Pulso will beep and its icon will flash in the taskbar, but you will not see the message. To see it, turn them on in Settings → System → Notifications.',
     loadError: 'Settings could not be read',
@@ -537,7 +567,7 @@ export const en: Dict = {
     language: 'Language',
     languageLabel: 'Pulso language',
     languageHint: 'Applies right away: changes the whole app and the Windows notifications. Saved on this computer.',
-    preferences: 'Account and preferences',
+    preferences: 'Theme, shortcuts and sync',
     languages: { es: 'Español', en: 'English' },
   },
   profile: {
@@ -732,6 +762,8 @@ export const en: Dict = {
     keepEditing: 'Keep editing',
     keysHint: 'Enter: next field · Ctrl+Enter: save · Esc: cancel',
     length: 'Write between {min} and {max} characters.',
+    taskTitleRequired: 'Write a title for the task.',
+    projectNameRequired: 'Write the project name.',
     max: 'At most {max} characters.',
     email: 'Enter a valid email, for example name@company.com.',
     password: 'The password must have at least {min} characters.',
@@ -785,6 +817,17 @@ export const en: Dict = {
     subtitle: 'Pulso calculates the figures from your records; the AI only writes the summary and the recommendations.',
     noTeam: 'Choose or create a team to see its reports.',
     viewerNote: 'As a viewer you see the team reports already generated.',
+    viewer: {
+      empty: 'No report open',
+      emptyHint: 'Generate one or open one from the history. This is what it includes:',
+      figures: 'Figures',
+      figuresHint: 'Hours by category, tasks done, in review and overdue, and AI use in the period. Pulso calculates them from the records.',
+      narrative: 'Summary and recommendations',
+      narrativeHint: 'A short text written by AI from those figures. It is indicative, not an evaluation.',
+      export: 'Export',
+      exportHint: 'Download it as Markdown, JSON or CSV, or print it as PDF to share it.',
+      openLatest: 'Open the most recent: {title}',
+    },
     generate: {
       title: 'Generate a report',
       about: 'About',
@@ -935,6 +978,7 @@ export const en: Dict = {
     hoursShort: '{v} h',
   },
   myRange: {
+    title: { week: 'My week', month: 'My month' },
     viewsLabel: 'Period',
     views: { day: 'Day', week: 'Week', month: 'Month' },
     prev: { week: 'Previous week', month: 'Previous month' },
@@ -965,7 +1009,7 @@ export const en: Dict = {
     },
   },
   dashboard: {
-    title: 'Dashboard',
+    title: 'Team dashboard',
     subtitle: 'The team figures for the period, according to what your role can see.',
     noTeam: 'Choose or create a team to see its dashboard.',
     periodLabel: 'Period',
@@ -989,6 +1033,8 @@ export const en: Dict = {
     sessions: { one: '{n} session', other: '{n} sessions' },
     totals: {
       title: 'Team totals',
+      time: 'Time',
+      work: 'Work',
       active: 'Active hours',
       productive: 'Productive',
       ai: 'AI',

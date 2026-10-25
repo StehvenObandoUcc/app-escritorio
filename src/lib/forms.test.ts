@@ -60,4 +60,10 @@ describe('esquemas de formulario (AC-42)', () => {
     expect(errorsOf(forms.deleteProject('Sitio web'), { confirm: 'sitio web' })).toMatchObject({ confirm: expect.any(String) });
     expect(errorsOf(forms.deleteProject('Sitio web'), { confirm: ' Sitio web ' })).toBeNull();
   });
+
+  it('vacío dice qué falta en títulos y nombres de proyecto, no un rango (clarify)', () => {
+    expect(errorsOf(forms.task(), { title: ' ', description: '', labels: '', estimateMinutes: null, criteria: '' })).toMatchObject({ title: 'Escribe un título para la tarea.' });
+    expect(errorsOf(forms.project(), { name: '' })).toMatchObject({ name: 'Escribe el nombre del proyecto.' });
+    expect(errorsOf(forms.project(), { name: 'A' })).toMatchObject({ name: 'Escribe entre 2 y 80 caracteres.' });
+  });
 });

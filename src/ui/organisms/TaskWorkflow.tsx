@@ -15,10 +15,13 @@ const ICON: Record<Step, ReactNode> = {
   reopen: <RotateCcw size={16} aria-hidden="true" />,
 };
 
-/** Botón de un paso del flujo. `compact` para la lista y el tablero. */
+/**
+ * Botón de un paso del flujo. `compact` para la lista y el tablero.
+ * Reabrir deshace algo terminado: nunca va como principal, aunque sea el único paso.
+ */
 export function StepButton({ step, primary, compact = false, onStep }: { step: Step; primary: boolean; compact?: boolean; onStep: (s: Step) => void }) {
   return (
-    <Button size={compact ? 'sm' : 'md'} variant={primary ? 'primary' : 'secondary'} icon={ICON[step]} onClick={() => onStep(step)}>
+    <Button size={compact ? 'sm' : 'md'} variant={primary && step !== 'reopen' ? 'primary' : 'secondary'} icon={ICON[step]} onClick={() => onStep(step)}>
       {t(`tasks.steps.${step}`)}
     </Button>
   );

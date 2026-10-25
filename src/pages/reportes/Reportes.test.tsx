@@ -57,6 +57,17 @@ describe('Reportes (F4)', () => {
     expect(within(history).getByText('Todo el equipo: Equipo A')).toBeInTheDocument();
   }, LONG);
 
+  it('sin reporte abierto, la columna dice qué trae un reporte y ofrece abrir el más reciente', async () => {
+    const { cloud, team, ana } = await setup('ana');
+    await cloud.generateFreeReport({ teamId: team, scope: 'personal', subjectId: ana, period: 'today' }, 'es');
+    renderWithSession(<ReportesPage />, { path: '/reportes', cloud });
+    const preview = await screen.findByRole('region', { name: 'Ningún reporte abierto' });
+    expect(within(preview).getByText('Resumen y recomendaciones')).toBeInTheDocument();
+    await userEvent.click(await within(preview).findByRole('button', { name: /Abrir el más reciente/ }));
+    expect(await screen.findByRole('article', { name: 'Mi trabajo' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Ningún reporte abierto' })).not.toBeInTheDocument();
+  }, LONG);
+
   it('modo Gratis: «hoy» sube antes los datos, las cifras salen de los hechos y repetir no gasta cupo (AC-17, AC-22, AC-23)', async () => {
     const { cloud } = await setup('ana');
     const { engine } = renderWithSession(<ReportesPage />, { path: '/reportes', cloud });

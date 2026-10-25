@@ -1,6 +1,6 @@
 import { useLocale } from '@/app/locale';
 import { errorMessage, LOCALES, t } from '@/i18n';
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { IDLE_MINUTES_MAX, IDLE_MINUTES_MIN, type Bridge, type Settings } from '@/bridge/contract';
 import { displayAppName, HIDDEN_APP } from '@/lib/apps';
 import { localDate } from '@/lib/time';
@@ -129,80 +129,143 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
 
   return (
     <PageLayout title={t('nav.settings')} subtitle={t('settings.subtitle')} actions={sampleTag}>
-      <PerfilSection />
-      <PreferenciasSection />
-      <LanguageSection />
-      {toastsOff && (
-        <p role="note" className="rounded-md bg-sunken p-3 text-sm text-fg">
-          {t('settings.toastsOff')}
-        </p>
-      )}
-      {loadError ? (
-        <EmptyState
-          title={t('settings.loadError')}
-          description={t('settings.loadErrorHint')}
-          onRetry={() => {
-            setLoadError(null);
-            setAttempt((a) => a + 1);
-          }}
-        />
-      ) : saved === null ? (
-        <p className="text-fg-muted" role="status">
-          {t('common.loading')}
-        </p>
-      ) : (
-        <Surface as="section" aria-label={t('settings.tracking')}>
-          <form onSubmit={submit} className="flex max-w-prose flex-col gap-4" noValidate>
-            <Heading level={2}>{t('settings.tracking')}</Heading>
-            <FormField
-              name="idleMinutes"
-              label={t('settings.idleMinutes')}
-              type="number"
-              inputMode="numeric"
-              min={IDLE_MINUTES_MIN}
-              max={IDLE_MINUTES_MAX}
-              value={teamIdle === null ? minutes : String(teamIdle)}
-              onChange={(e) => setMinutes(e.target.value)}
-              disabled={teamIdle !== null}
-              hint={teamIdle === null ? t('settings.idleHint', { min: IDLE_MINUTES_MIN, max: IDLE_MINUTES_MAX }) : t('settings.idleTeam', { min: teamIdle })}
-            />
-            {teamForbidsHidden && (
+      {/* Jerarquía: grupos con título (h2) y, dentro, cada sección (h3). En pantalla ancha, índice a la izquierda. */}
+      <div className="flex flex-col gap-8 lg:grid lg:grid-cols-4 lg:items-start">
+        <SettingsIndex />
+        <div className="flex min-w-0 flex-col gap-10 lg:col-span-3">
+          <SettingsGroup id="ajustes-cuenta" title={t('settings.groups.account')} hint={t('settings.groups.accountHint')}>
+            <PerfilSection />
+          </SettingsGroup>
+          <SettingsGroup id="ajustes-app" title={t('settings.groups.app')} hint={t('settings.groups.appHint')}>
+            <LanguageSection />
+            <PreferenciasSection />
+          </SettingsGroup>
+          <SettingsGroup id="ajustes-registro" title={t('settings.groups.tracking')} hint={t('settings.groups.trackingHint')}>
+            {toastsOff && (
               <p role="note" className="rounded-md bg-sunken p-3 text-sm text-fg">
-                {t('settings.hiddenForbidden', { team: session?.activeTeam?.name ?? '' })}
+                {t('settings.toastsOff')}
               </p>
             )}
-            <HiddenAppsPicker candidates={candidates} selected={hidden} onChange={setHidden} disabled={teamForbidsHidden} />
-            {formError && (
-              <p role="alert" className="text-sm text-danger">
-                {formError}
+            {loadError ? (
+              <EmptyState
+                title={t('settings.loadError')}
+                description={t('settings.loadErrorHint')}
+                onRetry={() => {
+                  setLoadError(null);
+                  setAttempt((a) => a + 1);
+                }}
+              />
+            ) : saved === null ? (
+              <p className="text-fg-muted" role="status">
+                {t('common.loading')}
               </p>
+            ) : (
+              <Surface as="section" aria-label={t('settings.tracking')}>
+                <form onSubmit={submit} className="flex max-w-prose flex-col gap-4" noValidate>
+                  <Heading level={3} className="text-lg">{t('settings.tracking')}</Heading>
+                  <FormField
+                    name="idleMinutes"
+                    label={t('settings.idleMinutes')}
+                    type="number"
+                    inputMode="numeric"
+                    min={IDLE_MINUTES_MIN}
+                    max={IDLE_MINUTES_MAX}
+                    value={teamIdle === null ? minutes : String(teamIdle)}
+                    onChange={(e) => setMinutes(e.target.value)}
+                    disabled={teamIdle !== null}
+                    hint={teamIdle === null ? t('settings.idleHint', { min: IDLE_MINUTES_MIN, max: IDLE_MINUTES_MAX }) : t('settings.idleTeam', { min: teamIdle })}
+                  />
+                  {teamForbidsHidden && (
+                    <p role="note" className="rounded-md bg-sunken p-3 text-sm text-fg">
+                      {t('settings.hiddenForbidden', { team: session?.activeTeam?.name ?? '' })}
+                    </p>
+                  )}
+                  <HiddenAppsPicker candidates={candidates} selected={hidden} onChange={setHidden} disabled={teamForbidsHidden} />
+                  {formError && (
+                    <p role="alert" className="text-sm text-danger">
+                      {formError}
+                    </p>
+                  )}
+                  {notice && (
+                    <p role="status" className="text-sm text-fg-muted">
+                      {notice}
+                    </p>
+                  )}
+                  <div>
+                    <Button type="submit" variant="primary">
+                      {t('common.save')}
+                    </Button>
+                  </div>
+                </form>
+              </Surface>
             )}
-            {notice && (
-              <p role="status" className="text-sm text-fg-muted">
-                {notice}
-              </p>
-            )}
-            <div>
-              <Button type="submit" variant="primary">
-                {t('common.save')}
-              </Button>
-            </div>
-          </form>
-        </Surface>
-      )}
-      <MiPrivacidadSection bridge={bridge} />
-      <AiSection bridge={bridge} />
-      {/* Antes era una tarjeta de relleno con un código de fase (F-11): ahora lleva a donde están esos ajustes. */}
-      <EmptyState
-        title={t('settings.moreLater')}
-        description={t('settings.moreLaterHint')}
-        action={
-          <a href="#/equipo" className="inline-flex min-h-control items-center gap-2 rounded-md border border-line-strong bg-surface px-4 font-medium text-fg hover:bg-sunken">
-            {t('common.goToTeam')}
-          </a>
-        }
-      />
+            <MiPrivacidadSection bridge={bridge} />
+          </SettingsGroup>
+          <SettingsGroup id="ajustes-ia" title={t('settings.groups.ai')} hint={t('settings.groups.aiHint')}>
+            <AiSection bridge={bridge} />
+          </SettingsGroup>
+          {/* Antes era una tarjeta de relleno con un código de fase (F-11): ahora lleva a donde están esos ajustes. */}
+          <div id="ajustes-equipo" className="scroll-mt-8">
+            <EmptyState
+              title={t('settings.moreLater')}
+              description={t('settings.moreLaterHint')}
+              action={
+                <a href="#/equipo" className="inline-flex min-h-control items-center gap-2 rounded-md border border-line-strong bg-surface px-4 font-medium text-fg hover:bg-sunken">
+                  {t('common.goToTeam')}
+                </a>
+              }
+            />
+          </div>
+        </div>
+      </div>
     </PageLayout>
+  );
+}
+
+const GROUPS = [
+  { id: 'ajustes-cuenta', key: 'account' },
+  { id: 'ajustes-app', key: 'app' },
+  { id: 'ajustes-registro', key: 'tracking' },
+  { id: 'ajustes-ia', key: 'ai' },
+  { id: 'ajustes-equipo', key: 'team' },
+] as const;
+
+/**
+ * Índice de Ajustes (pantalla ancha): dice de un vistazo qué hay y lleva a cada grupo. Con HashRouter un
+ * enlace «#id» cambiaría de pantalla, por eso son botones que desplazan.
+ */
+function SettingsIndex() {
+  return (
+    <nav aria-label={t('settings.groups.index')} className="hidden lg:sticky lg:top-8 lg:block">
+      <ul className="flex flex-col gap-1">
+        {GROUPS.map(({ id, key }) => (
+          <li key={id}>
+            <button
+              type="button"
+              onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+              className="w-full rounded-md px-3 py-2 text-left text-sm font-medium text-fg-muted transition-colors hover:bg-sunken hover:text-fg"
+            >
+              {t(`settings.groups.${key}`)}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
+/** Grupo de ajustes: título y una línea que dice a qué afecta, con sus secciones debajo. */
+function SettingsGroup({ id, title, hint, children }: { id: string; title: string; hint: string; children: ReactNode }) {
+  return (
+    <section id={id} aria-labelledby={`${id}-titulo`} className="flex scroll-mt-8 flex-col gap-4">
+      <div>
+        <Heading level={2} className="font-display text-xl">
+          <span id={`${id}-titulo`}>{title}</span>
+        </Heading>
+        <p className="mt-1 max-w-prose text-sm text-fg-muted">{hint}</p>
+      </div>
+      {children}
+    </section>
   );
 }
 
@@ -211,8 +274,8 @@ function LanguageSection() {
   const { locale, change } = useLocale();
   const [error, setError] = useState<string | null>(null);
   return (
-    <Surface as="section" aria-label={t('settings.language')} className="flex max-w-prose flex-col gap-2">
-      <Heading level={2}>{t('settings.language')}</Heading>
+    <Surface as="section" aria-label={t('settings.language')} className="flex flex-col gap-2">
+      <Heading level={3} className="text-lg">{t('settings.language')}</Heading>
       <label className="flex flex-col gap-1 text-sm font-medium text-fg">
         {t('settings.languageLabel')}
         <Select

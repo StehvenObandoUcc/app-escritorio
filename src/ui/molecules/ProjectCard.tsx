@@ -17,7 +17,7 @@ export function ProjectCard({ project, overdue, href }: { project: Project; over
         <span>{done}</span>
         {project.pendingReviews > 0 && <Badge tone="accent">{t('projects.pendingReviews', { n: project.pendingReviews })}</Badge>}
         {overdue > 0 && <Badge tone="danger">{t('projects.overdue', { n: overdue })}</Badge>}
-        {project.archivedAt && <Badge tone="danger">{t('projects.archived')}</Badge>}
+        {project.archivedAt && <Badge tone="neutral">{t('projects.archived')}</Badge>}
       </div>
     </a>
   );

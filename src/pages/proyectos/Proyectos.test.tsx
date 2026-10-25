@@ -337,6 +337,21 @@ describe('Pantalla de tarea (F3 v3)', () => {
     expect(await screen.findByRole('button', { name: 'Detener temporizador' })).toBeInTheDocument();
   }, LONG);
 
+  it('al completar la tarea su temporizador se detiene solo y el Toast lo dice', async () => {
+    const { cloud, project, libre } = await setup('ana');
+    const bridge = createMockBridge();
+    await bridge.timerStart(libre);
+    const stop = vi.spyOn(bridge, 'timerStop');
+    openTask(cloud, project, libre, bridge);
+    await screen.findByRole('button', { name: 'Detener temporizador' });
+    await userEvent.click(screen.getByRole('button', { name: 'Completar tarea' }));
+    const form = screen.getByRole('form', { name: 'Completar la tarea' });
+    await userEvent.type(within(form).getByLabelText('Qué se hizo *'), 'Lista');
+    await userEvent.click(within(form).getByRole('button', { name: 'Completar tarea' }));
+    expect(await screen.findByText('Tarea completada · temporizador detenido')).toBeInTheDocument();
+    expect(stop).toHaveBeenCalledTimes(1);
+  }, LONG);
+
   it('?accion=enviar abre directamente el formulario de entrega', async () => {
     const { cloud, project, portada } = await setup('beto');
     openTask(cloud, project, portada, createMockBridge(), '?accion=enviar');

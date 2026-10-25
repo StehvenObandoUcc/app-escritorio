@@ -55,9 +55,9 @@ export function MiPrivacidadSection({ bridge }: { bridge: Bridge }) {
   };
 
   return (
-    <Surface as="section" aria-label={t('myPrivacy.title')} className="flex max-w-prose flex-col gap-4">
+    <Surface as="section" aria-label={t('myPrivacy.title')} className="flex flex-col gap-4">
       <div>
-        <Heading level={2}>{t('myPrivacy.title')}</Heading>
+        <Heading level={3} className="text-lg">{t('myPrivacy.title')}</Heading>
         <p className="mt-1 text-sm text-fg-muted">{t('myPrivacy.hint')}</p>
         {/* F-13: la explicación completa vive en Equipo; desde aquí se llega sin buscarla. */}
         <a href="#/equipo/privacidad" className="mt-2 inline-flex items-center gap-2 rounded-xs text-sm font-medium text-accent-text hover:underline">
@@ -102,7 +102,7 @@ export function MiPrivacidadSection({ bridge }: { bridge: Bridge }) {
         onConfirm={() => void setShare(false)}
       />
       <div className="flex flex-col gap-2">
-        <Heading level={3}>{t('myPrivacy.exportTitle')}</Heading>
+        <Heading level={4}>{t('myPrivacy.exportTitle')}</Heading>
         <p className="text-sm text-fg-muted">{t('myPrivacy.exportHint')}</p>
         <div>
           <Button onClick={() => void exportData()} disabled={exporting}>

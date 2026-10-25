@@ -1,12 +1,14 @@
 import type { ReactNode } from 'react';
 import { cx } from '@/lib/cx';
 
-type Level = 1 | 2 | 3;
+type Level = 1 | 2 | 3 | 4;
 
 const STYLE: Record<Level, string> = {
-  1: 'font-display text-2xl font-semibold tracking-tight',
+  // En compacto un paso menos: un título de tarea largo ocupaba cuatro líneas de 28 px. Balance reparte las líneas.
+  1: 'font-display text-xl font-semibold tracking-tight text-balance break-words md:text-2xl',
   2: 'text-lg font-semibold',
   3: 'text-base font-semibold',
+  4: 'text-sm font-semibold',
 };
 
 export function Heading({

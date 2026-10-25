@@ -11,3 +11,6 @@ Thumbs.db
 *.log
 supabase/.temp/
 supabase/.branches/
+
+# Críticas y capturas de /impeccable (locales)
+.impeccable/

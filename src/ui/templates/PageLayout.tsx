@@ -9,27 +9,35 @@ export function useWindowTitle(title: string) {
   }, [title]);
 }
 
-/** Estructura común de una página: título, texto de apoyo, acciones y contenido. */
+/**
+ * Estructura común de una página: título, texto de apoyo, acciones y contenido.
+ * `back` (volver a la pantalla madre) va arriba a la izquierda, sobre el título: donde se busca primero.
+ */
 export function PageLayout({
   title,
   subtitle,
+  back,
   actions,
   children,
 }: {
   title: string;
   subtitle?: string;
+  back?: ReactNode;
   actions?: ReactNode;
   children: ReactNode;
 }) {
   useWindowTitle(title);
   return (
     <div className="motion-stagger mx-auto flex w-full max-w-content flex-col gap-5 p-4 md:p-6 lg:p-8">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <Heading level={1}>{title}</Heading>
-          {subtitle && <p className="mt-1 text-fg-muted first-letter:uppercase">{subtitle}</p>}
+      <header className="flex flex-col gap-2">
+        {back && <div>{back}</div>}
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <Heading level={1}>{title}</Heading>
+            {subtitle && <p className="mt-1 text-fg-muted first-letter:uppercase">{subtitle}</p>}
+          </div>
+          {actions}
         </div>
-        {actions}
       </header>
       {children}
     </div>

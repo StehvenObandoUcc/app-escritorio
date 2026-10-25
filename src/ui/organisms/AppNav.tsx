@@ -30,17 +30,18 @@ const itemClass = (active: boolean) =>
  *   media (640–1023 px)  → riel lateral de iconos, con todos
  *   expandida (≥ 1024)   → barra lateral con texto, con todos
  * Alt+1…n abre cada sección en cualquier ancho (src/app/keyboard.ts).
+ * `timer` (el temporizador en marcha) va sobre la barra inferior en compacto y sobre el pie en los demás.
  */
-export function AppNav({ items, footer }: { items: NavItem[]; footer?: ReactNode }) {
+export function AppNav({ items, footer, timer }: { items: NavItem[]; footer?: ReactNode; timer?: ReactNode }) {
   const extra = items.slice(COMPACT_ITEMS);
   return (
     <nav
       aria-label={t('nav.main')}
       className={cx(
         // Sin línea de separación: el menú se distingue del contenido por su fondo.
-        'relative flex min-w-0 shrink-0 bg-surface',
+        'relative flex min-w-0 shrink-0 flex-col bg-surface',
         'px-1 py-1',
-        'md:w-rail md:flex-col md:gap-1 md:px-2 md:py-3',
+        'md:w-rail md:gap-1 md:px-2 md:py-3',
         'lg:w-nav lg:px-3',
       )}
     >
@@ -68,7 +69,10 @@ export function AppNav({ items, footer }: { items: NavItem[]; footer?: ReactNode
         )}
       </ul>
 
-      {footer && <div className="mt-auto hidden md:flex md:justify-center lg:justify-start">{footer}</div>}
+      <div className="max-md:contents md:mt-auto md:flex md:flex-col md:gap-3">
+        {timer && <div className="order-first mb-1 md:order-none md:mb-0">{timer}</div>}
+        {footer && <div className="hidden md:flex md:justify-center lg:justify-start">{footer}</div>}
+      </div>
     </nav>
   );
 }

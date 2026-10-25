@@ -120,8 +120,8 @@ export function TaskSidebar(p: TaskSidebarProps) {
         {ratio !== null && <ProgressBar value={ratio} label={t('tasks.panel.timeVsEstimate')} fill={ratio > 1 ? 'bg-cat-distraction' : 'bg-accent'} />}
         {writable && task.status !== 'done' && (
           <>
+            {/* Secundario: el principal de la pantalla es el siguiente paso del flujo. */}
             <Button
-              variant={p.timer.onThis ? 'primary' : 'secondary'}
               icon={p.timer.onThis ? <Square size={16} aria-hidden="true" /> : <Play size={16} aria-hidden="true" />}
               onClick={p.onTimer}
             >

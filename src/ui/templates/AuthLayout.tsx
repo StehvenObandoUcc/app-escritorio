@@ -65,7 +65,7 @@ export function AuthLayout({
             ))}
           </ul>
         </div>
-        <p className="text-sm text-fg-muted">{t('auth.dataStays')}</p>
+        <p className="text-sm text-fg">{t('auth.dataStays')}</p>
       </aside>
 
       <main className="relative flex flex-1 items-center justify-center overflow-y-auto p-4 md:p-8">

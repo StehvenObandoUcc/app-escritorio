@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
+import { markDecidedHere } from '@/app/taskNotices';
 import { useAction } from '@/app/useAction';
 import type { Project, Task } from '@/cloud/contract';
 import { errorMessage, t } from '@/i18n';
@@ -33,7 +34,7 @@ export function TareaPage() {
   const blocked = noTeamState(ctx.activeTeam?.role ?? null);
   if (blocked || ctx.loadError || (!ctx.data.isPending && (!ctx.project || !task))) {
     return (
-      <PageLayout title={t('tasks.page.title')} actions={back}>
+      <PageLayout title={t('tasks.page.title')} back={back}>
         <EmptyState
           title={blocked?.title ?? (ctx.loadError ? t('projects.loadError') : t('tasks.page.notFound'))}
           description={blocked?.description ?? (ctx.loadError ? t('projects.loadErrorHint', { error: ctx.loadError }) : t('tasks.page.notFoundHint'))}
@@ -45,7 +46,7 @@ export function TareaPage() {
   }
   if (!ctx.project || !task) {
     return (
-      <PageLayout title={t('tasks.page.title')} actions={back}>
+      <PageLayout title={t('tasks.page.title')} back={back}>
         <p role="status" className="text-fg-muted">
           {t('common.loading')}
         </p>
@@ -141,7 +142,7 @@ function TaskView({ ctx, project, task, back }: { ctx: Ctx; project: Project; ta
       complete: t('review.completeLabel'),
     };
     return (
-      <PageLayout title={titles[mode]} subtitle={project.name} actions={back}>
+      <PageLayout title={titles[mode]} subtitle={project.name} back={back}>
         <Surface as="section" aria-label={titles[mode]} className="mx-auto w-full max-w-prose">
           {mode === 'edit' && (
             <TaskForm
@@ -176,12 +177,18 @@ function TaskView({ ctx, project, task, back }: { ctx: Ctx; project: Project; ta
                 template={project.reviewTemplate}
                 reviewers={projectPeople.filter((o) => o.value !== me)}
                 onCancel={() => setMode('view')}
-                onSubmit={(sub) =>
-                  persist(
-                    () => (mode === 'submit' ? cloud.submitForReview(task, activeTeam!.id, sub) : cloud.completeTask(task, activeTeam!.id, sub)),
-                    mode === 'submit' ? t('review.sent') : t('review.completed'),
-                  )
-                }
+                onSubmit={(sub) => {
+                  // Entregada la tarea, su temporizador se detiene solo y el Toast lo dice.
+                  const stopTimer = ctx.timerFor(task).onThis;
+                  const done = mode === 'submit' ? t('review.sent') : t('review.completed');
+                  return persist(
+                    async () => {
+                      await (mode === 'submit' ? cloud.submitForReview(task, activeTeam!.id, sub) : cloud.completeTask(task, activeTeam!.id, sub));
+                      if (stopTimer) await ctx.toggleTimer(task);
+                    },
+                    stopTimer ? t('timer.stoppedWith', { done }) : done,
+                  );
+                }}
               />
             </div>
           )}
@@ -195,20 +202,14 @@ function TaskView({ ctx, project, task, back }: { ctx: Ctx; project: Project; ta
     <PageLayout
       title={task.title}
       subtitle={parent ? t('tasks.subtaskOf', { title: parent.title }) : project.name}
+      back={back}
       actions={
-        <div className="flex flex-wrap items-center gap-2">
-          {back}
-          {writable && manager && (
-            <>
-              <Button size="sm" icon={<Pencil size={16} aria-hidden="true" />} onClick={() => setMode('edit')}>
-                {t('tasks.panel.edit')}
-              </Button>
-              <Button size="sm" variant="danger" icon={<Trash2 size={16} aria-hidden="true" />} onClick={() => setConfirmDelete(true)}>
-                {t('tasks.sidebar.delete')}
-              </Button>
-            </>
-          )}
-        </div>
+        writable &&
+        manager && (
+          <Button size="sm" icon={<Pencil size={16} aria-hidden="true" />} onClick={() => setMode('edit')}>
+            {t('tasks.panel.edit')}
+          </Button>
+        )
       }
     >
       {offline && <OfflineNote savedAt={ctx.work?.savedAt ?? ''} />}
@@ -228,7 +229,11 @@ function TaskView({ ctx, project, task, back }: { ctx: Ctx; project: Project; ta
               me={me}
               readOnly={!writable}
               nameOf={nameOf}
-              onDecide={(approve, comment) => persist(() => cloud.reviewTask(task.pendingReview!.id, approve, comment), approve ? t('review.approved') : t('review.changesRequested'))}
+              onDecide={(approve, comment) => {
+                const id = task.pendingReview!.id;
+                markDecidedHere(id);
+                return persist(() => cloud.reviewTask(id, approve, comment), approve ? t('review.approved') : t('review.changesRequested'));
+              }}
               onOpenLink={openLink}
               onOpenEvidence={openEvidence}
             />
@@ -245,6 +250,14 @@ function TaskView({ ctx, project, task, back }: { ctx: Ctx; project: Project; ta
             onOpenTask={(sub) => navigate(taskPath(project.id, sub))}
           />
           <TaskHistoryList history={history.data ?? null} onLoad={() => setHistoryOpen(true)} />
+          {/* Al final y no junto a Editar: borrar es raro y no se deshace (pide confirmación). */}
+          {writable && manager && (
+            <div>
+              <Button size="sm" variant="danger" icon={<Trash2 size={16} aria-hidden="true" />} onClick={() => setConfirmDelete(true)}>
+                {t('tasks.sidebar.delete')}
+              </Button>
+            </div>
+          )}
         </div>
         <Surface className="h-fit">
           <TaskSidebar

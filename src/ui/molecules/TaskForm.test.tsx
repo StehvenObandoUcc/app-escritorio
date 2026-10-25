@@ -1,6 +1,6 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { TaskForm } from './TaskForm';
 
 const renderForm = () =>
@@ -30,5 +30,30 @@ describe('TaskForm (Lote 4)', () => {
     expect(summary.closest('details')).toHaveAttribute('open');
     await userEvent.click(screen.getAllByRole('checkbox').at(-1)!);
     expect(summary).toHaveTextContent('(1 seleccionada)');
+  });
+
+  it('al crear, «Más detalles» empieza plegado; un error ahí lo abre y enfoca el campo (distill)', async () => {
+    renderForm();
+    const more = screen.getByRole('button', { name: 'Más detalles' });
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByLabelText('Etiquetas')).not.toBeVisible();
+    await userEvent.type(screen.getByLabelText('Título *'), 'Informe');
+    fireEvent.change(screen.getByLabelText('Etiquetas'), { target: { value: 'x'.repeat(300) } });
+    await userEvent.click(screen.getByRole('button', { name: 'Crear tarea' }));
+    expect(more).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByLabelText('Etiquetas')).toHaveFocus();
+  });
+
+  it('el error se va al corregir el campo (clarify)', async () => {
+    const onSubmit = vi.fn(async () => {});
+    render(<TaskForm people={[]} manage={false} isNew submitLabel="Crear tarea" onSubmit={onSubmit} onCancel={() => {}} />);
+    const title = screen.getByLabelText('Título *');
+    await userEvent.click(screen.getByRole('button', { name: 'Crear tarea' }));
+    expect(title).toHaveAccessibleDescription('Escribe un título para la tarea.');
+    await userEvent.type(title, 'Informe');
+    // Sin perder la primera tecla al quitarse el error (el campo es controlado).
+    expect(title).toHaveValue('Informe');
+    await waitFor(() => expect(title).not.toHaveAttribute('aria-invalid', 'true'));
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 });
