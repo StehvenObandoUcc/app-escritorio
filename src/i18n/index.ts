@@ -51,7 +51,8 @@ export function t(key: TKey, vars: Record<string, string | number> = {}): string
 /** Fecha en el idioma activo. `date` acepta AAAA-MM-DD (mediodía local, sin saltos de zona) o ISO. */
 export function formatDate(date: string | Date, options: Intl.DateTimeFormatOptions): string {
   const d = typeof date === 'string' ? new Date(/^\d{4}-\d{2}-\d{2}$/.test(date) ? `${date}T12:00:00` : date) : date;
-  return new Intl.DateTimeFormat(INTL[current], options).format(d);
+  // La hora siempre en 24 h («11:09», como formatHour): sin esto, es-CO daba «11:09 a. m.» en unas pantallas y «11:09» en otras.
+  return new Intl.DateTimeFormat(INTL[current], options.hour ? { hourCycle: 'h23', ...options } : options).format(d);
 }
 
 /**

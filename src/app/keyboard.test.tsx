@@ -60,6 +60,12 @@ describe('teclado en toda la app (ADR-0019)', () => {
     expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 
+  it('Ctrl+Enter guarda también desde un campo de una línea, como dice la pista (clarify)', async () => {
+    const { onSubmit } = setup();
+    await userEvent.type(screen.getByLabelText('Uno'), 'a{Control>}{Enter}{/Control}');
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+
   it('Alt+número abre cada sección y «?» abre la ayuda (no mientras se escribe)', async () => {
     const { onHelp } = setup();
     await userEvent.keyboard('{Alt>}2{/Alt}');
