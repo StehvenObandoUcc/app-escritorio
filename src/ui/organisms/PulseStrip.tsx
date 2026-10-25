@@ -1,4 +1,5 @@
-import type { ActivityBlock } from '@/bridge/contract';
+import type { ActivityBlock, Category } from '@/bridge/contract';
+import { t } from '@/i18n';
 import { CATEGORY_STYLE } from '@/lib/categories';
 import { cx } from '@/lib/cx';
 import { formatHour } from '@/lib/time';
@@ -15,6 +16,8 @@ export function PulseStrip({ blocks, summary }: { blocks: ActivityBlock[]; summa
   const placed = layoutBlocks(blocks, range);
   const ticks = hourTicks(range);
   const sparse = ticks.length > 9;
+  // Leyenda: solo las categorías que hay en el día, en el orden de CATEGORY_STYLE (de más a menos altura).
+  const present = (Object.keys(CATEGORY_STYLE) as Category[]).filter((c) => blocks.some((b) => b.category === c));
 
   return (
     <figure className="m-0">
@@ -40,6 +43,18 @@ export function PulseStrip({ blocks, summary }: { blocks: ActivityBlock[]; summa
           </span>
         ))}
       </div>
+      {present.length > 0 && (
+        <figcaption className="mt-3">
+          <ul aria-label={t('pulseStrip.legend')} className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-fg-muted">
+            {present.map((c) => (
+              <li key={c} className="flex items-center gap-1.5">
+                <span aria-hidden="true" className={cx('size-2.5 rounded-xs', CATEGORY_STYLE[c].fill)} />
+                {CATEGORY_STYLE[c].label}
+              </li>
+            ))}
+          </ul>
+        </figcaption>
+      )}
     </figure>
   );
 }
