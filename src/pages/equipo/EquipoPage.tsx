@@ -18,6 +18,7 @@ import { PageLayout } from '@/ui/templates';
 import { AuditoriaTab } from './AuditoriaTab';
 import { TeamSettingsSection } from './AjustesEquipo';
 import { SitiosYPoliticas } from './SitiosYPoliticas';
+import { useWork } from '../proyectos/useWork';
 
 const withDash = (c: string) => (c.includes('-') ? c : `${c.slice(0, 4)}-${c.slice(4)}`);
 
@@ -341,12 +342,23 @@ function TeamView({ team }: { team: MyTeam }) {
   );
 }
 
+/** Qué pasa al pasar a alguien a observador; las tareas solo se cuentan si el trabajo del equipo está cargado. */
+function toViewerMessage(name: string, tasks: number | null): string {
+  const base = t('team.toViewer.message', { name });
+  if (tasks === null) return base;
+  return `${base} ${tasks === 0 ? t('team.toViewer.noTasks') : t('team.toViewer.tasks', { n: tasks })}`;
+}
+
 function Members({ team }: { team: MyTeam }) {
-  const { cloud, user, refresh } = useSession();
+  const { cloud, bridge, user, refresh, sync } = useSession();
   const queryClient = useQueryClient();
   const action = useAction();
   const [removing, setRemoving] = useState<{ userId: string; name: string } | null>(null);
+  // F6-4: pasar a observador saca a la persona de los proyectos y deja sus tareas sin responsable; se confirma antes.
+  const [toViewer, setToViewer] = useState<{ userId: string; name: string } | null>(null);
   const query = useQuery({ queryKey: ['members', team.id], queryFn: () => cloud.members(team.id) });
+  const work = useWork(cloud, bridge, team.id, sync.lastSyncedAt);
+  const openTasks = (userId: string) => work.data?.work.tasks.filter((x) => x.assigneeId === userId && x.status !== 'done').length ?? null;
   const reload = async () => {
     // El tablero depende de los roles.
     await Promise.all([
@@ -390,13 +402,36 @@ function Members({ team }: { team: MyTeam }) {
           myUserId={me}
           myRole={team.role}
           busy={action.busy}
-          onChangeRole={(userId, role) => void action.run(async () => {
-            await cloud.setMemberRole(team.id, userId, role);
-            await reload();
-          })}
+          onChangeRole={(userId, role) => {
+            if (role === 'viewer') {
+              const name = members.find((m) => m.userId === userId)?.displayName ?? t('common.noName');
+              setToViewer({ userId, name });
+              return;
+            }
+            void action.run(async () => {
+              await cloud.setMemberRole(team.id, userId, role);
+              await reload();
+            });
+          }}
           onRemove={(userId, name) => setRemoving({ userId, name })}
         />
       )}
+      <ConfirmDialog
+        open={toViewer !== null}
+        title={toViewer ? t('team.toViewer.title', { name: toViewer.name }) : ''}
+        message={toViewer ? toViewerMessage(toViewer.name, openTasks(toViewer.userId)) : ''}
+        confirmLabel={t('team.toViewer.confirm')}
+        busy={action.busy}
+        onCancel={() => setToViewer(null)}
+        onConfirm={() =>
+          void action.run(async () => {
+            if (!toViewer) return;
+            await cloud.setMemberRole(team.id, toViewer.userId, 'viewer');
+            setToViewer(null);
+            await reload();
+          })
+        }
+      />
       <ConfirmDialog
         open={removing !== null}
         title={t('team.confirmRemove')}

@@ -614,6 +614,13 @@ export const en: Dict = {
     roleOf: 'Role of {name}',
     membersError: 'The list could not be read: {error}',
     confirmRemove: 'Confirm removal',
+    toViewer: {
+      title: 'Make {name} a viewer?',
+      message: 'A viewer does not take part in projects: {name} leaves the team projects, stops being a helper and their pending reviews go to whoever manages.',
+      tasks: { one: 'Their unfinished task is left without an assignee.', other: 'Their {n} unfinished tasks are left without an assignee.' },
+      noTasks: 'They have no unfinished tasks assigned.',
+      confirm: 'Yes, make viewer',
+    },
     removeQuestion: 'Remove {name}? Their activity in this team will be deleted; their recorded time is kept as “Former member”.',
     remove: 'Remove',
     stopOwning: 'Stop being owner',
