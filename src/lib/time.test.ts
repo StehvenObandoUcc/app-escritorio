@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   formatClock,
+  formatCompactClock,
   formatDuration,
   formatHour,
   localDate,
@@ -19,6 +20,13 @@ describe('formatDuration', () => {
   });
   it('nunca devuelve valores negativos', () => {
     expect(formatDuration(-50)).toBe('0 min');
+  });
+});
+
+describe('formatCompactClock', () => {
+  it('minutos y segundos bajo una hora; horas y minutos desde ahí', () => {
+    expect(formatCompactClock(198)).toBe('03:18');
+    expect(formatCompactClock(3900)).toBe('1h05');
   });
 });
 

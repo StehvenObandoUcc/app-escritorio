@@ -16,7 +16,7 @@ const skipToContent = (e: MouseEvent<HTMLAnchorElement>) => {
  */
 export function AppShell({ nav, children }: { nav: ReactNode; children: ReactNode }) {
   return (
-    <div className="flex h-dvh flex-col-reverse bg-canvas text-fg md:flex-row print:block print:h-auto">
+    <div className="group/shell flex h-dvh flex-col-reverse bg-canvas text-fg md:flex-row print:block print:h-auto">
       <a
         href="#contenido"
         data-skip-arrows

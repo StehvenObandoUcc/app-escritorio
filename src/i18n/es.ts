@@ -412,6 +412,7 @@ export const es = {
     pauseFor: 'Pausar {min} min',
     resume: 'Reanudar seguimiento',
     onTask: 'En la tarea: {title}',
+    stoppedWith: '{done} · temporizador detenido',
   },
   consentPanel: {
     label: 'Consentimiento para {team}',

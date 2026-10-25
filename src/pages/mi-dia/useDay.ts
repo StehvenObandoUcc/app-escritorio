@@ -2,6 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import type { Bridge, DayView, SensorStatus, TimeEntry } from '@/bridge/contract';
 import { errorMessage } from '@/i18n';
 
+/** Lo emite quien arranca o detiene el temporizador fuera de react-query (Mi día, la navegación) para que el resto se entere. */
+export const TIMER_CHANGED = 'pulso:timer-changed';
+
 /** Cada cuánto se actualiza Mi día mientras la ventana está visible (AC-17). */
 export const REFRESH_MS = 30_000;
 
@@ -36,11 +39,15 @@ export function useDay(bridge: Bridge, date: string) {
     document.addEventListener('visibilitychange', refreshIfVisible);
     // Al volver a Pulso desde otra app (p. ej. el navegador) se ve al instante el tiempo actual.
     window.addEventListener('focus', refreshIfVisible);
+    // El temporizador cambió (aquí o desde la navegación): siempre por una acción de quien usa la app.
+    const onTimer = () => void refresh();
+    window.addEventListener(TIMER_CHANGED, onTimer);
     return () => {
       cancelled = true;
       clearInterval(id);
       document.removeEventListener('visibilitychange', refreshIfVisible);
       window.removeEventListener('focus', refreshIfVisible);
+      window.removeEventListener(TIMER_CHANGED, onTimer);
     };
   }, [bridge, date, version]);
 
@@ -51,7 +58,8 @@ export function useDay(bridge: Bridge, date: string) {
     action()
       .then((status) => {
         setState((s) => (s.phase === 'ready' ? { ...s, status } : s));
-        setVersion((v) => v + 1); // el temporizador crea o cierra una entrada de tiempo
+        // El temporizador crea o cierra una entrada de tiempo: se recarga Mi día y se entera la navegación.
+        window.dispatchEvent(new Event(TIMER_CHANGED));
       })
       .catch((cause: unknown) => setState({ phase: 'error', message: errorMessage(cause) }));
   }, []);

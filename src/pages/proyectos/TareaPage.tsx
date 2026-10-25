@@ -177,12 +177,18 @@ function TaskView({ ctx, project, task, back }: { ctx: Ctx; project: Project; ta
                 template={project.reviewTemplate}
                 reviewers={projectPeople.filter((o) => o.value !== me)}
                 onCancel={() => setMode('view')}
-                onSubmit={(sub) =>
-                  persist(
-                    () => (mode === 'submit' ? cloud.submitForReview(task, activeTeam!.id, sub) : cloud.completeTask(task, activeTeam!.id, sub)),
-                    mode === 'submit' ? t('review.sent') : t('review.completed'),
-                  )
-                }
+                onSubmit={(sub) => {
+                  // Entregada la tarea, su temporizador se detiene solo y el Toast lo dice.
+                  const stopTimer = ctx.timerFor(task).onThis;
+                  const done = mode === 'submit' ? t('review.sent') : t('review.completed');
+                  return persist(
+                    async () => {
+                      await (mode === 'submit' ? cloud.submitForReview(task, activeTeam!.id, sub) : cloud.completeTask(task, activeTeam!.id, sub));
+                      if (stopTimer) await ctx.toggleTimer(task);
+                    },
+                    stopTimer ? t('timer.stoppedWith', { done }) : done,
+                  );
+                }}
               />
             </div>
           )}

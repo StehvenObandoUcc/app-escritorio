@@ -17,7 +17,7 @@ export interface TaskNoticeItem {
 export function TaskNoticeBanner({ notices, onDismiss }: { notices: TaskNoticeItem[]; onDismiss: (key: string) => void }) {
   if (notices.length === 0) return null;
   return (
-    <div className="pointer-events-none fixed inset-x-4 bottom-20 z-50 flex flex-col gap-2 md:bottom-4 md:left-auto md:w-full md:max-w-auth">
+    <div className="pointer-events-none fixed inset-x-4 bottom-20 z-50 flex flex-col gap-2 max-md:group-has-data-timer/shell:bottom-32 md:bottom-4 md:left-auto md:w-full md:max-w-auth">
       {notices.map((n) => (
         <div key={n.key} role="status" className="pointer-events-auto flex items-start gap-3 rounded-lg border border-accent bg-surface p-3 shadow-overlay">
           <ClipboardCheck size={20} aria-hidden="true" className="mt-1 shrink-0 text-accent" />

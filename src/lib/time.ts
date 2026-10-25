@@ -22,6 +22,13 @@ export function formatClock(totalSeconds: number): string {
   return parts.map((n) => String(n).padStart(2, '0')).join(':');
 }
 
+/** Reloj para poco ancho (riel de navegación): "03:18" bajo una hora, "1h05" desde ahí. */
+export function formatCompactClock(totalSeconds: number): string {
+  const clock = formatClock(totalSeconds);
+  const h = Math.floor(Math.max(0, totalSeconds) / 3600);
+  return h === 0 ? clock.slice(3) : `${h}h${clock.slice(3, 5)}`;
+}
+
 /** Hora local "08:12" a partir de una fecha ISO */
 export function formatHour(iso: string): string {
   const d = new Date(iso);
