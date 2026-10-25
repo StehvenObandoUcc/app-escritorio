@@ -320,6 +320,7 @@ export const es = {
     toReview: 'Por revisar',
     toReviewCount: 'Por revisar ({n})',
     empty: 'No tienes tareas pendientes. Las que te asignen o en las que apoyes aparecerán aquí.',
+    goToProjects: 'Ver tareas sin responsable en los proyectos',
   },
   nav: {
     main: 'Principal',
