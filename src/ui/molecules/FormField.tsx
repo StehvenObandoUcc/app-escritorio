@@ -19,7 +19,8 @@ export function FormField({ label, hint, error, ...input }: FormFieldProps) {
       </label>
       <Input id={id} invalid={Boolean(error)} aria-describedby={help ? helpId : undefined} {...input} />
       {help && (
-        <p id={helpId} className={error ? 'text-sm text-danger' : 'text-sm text-fg-muted'}>
+        // max-w-prose: en campos anchos la ayuda pasaba de 100 caracteres por línea.
+        <p id={helpId} className={error ? 'max-w-prose text-sm text-danger' : 'max-w-prose text-sm text-fg-muted'}>
           {help}
         </p>
       )}

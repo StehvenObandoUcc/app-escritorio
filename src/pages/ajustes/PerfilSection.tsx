@@ -67,7 +67,7 @@ function PerfilForm({
         <div className="flex items-center gap-3">
           <Avatar name={name || email} />
           <div className="min-w-0">
-            <Heading level={2}>{t('profile.title')}</Heading>
+            <Heading level={3} className="text-lg">{t('profile.title')}</Heading>
             <p className="truncate text-sm text-fg-muted">{email}</p>
           </div>
         </div>

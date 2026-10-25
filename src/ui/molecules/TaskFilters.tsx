@@ -20,9 +20,11 @@ export function TaskFilters({
 }) {
   const set = <K extends keyof TaskFilter>(key: K, value: TaskFilter[K]) => onChange({ ...filter, [key]: value });
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    // En compacto, rejilla de dos columnas: cuatro selectores sueltos se repartían en filas desiguales.
+    <div className="grid grid-cols-2 items-center gap-2 md:flex md:flex-wrap">
       <Select
         size="sm"
+        className="max-md:w-full"
         aria-label={t('tasks.filters.assignee')}
         value={filter.assignee}
         onChange={(e) => set('assignee', e.target.value)}
@@ -35,6 +37,7 @@ export function TaskFilters({
       />
       <Select
         size="sm"
+        className="max-md:w-full"
         aria-label={t('tasks.filters.status')}
         value={filter.status}
         onChange={(e) => set('status', e.target.value as TaskFilter['status'])}
@@ -42,6 +45,7 @@ export function TaskFilters({
       />
       <Select
         size="sm"
+        className="max-md:w-full"
         aria-label={t('tasks.filters.type')}
         value={filter.type}
         onChange={(e) => set('type', e.target.value as TaskFilter['type'])}
@@ -49,14 +53,15 @@ export function TaskFilters({
       />
       <Select
         size="sm"
+        className="max-md:w-full"
         aria-label={t('tasks.filters.label')}
         value={filter.label}
         onChange={(e) => set('label', e.target.value)}
         options={[{ value: '', label: t('tasks.filters.allLabels') }, ...labels.map((l) => ({ value: l, label: l }))]}
       />
-      <label className="flex items-center gap-2 text-sm text-fg-muted">
+      <label className="col-span-2 flex items-center gap-2 text-sm whitespace-nowrap text-fg-muted">
         {t('tasks.filters.dueUntil')}
-        <Input type="date" className="h-control-sm w-auto text-sm" value={filter.dueUntil} onChange={(e) => set('dueUntil', e.target.value)} />
+        <Input type="date" className="h-control-sm w-auto text-sm max-md:flex-1" value={filter.dueUntil} onChange={(e) => set('dueUntil', e.target.value)} />
       </label>
       <p className="text-sm text-fg-muted" aria-live="polite">
         {t('tasks.count', { n: count })}

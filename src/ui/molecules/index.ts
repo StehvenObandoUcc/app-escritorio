@@ -2,6 +2,7 @@ export * from './CategoryBreakdown';
 export * from './EmptyState';
 export * from './FormField';
 export * from './TimerControl';
+export * from './RunningTimer';
 export * from './ThemeToggle';
 export * from './LocaleSwitcher';
 export * from './TimeEntryForm';

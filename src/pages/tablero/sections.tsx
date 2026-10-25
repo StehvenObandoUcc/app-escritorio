@@ -28,10 +28,20 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
 
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <Surface className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1">
       <dt className="text-sm text-fg-muted">{label}</dt>
       <dd className="font-display text-xl font-semibold text-fg tabular-nums">{value}</dd>
       {hint && <dd className="text-xs text-fg-muted">{hint}</dd>}
+    </div>
+  );
+}
+
+/** Un grupo de cifras con su título: así se leen juntas las que hablan de lo mismo. */
+function StatGroup({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <Surface className="flex flex-col gap-4">
+      <Heading level={2}>{title}</Heading>
+      <dl className="grid grid-cols-2 gap-4 md:grid-cols-3">{children}</dl>
     </Surface>
   );
 }
@@ -40,15 +50,18 @@ const sessions = (n: number) => t('dashboard.sessions', { n });
 
 export function TotalsSection({ totals }: { totals: DashboardTotals }) {
   return (
-    <section aria-label={t('dashboard.totals.title')}>
-      <dl className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+    // Dos grupos (tiempo y trabajo) en vez de seis tarjetas iguales que no decían qué va con qué.
+    <section aria-label={t('dashboard.totals.title')} className="grid gap-3 lg:grid-cols-2">
+      <StatGroup title={t('dashboard.totals.time')}>
         <Stat label={t('dashboard.totals.active')} value={formatHours(totals.hoursActive)} />
         <Stat label={t('dashboard.totals.productive')} value={formatHours(totals.hoursProductive)} />
         <Stat label={t('dashboard.totals.ai')} value={formatHours(totals.aiHours)} hint={sessions(totals.aiSessions)} />
+      </StatGroup>
+      <StatGroup title={t('dashboard.totals.work')}>
         <Stat label={t('dashboard.totals.doing')} value={String(totals.tasksDoing)} />
         <Stat label={t('dashboard.totals.done')} value={String(totals.tasksDone)} />
         <Stat label={t('dashboard.totals.members')} value={String(totals.members)} />
-      </dl>
+      </StatGroup>
     </section>
   );
 }

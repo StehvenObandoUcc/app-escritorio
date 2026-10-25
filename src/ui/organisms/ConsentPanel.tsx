@@ -1,9 +1,14 @@
+import { Ban, Eye, Users } from 'lucide-react';
 import { t } from '@/i18n';
 import { useId, useState, type ReactNode } from 'react';
 import { CONSENT_POINTS, CONSENT_VERSION } from '@/lib/consent';
 import { Button, Checkbox, Heading, Surface } from '@/ui/atoms';
 
-const SUMMARY = ['measured', 'never', 'who'] as const;
+const SUMMARY = [
+  { key: 'measured', icon: Eye },
+  { key: 'never', icon: Ban },
+  { key: 'who', icon: Users },
+] as const;
 
 /**
  * Consentimiento explícito al unirse a un equipo o al crearlo (PS-02). Sin marcar la casilla,
@@ -40,10 +45,15 @@ export function ConsentPanel({
       </div>
       {/* F-18: primero un resumen de tres líneas; el texto íntegro sigue igual, plegado debajo. */}
       <section aria-label={t('consentPanel.summaryLabel')} className="rounded-md bg-sunken p-3">
-        <ul className="flex max-w-prose flex-col gap-2 text-sm text-fg">
-          {SUMMARY.map((k) => (
-            <li key={k}>
-              <span className="font-semibold">{t(`consentPanel.summary.${k}Label`)}</span> {t(`consentPanel.summary.${k}`)}
+        {/* Cada punto con su icono y su etiqueta arriba: se recorre de un vistazo. El texto no cambia (va versionado). */}
+        <ul className="flex flex-col gap-3 text-sm text-fg">
+          {SUMMARY.map(({ key, icon: Icon }) => (
+            <li key={key} className="flex gap-3">
+              <Icon size={18} aria-hidden="true" className="mt-px shrink-0 text-fg-muted" />
+              <div className="max-w-prose">
+                <p className="font-semibold">{t(`consentPanel.summary.${key}Label`)}</p>
+                <p>{t(`consentPanel.summary.${key}`)}</p>
+              </div>
             </li>
           ))}
         </ul>

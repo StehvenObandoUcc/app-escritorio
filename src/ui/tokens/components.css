@@ -72,12 +72,34 @@ details[open] > :not(summary) {
 }
 
 /*
+ * Latido del temporizador en marcha: un anillo sale del punto dos veces seguidas (lub-dub) cada 2 s.
+ * Solo transform y opacidad; el punto necesita `relative` y lleva el color del anillo.
+ */
+@keyframes motion-pulse {
+  0% { transform: scale(1); opacity: 0.5; }
+  25% { transform: scale(2.6); opacity: 0; }
+  26% { transform: scale(1); opacity: 0.35; }
+  50%,
+  100% { transform: scale(2.2); opacity: 0; }
+}
+.motion-pulse::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: inherit;
+  animation: motion-pulse 2s var(--prim-ease-out) infinite;
+}
+
+/*
  * Con «reducir movimiento», index.css acorta la duración pero no el retraso: sin esto, la cascada
  * dejaría bloques invisibles un momento y el aviso se desvanecería en cuanto aparece.
  */
 @media (prefers-reduced-motion: reduce) {
   .motion-stagger > *,
-  .motion-toast {
+  .motion-toast,
+  /* Repetido con duración mínima parpadearía: el punto queda quieto, que ya dice «en marcha». */
+  .motion-pulse::after {
     animation: none;
   }
 }

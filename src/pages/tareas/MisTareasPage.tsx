@@ -1,3 +1,4 @@
+import { Link } from 'react-router';
 import { useSession } from '@/app/session';
 import type { Task } from '@/cloud/contract';
 import { errorMessage, t } from '@/i18n';
@@ -69,7 +70,17 @@ export function MisTareasPage() {
       )}
       <Surface as="section" aria-label={t('myTasks.mine')} className="flex flex-col gap-2">
         <Heading level={2}>{t('myTasks.mineCount', { n: mine.length })}</Heading>
-        {mine.length === 0 ? <p className="text-fg-muted">{t('myTasks.empty')}</p> : list(mine, t('myTasks.mine'))}
+        {mine.length === 0 ? (
+          // Vacío con salida: en los proyectos se ven las tareas sin responsable que se pueden tomar.
+          <div className="flex flex-col items-start gap-2">
+            <p className="text-fg-muted">{t('myTasks.empty')}</p>
+            <Link to="/proyectos" className="rounded-xs text-sm font-medium text-accent-text underline-offset-2 hover:underline">
+              {t('myTasks.goToProjects')}
+            </Link>
+          </div>
+        ) : (
+          list(mine, t('myTasks.mine'))
+        )}
       </Surface>
     </PageLayout>
   );

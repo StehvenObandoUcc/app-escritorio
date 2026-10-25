@@ -7,7 +7,7 @@ import { Button, Heading, Select, Surface } from '@/ui/atoms';
 import { SyncStatus, ThemeToggle } from '@/ui/molecules';
 
 /**
- * Cuenta y preferencias (F-09): lo que vive en el pie del menú (equipo activo, sincronización, tema y
+ * Tema, atajos y sincronización (F-09; antes «Cuenta y preferencias», que se confundía con el grupo Cuenta): lo que vive en el pie del menú (equipo activo, sincronización, tema y
  * atajos) también aquí, porque el pie no se ve en ventanas de menos de 640 px. Mismos componentes.
  */
 export function PreferenciasSection() {
@@ -17,8 +17,8 @@ export function PreferenciasSection() {
   const teams = session?.teams ?? [];
   const active = session?.activeTeam ?? null;
   return (
-    <Surface as="section" aria-label={t('settings.preferences')} className="flex max-w-prose flex-col gap-4">
-      <Heading level={2}>{t('settings.preferences')}</Heading>
+    <Surface as="section" aria-label={t('settings.preferences')} className="flex flex-col gap-4">
+      <Heading level={3} className="text-lg">{t('settings.preferences')}</Heading>
       {session && active && (
         <div className="flex flex-col gap-1">
           {teams.length > 1 ? (

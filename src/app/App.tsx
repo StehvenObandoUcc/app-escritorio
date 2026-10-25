@@ -19,10 +19,12 @@ import { TareaPage } from '@/pages/proyectos/TareaPage';
 import { ProyectosPage } from '@/pages/proyectos/ProyectosPage';
 import { MisTareasPage } from '@/pages/tareas/MisTareasPage';
 import { Button, Select } from '@/ui/atoms';
-import { KeyboardHelp, SyncStatus, ThemeToggle } from '@/ui/molecules';
-import { AlertBanner, AppNav, type NavItem } from '@/ui/organisms';
+import { KeyboardHelp, RunningTimer, SyncStatus, ThemeToggle } from '@/ui/molecules';
+import { AlertBanner, AppNav, TaskNoticeBanner, type NavItem } from '@/ui/organisms';
 import { AppShell } from '@/ui/templates';
 import { useNotAllowedAlerts } from './alerts';
+import { useRunningTimer } from './runningTimer';
+import { useTaskNotices } from './taskNotices';
 import { HelpContext, useAppKeyboard } from './keyboard';
 import { LocaleProvider } from './locale';
 import { SessionProvider, useSession } from './session';
@@ -47,9 +49,10 @@ function NavFooter({ onHelp }: { onHelp: () => void }) {
   const { theme, cycle } = useTheme();
   const { sync, teams, activeTeam, selectTeam } = useSession();
   return (
-    <div className="flex flex-col items-center gap-3 lg:items-stretch">
+    // En la barra lateral todo alineado a la izquierda; estirados, los botones centraban su texto (Atajos).
+    <div className="flex flex-col items-center gap-3 lg:items-start">
       {teams.length > 1 && activeTeam && (
-        <div className="hidden lg:block">
+        <div className="hidden lg:block lg:self-stretch">
           <Select
             size="sm"
             aria-label={t('nav.activeTeam')}
@@ -70,6 +73,14 @@ function NavFooter({ onHelp }: { onHelp: () => void }) {
   );
 }
 
+/** Temporizador en marcha en la navegación: se ve y se detiene desde cualquier pantalla. */
+function NavTimer() {
+  const timer = useRunningTimer();
+  if (!timer) return null;
+  // Si no se pudo detener, sigue a la vista: el temporizador continúa y se puede reintentar.
+  return <RunningTimer elapsedSeconds={timer.elapsedSeconds} taskTitle={timer.taskTitle} href={timer.href} onStop={() => void timer.stop().catch(() => {})} />;
+}
+
 /**
  * Sin sesión no se entra a la app: se muestra solo la pantalla de acceso, sin navegación.
  * El sensor de Rust sigue registrando en el equipo; nada se sube sin sesión ni consentimiento.
@@ -77,6 +88,7 @@ function NavFooter({ onHelp }: { onHelp: () => void }) {
 function Gate() {
   const { user } = useSession();
   const { alerts, dismiss } = useNotAllowedAlerts(bridge);
+  const taskNotices = useTaskNotices();
   const [help, setHelp] = useState(false);
   const openHelp = useCallback(() => setHelp(true), []);
   useAppKeyboard(ROUTES, openHelp);
@@ -92,8 +104,9 @@ function Gate() {
   if (user === null) return <AccesoPage />;
   return (
     <HelpContext.Provider value={openHelp}>
-      <AppShell nav={<AppNav items={nav()} footer={<NavFooter onHelp={openHelp} />} />}>
+      <AppShell nav={<AppNav items={nav()} timer={<NavTimer />} footer={<NavFooter onHelp={openHelp} />} />}>
         <AlertBanner alerts={alerts} onDismiss={dismiss} />
+        <TaskNoticeBanner notices={taskNotices.notices} onDismiss={taskNotices.dismiss} />
         <KeyboardHelp open={help} onClose={() => setHelp(false)} sectionCount={ROUTES.length} />
         <Routes>
           <Route path="/" element={<Navigate to="/mi-dia" replace />} />

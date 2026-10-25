@@ -38,10 +38,11 @@
   --prim-violet-600: #6243d9;
   --prim-sky-400: #63b3ed;
   --prim-sky-600: #1f74b3;
-  --prim-red-50: #fdeeec;
-  --prim-red-400: #f2766b;
-  --prim-red-600: #bd3026;
-  --prim-red-900: #3f1411;
+  /* Error: bermellón, lejos del frambuesa de la marca para que un error no parezca el acento */
+  --prim-red-50: #fff0ea;
+  --prim-red-400: #fb8a63;
+  --prim-red-600: #b8401a;
+  --prim-red-900: #3a1a10;
 
   /* Paleta de apps: 8 tonos distinguibles entre sí (versión para fondo claro y para fondo oscuro) */
   --prim-app-indigo-500: #4c63d2;

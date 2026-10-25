@@ -42,7 +42,7 @@ export function ProyectoPage() {
   const blocked = noTeamState(ctx.activeTeam?.role ?? null);
   if (blocked || ctx.loadError || (!ctx.data.isPending && !ctx.project)) {
     return (
-      <PageLayout title={t('projects.title')} actions={back}>
+      <PageLayout title={t('projects.title')} back={back}>
         <EmptyState
           title={blocked?.title ?? (ctx.loadError ? t('projects.loadError') : t('projects.notFound'))}
           description={blocked?.description ?? (ctx.loadError ? t('projects.loadErrorHint', { error: ctx.loadError }) : t('projects.notFoundHint'))}
@@ -54,7 +54,7 @@ export function ProyectoPage() {
   }
   if (!ctx.project) {
     return (
-      <PageLayout title={t('projects.title')} actions={back}>
+      <PageLayout title={t('projects.title')} back={back}>
         <p role="status" className="text-fg-muted">
           {t('common.loading')}
         </p>
@@ -121,24 +121,18 @@ function ProjectView({ ctx, project, back }: { ctx: Ctx; project: Project; back:
     <PageLayout
       title={project.name}
       subtitle={activeTeam?.name}
+      back={back}
       actions={
-        <div className="flex flex-wrap items-center gap-2">
-          {back}
-          {teamManager && !offline && (
-            <>
-              <Button
-                size="sm"
-                icon={project.archivedAt ? <ArchiveRestore size={16} aria-hidden="true" /> : <Archive size={16} aria-hidden="true" />}
-                onClick={() => (project.archivedAt ? void act(() => cloud.setProjectArchived(project.id, false), t('projects.unarchived')) : setDialog('archive'))}
-              >
-                {project.archivedAt ? t('projects.unarchive') : t('projects.archive')}
-              </Button>
-              <Button size="sm" variant="danger" icon={<Trash2 size={16} aria-hidden="true" />} onClick={() => setDialog('delete')}>
-                {t('projects.delete')}
-              </Button>
-            </>
-          )}
-        </div>
+        teamManager &&
+        !offline && (
+          <Button
+            size="sm"
+            icon={project.archivedAt ? <ArchiveRestore size={16} aria-hidden="true" /> : <Archive size={16} aria-hidden="true" />}
+            onClick={() => (project.archivedAt ? void act(() => cloud.setProjectArchived(project.id, false), t('projects.unarchived')) : setDialog('archive'))}
+          >
+            {project.archivedAt ? t('projects.unarchive') : t('projects.archive')}
+          </Button>
+        )
       }
     >
       {offline && <OfflineNote savedAt={ctx.work?.savedAt ?? ''} />}
@@ -225,6 +219,15 @@ function ProjectView({ ctx, project, back }: { ctx: Ctx; project: Project; back:
         </Surface>
       )}
       </div>
+
+      {/* Al final y no junto a Archivar: borrar es raro y no se deshace (pide escribir el nombre). */}
+      {teamManager && !offline && (
+        <div>
+          <Button size="sm" variant="danger" icon={<Trash2 size={16} aria-hidden="true" />} onClick={() => setDialog('delete')}>
+            {t('projects.delete')}
+          </Button>
+        </div>
+      )}
 
       <ConfirmDialog
         open={dialog === 'archive'}

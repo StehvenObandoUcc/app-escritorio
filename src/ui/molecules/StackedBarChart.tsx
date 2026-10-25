@@ -55,7 +55,7 @@ export function StackedBarChart({ data, unit, formatValue, formatShort = formatV
             return (
               <div key={d.label} title={t('charts.bar', { label: d.label, value: formatValue(total) })} className="flex h-full min-w-0 flex-1 flex-col justify-end gap-1">
                 {showValues && (
-                  <span aria-hidden="true" className={cx('overflow-hidden text-center text-xs whitespace-nowrap text-fg-muted tabular-nums', data.length > MAX_BARS_COMPACT && 'hidden sm:block')}>
+                  <span aria-hidden="true" className={cx('overflow-hidden text-center text-xs whitespace-nowrap text-fg-muted tabular-nums', data.length > MAX_BARS_COMPACT && 'hidden md:block')}>
                     {formatShort(total)}
                   </span>
                 )}

@@ -9,6 +9,7 @@ import { Badge, Button, Select, Surface } from '@/ui/atoms';
 import { EmptyState } from '@/ui/molecules';
 import { PageLayout } from '@/ui/templates';
 import { dashboardPeriod, TABLERO_PERIODS, type TableroPeriod } from './period';
+import { GoToTeam } from '../proyectos/ProyectosPage';
 import { AiSection, AppsSection, LeadSection, PeopleSection, PerDaySection, PresenceSection, TotalsSection } from './sections';
 
 /** Cada cuánto se vuelve a pedir la presencia (D-4). */
@@ -50,7 +51,7 @@ export function TableroPage() {
   if (!activeTeam || !teamId) {
     return (
       <PageLayout title={t('dashboard.title')} actions={sampleTag}>
-        <EmptyState title={t('dashboard.title')} description={t('dashboard.noTeam')} />
+        <EmptyState title={t('dashboard.title')} description={t('dashboard.noTeam')} action={<GoToTeam />} />
       </PageLayout>
     );
   }
@@ -120,7 +121,7 @@ export function DashboardBody({ data, periodLabel }: { data: TeamDashboard; peri
   const empty = data.totals !== null && !hasData(data);
   return (
     <>
-      {data.totals === null && <EmptyState title={t('dashboard.needMembers')} description={t('dashboard.needMembersHint')} />}
+      {data.totals === null && <EmptyState title={t('dashboard.needMembers')} description={t('dashboard.needMembersHint')} action={<GoToTeam label={t('team.invite')} />} />}
       {empty && <EmptyState title={t('dashboard.empty')} description={t('dashboard.emptyHint')} />}
       {data.totals && !empty && (
         <>
