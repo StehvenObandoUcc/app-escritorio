@@ -125,18 +125,13 @@ function ProjectView({ ctx, project, back }: { ctx: Ctx; project: Project; back:
         <div className="flex flex-wrap items-center gap-2">
           {back}
           {teamManager && !offline && (
-            <>
-              <Button
-                size="sm"
-                icon={project.archivedAt ? <ArchiveRestore size={16} aria-hidden="true" /> : <Archive size={16} aria-hidden="true" />}
-                onClick={() => (project.archivedAt ? void act(() => cloud.setProjectArchived(project.id, false), t('projects.unarchived')) : setDialog('archive'))}
-              >
-                {project.archivedAt ? t('projects.unarchive') : t('projects.archive')}
-              </Button>
-              <Button size="sm" variant="danger" icon={<Trash2 size={16} aria-hidden="true" />} onClick={() => setDialog('delete')}>
-                {t('projects.delete')}
-              </Button>
-            </>
+            <Button
+              size="sm"
+              icon={project.archivedAt ? <ArchiveRestore size={16} aria-hidden="true" /> : <Archive size={16} aria-hidden="true" />}
+              onClick={() => (project.archivedAt ? void act(() => cloud.setProjectArchived(project.id, false), t('projects.unarchived')) : setDialog('archive'))}
+            >
+              {project.archivedAt ? t('projects.unarchive') : t('projects.archive')}
+            </Button>
           )}
         </div>
       }
@@ -225,6 +220,15 @@ function ProjectView({ ctx, project, back }: { ctx: Ctx; project: Project; back:
         </Surface>
       )}
       </div>
+
+      {/* Al final y no junto a Archivar: borrar es raro y no se deshace (pide escribir el nombre). */}
+      {teamManager && !offline && (
+        <div>
+          <Button size="sm" variant="danger" icon={<Trash2 size={16} aria-hidden="true" />} onClick={() => setDialog('delete')}>
+            {t('projects.delete')}
+          </Button>
+        </div>
+      )}
 
       <ConfirmDialog
         open={dialog === 'archive'}
