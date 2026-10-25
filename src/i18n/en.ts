@@ -322,6 +322,7 @@ export const en: Dict = {
     toReview: 'To review',
     toReviewCount: 'To review ({n})',
     empty: 'You have no pending tasks. The ones assigned to you or that you help with will show up here.',
+    goToProjects: 'See unassigned tasks in the projects',
   },
   nav: {
     main: 'Main',
