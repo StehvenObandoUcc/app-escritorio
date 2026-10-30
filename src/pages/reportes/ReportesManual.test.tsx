@@ -6,6 +6,7 @@ import { CloudError } from '@/cloud/contract';
 import { createMockCloud } from '@/cloud/mock';
 import { toCloudError } from '@/cloud/supabase';
 import { CONSENT_VERSION } from '@/lib/consent';
+import { retryMessages, retryText } from '../../../supabase/functions/_shared/report-prompt.ts';
 import { ReportesPage } from './ReportesPage';
 
 const LONG = 20_000;
@@ -68,5 +69,31 @@ describe('Reportes · modo Manual (F6-6)', () => {
     const error = toCloudError({ message: 'Los datos cambiaron mientras se generaba el reporte: vuelve a generarlo', code: 'PT409' });
     expect(error).toBeInstanceOf(CloudError);
     expect(error.kind).toBe('changed');
+  });
+});
+
+describe('Reportes · modo Manual (F6-7)', () => {
+  it('una respuesta inválida ofrece «Copiar corrección» con el mensaje para la IA', async () => {
+    const user = userEvent.setup();
+    const { cloud } = await setup();
+    renderWithSession(<ReportesPage />, { path: '/reportes', cloud });
+    await screen.findByRole('option', { name: 'Mi trabajo' });
+    await choose('Modo', 'Manual (copiar y pegar)');
+    await user.click(screen.getByRole('button', { name: 'Generar' }));
+    await user.click(await screen.findByLabelText('Respuesta de la IA'));
+    await user.paste('Claro, aquí tienes un resumen de tu día: trabajaste bastante.');
+    await user.click(screen.getByRole('button', { name: 'Validar y guardar' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('No se encontró un objeto JSON en la respuesta.');
+    await user.click(screen.getByRole('button', { name: 'Copiar corrección' }));
+    const copied = await navigator.clipboard.readText();
+    expect(copied).toContain('solo con el objeto JSON');
+    expect(copied).toBe(retryText([{ code: 'no_json' }]));
+    expect(await screen.findByText('Corrección copiada')).toBeInTheDocument();
+  }, LONG);
+
+  it('retryText es el mismo texto que el reintento automático', () => {
+    const errors = [{ code: 'no_json' as const }];
+    expect(retryText(errors)).toBe('Tu respuesta no cumple las reglas: no hay un objeto JSON. Responde de nuevo solo con el objeto JSON, siguiendo todas las reglas.');
+    expect(retryMessages([], 'x', errors).at(-1)).toEqual({ role: 'user', content: retryText(errors) });
   });
 });

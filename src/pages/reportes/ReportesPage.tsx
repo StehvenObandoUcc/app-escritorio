@@ -4,7 +4,7 @@ import { useState, type FormEvent, type ReactNode } from 'react';
 import { useSession } from '@/app/session';
 import { CloudError, REPORT_MODES, REPORT_PERIODS, TrialError, type ReportFacts, type ReportMode, type ReportPeriod, type ReportRequest, type ReportRun } from '@/cloud/contract';
 import { errorMessage, getLocale, t } from '@/i18n';
-import { describeError, downloadText, finishManual, generateWithOwnKey, ManualAnswerError, prepareManual, toCsvFile, toJson, toMarkdown, type ValidationError } from '@/lib/reports';
+import { describeError, downloadText, retryText, finishManual, generateWithOwnKey, ManualAnswerError, prepareManual, toCsvFile, toJson, toMarkdown, type ValidationError } from '@/lib/reports';
 import { Badge, Button, Heading, Select, Surface, Textarea } from '@/ui/atoms';
 import { EmptyState, Toast } from '@/ui/molecules';
 import { ReportHistory, ReportView, type ExportFormat } from '@/ui/organisms';
@@ -241,6 +241,19 @@ export function ReportesPage() {
                         ))}
                       </ul>
                     )}
+                  </div>
+                )}
+                {answerErrors && answer.trim() && (
+                  <div className="flex flex-col items-start gap-1">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      icon={<Copy size={16} aria-hidden="true" />}
+                      onClick={() => void navigator.clipboard.writeText(retryText(answerErrors)).then(() => setNotice(t('reports.manual.fixCopied')))}
+                    >
+                      {t('reports.manual.copyFix')}
+                    </Button>
+                    <p className="text-sm text-fg-muted">{t('reports.manual.copyFixHint')}</p>
                   </div>
                 )}
                 <div>

@@ -907,6 +907,9 @@ export const en: Dict = {
       submit: 'Validate and save',
       empty: 'Paste the AI answer.',
       invalid: 'The answer does not follow the report format. Ask the AI to fix it or generate it again:',
+      copyFix: 'Copy correction',
+      fixCopied: 'Correction copied',
+      copyFixHint: 'Paste it into the same AI chat, then paste its new answer here.',
       changed: 'The data changed since you copied the prompt, so it cannot be saved. Choose “Yesterday” (it does not change) or generate again and paste the new answer.',
       errors: {
         no_json: 'No JSON object was found in the answer.',
