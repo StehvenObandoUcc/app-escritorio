@@ -315,7 +315,7 @@ describe('funciones que puede ejecutar una sesión', () => {
   const ALLOWED = [
     // Las llama la app (src/cloud/supabase.ts) o la Edge Function con el JWT de la persona.
     'accept_invitation', 'add_task_attachment', 'complete_task', 'consume_ai_trial', 'create_project', 'create_task', 'create_team',
-    'decline_invitation', 'delete_project', 'delete_task', 'get_report_facts', 'give_consent', 'invite_member', 'leave_team',
+    'decline_invitation', 'delete_my_account_data', 'delete_project', 'delete_task', 'get_report_facts', 'give_consent', 'invite_member', 'leave_team',
     'my_invitations', 'my_time_by_task', 'project_time_summary', 'remove_member', 'remove_project_member', 'review_task', 'revoke_invitation',
     'save_report', 'set_alert_policy', 'set_block_ai_usage', 'set_member_role', 'set_project_archived', 'set_project_member',
     'set_review_template', 'set_share_app_names', 'set_task_collaborators', 'set_task_criteria', 'set_task_evidence', 'set_task_status',
