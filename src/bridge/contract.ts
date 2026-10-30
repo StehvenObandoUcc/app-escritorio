@@ -185,6 +185,8 @@ export interface TeamPolicy {
   alertNotAllowed: boolean;
   /** Cada cuántos minutos se repite el aviso si sigue en el sitio (0 = solo al entrar). */
   alertRepeatMinutes: number;
+  /** Tope diario de pausa de privacidad en minutos (F5 D-11); 0 = sin tope. Rust recorta o rechaza la pausa. */
+  pauseCapMinutes: number;
 }
 
 /** App instalada o abierta, para el selector de apps ocultas (ADR-0010). Solo local. */
