@@ -199,7 +199,7 @@ export type Database = {
           ai_tool: string | null
           category: string
           created_at: string
-          created_by: string
+          created_by: string | null
           id: string
           match_type: string
           not_allowed: boolean
@@ -211,7 +211,7 @@ export type Database = {
           ai_tool?: string | null
           category: string
           created_at?: string
-          created_by: string
+          created_by: string | null
           id?: string
           match_type: string
           not_allowed?: boolean
@@ -223,7 +223,7 @@ export type Database = {
           ai_tool?: string | null
           category?: string
           created_at?: string
-          created_by?: string
+          created_by?: string | null
           id?: string
           match_type?: string
           not_allowed?: boolean
@@ -345,7 +345,7 @@ export type Database = {
         Row: {
           archived_at: string | null
           created_at: string
-          created_by: string
+          created_by: string | null
           id: string
           name: string
           settings: Json
@@ -354,7 +354,7 @@ export type Database = {
         Insert: {
           archived_at?: string | null
           created_at?: string
-          created_by: string
+          created_by: string | null
           id?: string
           name: string
           settings?: Json
@@ -363,7 +363,7 @@ export type Database = {
         Update: {
           archived_at?: string | null
           created_at?: string
-          created_by?: string
+          created_by?: string | null
           id?: string
           name?: string
           settings?: Json
@@ -660,7 +660,7 @@ export type Database = {
           assignee_id: string | null
           completed_at: string | null
           created_at: string
-          created_by: string
+          created_by: string | null
           description: string
           due_date: string | null
           estimate_minutes: number | null
@@ -681,7 +681,7 @@ export type Database = {
           assignee_id?: string | null
           completed_at?: string | null
           created_at?: string
-          created_by: string
+          created_by: string | null
           description?: string
           due_date?: string | null
           estimate_minutes?: number | null
@@ -702,7 +702,7 @@ export type Database = {
           assignee_id?: string | null
           completed_at?: string | null
           created_at?: string
-          created_by?: string
+          created_by?: string | null
           description?: string
           due_date?: string | null
           estimate_minutes?: number | null
@@ -783,21 +783,21 @@ export type Database = {
       teams: {
         Row: {
           created_at: string
-          created_by: string
+          created_by: string | null
           id: string
           name: string
           settings: Json
         }
         Insert: {
           created_at?: string
-          created_by: string
+          created_by: string | null
           id?: string
           name: string
           settings?: Json
         }
         Update: {
           created_at?: string
-          created_by?: string
+          created_by?: string | null
           id?: string
           name?: string
           settings?: Json
