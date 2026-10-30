@@ -8,6 +8,7 @@ import type { Bridge, SyncBlock, SyncClosure, SyncEntry, TeamRule } from '@/brid
 import { t, type TKey } from '@/i18n';
 import type { Database } from '@/lib/database.types';
 import { LIMITS } from '@/lib/limits';
+import { systemTimezone } from '@/lib/time';
 import { PROMPT_VERSION } from '../../supabase/functions/_shared/report-prompt.ts';
 import {
   CloudError,
@@ -355,7 +356,8 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
       return () => data.subscription.unsubscribe();
     },
     signUp: async (email, password, displayName) => {
-      await run(auth.signUp({ email, password, options: { data: { display_name: displayName } } }));
+      // El trigger users_create_profile crea el perfil con estos datos (F6-2).
+      await run(auth.signUp({ email, password, options: { data: { display_name: displayName, timezone: systemTimezone() } } }));
     },
     verifySignUp: async (email, code) => {
       await run(auth.verifyOtp({ email, token: code, type: 'signup' }));
