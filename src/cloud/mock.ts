@@ -1267,7 +1267,7 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
       const a = me();
       assertCanGenerate(req, a.id);
       const f = factsOf(req);
-      if (f.factsHash !== factsHash) fail('Los datos cambiaron mientras se generaba el reporte: vuelve a generarlo', 'invalid');
+      if (f.factsHash !== factsHash) fail('Los datos cambiaron mientras se generaba el reporte: vuelve a generarlo', 'changed');
       const ids = new Set(f.facts.map((x) => x.id));
       const items = [...narrative.insights, ...narrative.recommendations];
       if (!narrative.summary || narrative.insights.length > 4 || narrative.recommendations.length > 3 || items.some((i) => !i.fact_ids.length || i.fact_ids.some((id) => !ids.has(id)))) {

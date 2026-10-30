@@ -482,8 +482,8 @@ export type TrialReason = (typeof TRIAL_REASONS)[number];
 export class CloudError extends Error {
   constructor(
     message: string,
-    /** network: reintentar · forbidden: sin permiso · invalid: dato rechazado · auth: sesión o credenciales */
-    readonly kind: 'network' | 'forbidden' | 'invalid' | 'auth' | 'unknown',
+    /** network: reintentar · forbidden: sin permiso · invalid: dato rechazado · auth: sesión o credenciales · changed: los datos cambiaron (PT409) */
+    readonly kind: 'network' | 'forbidden' | 'invalid' | 'auth' | 'changed' | 'unknown',
   ) {
     super(translateServerMessage(message));
     this.name = 'CloudError';
