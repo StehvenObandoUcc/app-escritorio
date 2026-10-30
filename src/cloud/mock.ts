@@ -463,6 +463,24 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
       current = null;
       emit();
     },
+    deleteAccount: async () => {
+      const a = me();
+      const mine = [...teams.values()].filter((t) => roleIn(t.id, a.id)).sort((x, y) => x.name.localeCompare(y.name));
+      const blocked = mine.find((t) => roleIn(t.id, a.id) === 'owner' && owners(t.id) === 1 && membersOf(t.id).length > 1);
+      if (blocked) fail(`Antes de eliminar tu cuenta, pasa la propiedad de «${blocked.name}» a otra persona`, 'invalid');
+      for (const t of mine) {
+        if (membersOf(t.id).length === 1) {
+          teams.delete(t.id);
+          continue;
+        }
+        writeAudit(t.id, 'member_left', a.id, { role: roleIn(t.id, a.id) });
+        leaveWork(t.id, a.id);
+        dropPersonalReports(t.id, a.id);
+      }
+      members = members.filter((m) => m.userId !== a.id);
+      profiles.delete(a.id);
+      accounts.delete(a.email);
+    },
     requestPasswordReset: async () => {},
     resetPassword: async (email, code, newPassword) => {
       const a = accounts.get(email.toLowerCase());
