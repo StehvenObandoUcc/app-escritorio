@@ -161,4 +161,5 @@ export const SERVER_PATTERNS: [RegExp, string][] = [
   [/^Tipo de registro desconocido: «(.+)»\.$/, 'Unknown record type: “$1”.'],
   [/^No se pudo abrir el enlace: (.+)$/, 'The link could not be opened: $1'],
   [/^El proveedor de IA respondió con un error \((\d+)\)\.$/, 'The AI provider responded with an error ($1).'],
+  [/^Antes de eliminar tu cuenta, pasa la propiedad de «(.+)» a otra persona$/, 'Before deleting your account, transfer ownership of “$1” to someone else'],
 ];

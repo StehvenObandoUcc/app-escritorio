@@ -349,7 +349,7 @@ export const TaskSchema = z.object({
   loggedSeconds: z.number().nonnegative(),
   startedAt: z.string().nullable(),
   completedAt: z.string().nullable(),
-  createdBy: z.uuid(),
+  createdBy: z.uuid().nullable(),
   updatedAt: z.string(),
   collaborators: z.array(z.uuid()),
   criteria: z.array(z.object({ id: z.uuid(), text: z.string(), met: z.boolean() })),
