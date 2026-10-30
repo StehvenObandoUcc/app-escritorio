@@ -117,6 +117,11 @@ fn clip(b: &BlockRow, start: DateTime<Utc>, end: DateTime<Utc>) -> Option<(DateT
   (e > s).then_some((s, e))
 }
 
+/// Segundos de `category` dentro de `[start, end)` (tope diario de pausa, F5 D-11).
+pub fn category_seconds(blocks: &[BlockRow], category: Category, start: DateTime<Utc>, end: DateTime<Utc>) -> i64 {
+  blocks.iter().filter(|b| b.category == category).filter_map(|b| clip(b, start, end)).map(|(s, e)| (e - s).num_seconds()).sum()
+}
+
 fn add_totals(totals: &mut BTreeMap<&'static str, i64>, blocks: &[BlockRow], start: DateTime<Utc>, end: DateTime<Utc>) {
   for b in blocks {
     if let Some((s, e)) = clip(b, start, end) {

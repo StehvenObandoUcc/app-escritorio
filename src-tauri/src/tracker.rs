@@ -53,6 +53,9 @@ const DEFAULT_ALERT_REPEAT: u32 = 10;
 /// Con una app o sitio «sin teclado» delante (leer, reuniones), la inactividad llega a los 30 min (ADR-0013).
 const KEEP_ACTIVE_IDLE_SECS: u64 = 30 * 60;
 const ALERT_REPEATS: &[u32] = &[0, 2, 5, 10, 15, 30];
+const KEY_PAUSE_CAP: &str = "team_pause_cap_minutes";
+/// Topes diarios de pausa permitidos (F5 D-11); 0 = sin tope. Los mismos que `PAUSE_CAP_MINUTES` en la nube.
+const PAUSE_CAPS: &[u32] = &[0, 15, 30, 60, 120, 240];
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -124,6 +127,8 @@ struct Inner {
   alert_repeat_minutes: u32,
   /// Último aviso: dominio y cuándo. Se borra al salir del sitio para avisar otra vez al volver.
   last_alert: Option<(String, DateTime<Utc>)>,
+  /// Tope diario de pausa de privacidad del equipo en minutos (F5 D-11); 0 = sin tope.
+  pause_cap_minutes: u32,
 }
 
 fn default_true() -> bool {
@@ -143,6 +148,17 @@ pub struct TeamPolicy {
   pub alert_not_allowed: bool,
   #[serde(default = "default_repeat")]
   pub alert_repeat_minutes: u32,
+}
+
+/// Lo que envía la interfaz a `team_policy_set`: la política más el tope diario de pausa (F5 D-11).
+/// El tope va aparte de `TeamPolicy` para que quien ya la construye no tenga que cambiar.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TeamPolicyInput {
+  #[serde(flatten)]
+  pub policy: TeamPolicy,
+  #[serde(default)]
+  pub pause_cap_minutes: u32,
 }
 
 /// Aviso para mostrar como notificación: la persona está en un sitio que su equipo no permite.
@@ -387,6 +403,11 @@ impl Tracker {
       .and_then(|v| v.parse::<u32>().ok())
       .filter(|m| ALERT_REPEATS.contains(m))
       .unwrap_or(DEFAULT_ALERT_REPEAT);
+    let pause_cap_minutes = store
+      .setting_get(KEY_PAUSE_CAP)?
+      .and_then(|v| v.parse::<u32>().ok())
+      .filter(|m| PAUSE_CAPS.contains(m))
+      .unwrap_or(0);
     Ok(Self {
       inner: Mutex::new(Inner {
         store,
@@ -407,6 +428,7 @@ impl Tracker {
         alert_enabled,
         alert_repeat_minutes,
         last_alert: None,
+        pause_cap_minutes,
       }),
     })
   }
@@ -573,11 +595,30 @@ impl Tracker {
   }
 
   pub fn privacy_pause(&self, now: DateTime<Utc>, minutes: u32) -> Result<SensorStatus> {
+    self.privacy_pause_in(now, minutes, &Utc)
+  }
+
+  /// Pausa de privacidad recortada a lo que queda del tope diario del equipo (F5 D-11). `tz` fija el día local.
+  pub fn privacy_pause_in<Tz: TimeZone>(&self, now: DateTime<Utc>, minutes: u32, tz: &Tz) -> Result<SensorStatus> {
     if !(1..=MAX_PAUSE_MINUTES).contains(&minutes) {
       return Err(format!("La pausa debe durar entre 1 y {MAX_PAUSE_MINUTES} minutos."));
     }
     let mut g = self.lock()?;
     g.mode(now);
+    let cap = g.pause_cap_minutes;
+    let minutes = if cap > 0 {
+      let (start, end) = views::day_bounds(now.with_timezone(tz).date_naive(), tz)?;
+      g.flush(now)?;
+      let secs = views::category_seconds(&g.store.blocks_between(start, end)?, Category::Paused, start, end);
+      let used = u32::try_from(u64::try_from(secs).unwrap_or(0).div_ceil(60)).unwrap_or(u32::MAX);
+      let left = cap.saturating_sub(used);
+      if left == 0 {
+        return Err(format!("Ya usaste el tope de pausa de hoy ({cap} min)."));
+      }
+      minutes.min(left)
+    } else {
+      minutes
+    };
     g.on_break = false;
     g.pause_until = Some(now + Duration::minutes(i64::from(minutes)));
     g.enter_special(now, Mode::Paused)?;
@@ -779,6 +820,17 @@ impl Tracker {
     g.allow_hidden = policy.allow_hidden_apps;
     g.alert_enabled = policy.alert_not_allowed;
     g.alert_repeat_minutes = policy.alert_repeat_minutes;
+    Ok(())
+  }
+
+  /// Tope diario de pausa del equipo activo (F5 D-11). Se guarda para aplicarlo también sin red.
+  pub fn team_pause_cap_set(&self, minutes: u32) -> Result<()> {
+    if !PAUSE_CAPS.contains(&minutes) {
+      return Err("El tope de pausa debe ser 0 (sin tope), 15, 30, 60, 120 o 240 minutos.".into());
+    }
+    let mut g = self.lock()?;
+    g.store.setting_set(KEY_PAUSE_CAP, &minutes.to_string())?;
+    g.pause_cap_minutes = minutes;
     Ok(())
   }
 
@@ -1539,6 +1591,67 @@ mod tests {
   fn an_invalid_repeat_is_rejected() {
     let t = tracker();
     assert!(t.team_policy_set(TeamPolicy { allow_hidden_apps: true, alert_not_allowed: true, alert_repeat_minutes: 7 }).is_err());
+  }
+
+  /// Pausa de `minutes` desde las 12:00 y reanuda al terminar: deja ese tiempo en pausa hoy.
+  fn paused_for(t: &Tracker, minutes: u32) {
+    t.privacy_pause(at(12, 0, 0), minutes).unwrap();
+    t.privacy_resume(at(12, minutes, 0)).unwrap();
+  }
+
+  #[test]
+  fn the_pause_is_clamped_to_what_is_left_of_the_daily_cap() {
+    // F5 D-11 en Rust: tope 30, 20 min ya pausados, se piden 15 → solo quedan 10.
+    let t = tracker();
+    t.team_pause_cap_set(30).unwrap();
+    paused_for(&t, 20);
+    let s = t.privacy_pause_in(at(12, 30, 0), 15, &utc()).unwrap();
+    assert_eq!(s.paused_until.as_deref(), Some("2026-10-05T12:40:00Z"));
+  }
+
+  #[test]
+  fn an_exhausted_pause_cap_rejects_the_pause() {
+    let t = tracker();
+    t.team_pause_cap_set(30).unwrap();
+    paused_for(&t, 30);
+    let err = t.privacy_pause_in(at(12, 40, 0), 15, &utc()).unwrap_err();
+    assert_eq!(err, "Ya usaste el tope de pausa de hoy (30 min).");
+    assert_eq!(t.status(at(12, 40, 0)).unwrap().state, "tracking");
+  }
+
+  #[test]
+  fn without_a_pause_cap_the_pause_is_not_clamped() {
+    let t = tracker();
+    paused_for(&t, 20);
+    let s = t.privacy_pause_in(at(12, 30, 0), 15, &utc()).unwrap();
+    assert_eq!(s.paused_until.as_deref(), Some("2026-10-05T12:45:00Z"));
+  }
+
+  #[test]
+  fn the_policy_from_the_ui_carries_the_pause_cap_and_defaults_to_none() {
+    let with: TeamPolicyInput =
+      serde_json::from_str(r#"{"allowHiddenApps":false,"alertNotAllowed":true,"alertRepeatMinutes":5,"pauseCapMinutes":60}"#).unwrap();
+    assert_eq!((with.pause_cap_minutes, with.policy.allow_hidden_apps, with.policy.alert_repeat_minutes), (60, false, 5));
+    let without: TeamPolicyInput = serde_json::from_str(r#"{"allowHiddenApps":true}"#).unwrap();
+    assert_eq!(without.pause_cap_minutes, 0);
+  }
+
+  #[test]
+  fn the_pause_cap_is_validated_and_survives_a_restart() {
+    let dir = std::env::temp_dir().join(format!("pulso-test-{}", Uuid::new_v4()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("pulso.db");
+    let key = TitleCipher::generate_key();
+    {
+      let t = Tracker::new(Store::open(&path).unwrap(), TitleCipher::new(&key)).unwrap();
+      assert!(t.team_pause_cap_set(25).is_err());
+      t.team_pause_cap_set(15).unwrap();
+    }
+    let t = Tracker::new(Store::open(&path).unwrap(), TitleCipher::new(&key)).unwrap();
+    paused_for(&t, 15);
+    assert!(t.privacy_pause_in(at(12, 20, 0), 5, &utc()).is_err());
+    drop(t);
+    let _ = std::fs::remove_dir_all(&dir);
   }
 
   #[test]
