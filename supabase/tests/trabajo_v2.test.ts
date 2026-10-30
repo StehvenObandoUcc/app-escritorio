@@ -117,7 +117,7 @@ describe('tipos y subtareas (AC-19, AC-20)', () => {
 describe('responsable y apoyos (AC-21, AC-22, fila 29)', () => {
   it('asignar a alguien del equipo fuera del proyecto lo añade como colaborador', async () => {
     const id = await db.as(caro, (q) => createTask(q, 'Con Fede', { assignee: fede }));
-    expect((await work(caro)).members[project]).toContainEqual({ userId: fede, role: 'contributor', displayName: null });
+    expect((await work(caro)).members[project]).toContainEqual({ userId: fede, role: 'contributor', displayName: 'fede' });
     expect((await taskOf(fede, id)).assigneeId).toBe(fede);
   });
 
@@ -136,7 +136,7 @@ describe('responsable y apoyos (AC-21, AC-22, fila 29)', () => {
     expect(other).toBeTruthy();
     await db.as(caro, (q) => q('select set_task_collaborators($1, $2)', [locked, [caro]]));
     expect((await taskOf(caro, locked)).collaborators).toEqual([caro]);
-    expect(await failure(() => db.as(caro, (q) => q('select set_task_collaborators($1, $2)', [locked, [vero]])))).toMatch(/viewer/);
+    expect(await failure(() => db.as(caro, (q) => q('select set_task_collaborators($1, $2)', [locked, [vero]])))).toMatch(/observador/);
   });
 });
 

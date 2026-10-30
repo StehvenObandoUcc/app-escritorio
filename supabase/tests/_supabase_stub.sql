@@ -16,6 +16,8 @@ create table auth.users (
   -- En Supabase es null hasta verificar el correo. Aquí los usuarios nacen verificados;
   -- las pruebas que necesitan un correo sin verificar lo ponen en null.
   email_confirmed_at timestamptz default now(),
+  -- Datos del registro (options.data de signUp), como en Supabase.
+  raw_user_meta_data jsonb,
   created_at timestamptz not null default now()
 );
 

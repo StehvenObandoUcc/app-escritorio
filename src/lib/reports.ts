@@ -7,7 +7,7 @@ import type { Bridge } from '@/bridge/contract';
 import type { Cloud, Fact, Narrative, ReportFacts, ReportLanguage, ReportRequest, ReportRun } from '@/cloud/contract';
 import { formatDate, intlLocale, t, type TKey } from '@/i18n';
 import { CATEGORY_STYLE } from '@/lib/categories';
-import { buildMessages, manualPrompt, retryMessages } from '../../supabase/functions/_shared/report-prompt.ts';
+import { buildMessages, manualPrompt, retryMessages, retryText } from '../../supabase/functions/_shared/report-prompt.ts';
 import {
   extractJson,
   fallbackNarrative,
@@ -17,6 +17,7 @@ import {
 } from '../../supabase/functions/_shared/report-validator.ts';
 
 export type { ValidationError };
+export { retryText };
 
 const contextOf = async (cloud: Cloud, facts: ReportFacts): Promise<ValidationContext> => ({
   facts: facts.facts,

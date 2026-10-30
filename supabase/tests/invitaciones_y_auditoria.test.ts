@@ -67,7 +67,7 @@ beforeAll(async () => {
     ['ana', 'beto', 'caro', 'dani', 'eva', 'fran', 'gabi', 'hugo', 'ines'].map((n) => db.createUser(`${n}@pulso.test`)),
   )) as [string, string, string, string, string, string, string, string, string];
   await db.admin('update auth.users set email_confirmed_at = null where id = $1', [gabi]);
-  await db.as(ana, (q) => q('insert into profiles (id, display_name) values ($1, $2)', [ana, 'Ana']));
+  await db.as(ana, (q) => q('update profiles set display_name = $2 where id = $1', [ana, 'Ana']));
 
   teamA = (await db.as(ana, (q) => q<{ id: string }>("select create_team('Equipo A') as id")))[0]!.id;
   teamB = (await db.as(eva, (q) => q<{ id: string }>("select create_team('Equipo B') as id")))[0]!.id;
@@ -311,7 +311,7 @@ describe('ceder la propiedad (EQ-06)', () => {
     expect(await roleOf(teamC, hugo)).toBe('owner');
     expect(await roleOf(teamC, eva)).toBe('member');
     expect(await failure(() => db.as(hugo, (q) => q("select set_member_role($1, $2, 'member')", [teamC, hugo])))).toMatch(
-      /al menos un owner/,
+      /al menos un propietario/,
     );
   });
 });

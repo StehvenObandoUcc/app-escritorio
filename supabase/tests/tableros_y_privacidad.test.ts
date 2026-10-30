@@ -96,7 +96,7 @@ beforeAll(async () => {
   const ids = await Promise.all(names.map((n) => db.createUser(`${n}@pulso.test`)));
   [owen, adam, lena, mara, nico, vera, zoe, ofe, vic] = ids as [string, string, string, string, string, string, string, string, string];
   for (const [id, n] of names.map((n, i) => [ids[i]!, n] as const)) {
-    await db.as(id, (q) => q('insert into profiles (id, display_name) values ($1, $2)', [id, n[0]!.toUpperCase() + n.slice(1)]));
+    await db.as(id, (q) => q('update profiles set display_name = $2 where id = $1', [id, n[0]!.toUpperCase() + n.slice(1)]));
   }
   teamA = (await db.as(owen, (q) => q<{ id: string }>("select create_team('Equipo A') as id")))[0]!.id;
   teamB = (await db.as(zoe, (q) => q<{ id: string }>("select create_team('Equipo B') as id")))[0]!.id;
