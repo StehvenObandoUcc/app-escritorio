@@ -10,6 +10,7 @@ import { HiddenAppsPicker, type AppCandidate } from '@/ui/organisms';
 import { PageLayout } from '@/ui/templates';
 import { useOptionalSession } from '@/app/session';
 import { AiSection } from './AiSection';
+import { EliminarCuentaSection } from './EliminarCuentaSection';
 import { MiPrivacidadSection } from './MiPrivacidadSection';
 import { PerfilSection } from './PerfilSection';
 import { PreferenciasSection } from './PreferenciasSection';
@@ -135,6 +136,7 @@ export function AjustesPage({ bridge }: { bridge: Bridge }) {
         <div className="flex min-w-0 flex-col gap-10 lg:col-span-3">
           <SettingsGroup id="ajustes-cuenta" title={t('settings.groups.account')} hint={t('settings.groups.accountHint')}>
             <PerfilSection />
+            <EliminarCuentaSection bridge={bridge} />
           </SettingsGroup>
           <SettingsGroup id="ajustes-app" title={t('settings.groups.app')} hint={t('settings.groups.appHint')}>
             <LanguageSection />

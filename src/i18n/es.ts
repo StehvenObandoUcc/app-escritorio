@@ -680,6 +680,16 @@ export const es = {
     exporting: 'Exportando…',
     exported: 'Guardado en {path}',
   },
+  deleteAccount: {
+    title: 'Eliminar mi cuenta',
+    hint: 'Borra tu cuenta de Pulso y tus datos, en la nube y en este computador. No se puede deshacer.',
+    button: 'Eliminar mi cuenta',
+    confirmTitle: '¿Eliminar tu cuenta para siempre?',
+    confirmMessage: 'Se borran tu perfil, tu actividad, tus horas registradas, tus reportes personales y los equipos donde no hay nadie más. En los equipos con más personas se quedan los proyectos, las tareas y las evidencias que subiste. Si eres la única persona propietaria de un equipo con más gente, primero cede la propiedad.',
+    exportFirst: 'Exportar mis datos antes',
+    typeEmail: 'Escribe tu correo ({email}) para confirmar',
+    confirmYes: 'Eliminar mi cuenta',
+  },
   pause: {
     capReached: 'Ya usaste el tope de pausa de hoy ({min} min).',
   },
