@@ -230,6 +230,15 @@ export function createMockBridge(now: () => Date = () => new Date()): Bridge {
     sessionClear: async () => {
       session = null;
     },
+    // Datos de ejemplo: los bloques del día son fijos; se borra lo que la persona registró.
+    localDataClear: async () => {
+      const key = cacheKey();
+      if (key) tasksCache.delete(key);
+      entries = [];
+      session = null;
+      activeTeam = null;
+      activeUser = null;
+    },
     activeTeamSet: async (teamId, userId) => {
       activeTeam = teamId;
       activeUser = userId;

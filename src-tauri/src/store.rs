@@ -637,6 +637,16 @@ impl Store {
     Ok(ExportRows { blocks, entries, closures })
   }
 
+  /// CU-08: borra todo lo local de la cuenta activa (bloques, tiempo, cierres y copia de tareas).
+  /// Lo de otras cuentas del mismo equipo de cómputo se queda (ADR-0013).
+  pub fn delete_account_rows(&self) -> Result<()> {
+    let Some(user) = self.user.as_deref() else { return Ok(()) };
+    for table in ["activity_blocks_local", "time_entries_local", "app_closures_local", "tasks_cache"] {
+      self.conn.execute(&format!("DELETE FROM {table} WHERE user_id = ?1"), [user]).map_err(db)?;
+    }
+    Ok(())
+  }
+
   pub fn setting_delete(&self, key: &str) -> Result<()> {
     self.conn.execute("DELETE FROM kv_settings WHERE key = ?1", [key]).map_err(db)?;
     Ok(())
