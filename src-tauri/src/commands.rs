@@ -4,7 +4,7 @@
 
 use crate::ai::{self, AiConfig, ChatMessage};
 use crate::sync::SyncBatch;
-use crate::tracker::{Result, SensorStatus, Settings, SettingsPatch, TeamPolicy, Tracker};
+use crate::tracker::{Result, SensorStatus, Settings, SettingsPatch, TeamPolicyInput, Tracker};
 use crate::views::{DayView, RangeView, TimeEntryView};
 use chrono::{Local, Utc};
 use std::sync::Arc;
@@ -49,7 +49,7 @@ pub fn break_end(t: Tr) -> Result<SensorStatus> {
 
 #[tauri::command]
 pub fn privacy_pause(t: Tr, minutes: u32) -> Result<SensorStatus> {
-  t.privacy_pause(Utc::now(), minutes)
+  t.privacy_pause_in(Utc::now(), minutes, &Local)
 }
 
 #[tauri::command]
@@ -159,8 +159,10 @@ pub fn notifications_status() -> crate::system::NotificationsStatus {
 
 /// ADR-0009/0010: política del equipo activo (apps ocultas y avisos de sitio no permitido).
 #[tauri::command]
-pub fn team_policy_set(t: Tr, policy: TeamPolicy) -> Result<()> {
-  t.team_policy_set(policy)
+pub fn team_policy_set(t: Tr, policy: TeamPolicyInput) -> Result<()> {
+  // Tope diario de pausa (F5 D-11): Rust lo aplica también, no solo la interfaz.
+  t.team_pause_cap_set(policy.pause_cap_minutes)?;
+  t.team_policy_set(policy.policy)
 }
 
 // ---- F4 ----
