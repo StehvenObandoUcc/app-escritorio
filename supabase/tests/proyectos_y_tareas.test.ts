@@ -92,8 +92,8 @@ describe('proyectos (filas 16 y 17)', () => {
     await db.as(beto, (q) => q('select remove_project_member($1, $2)', [project, fede]));
     expect(await visibleProjects(fede)).toEqual([]);
     expect(await failure(() => db.as(dani, (q) => q("select set_project_member($1, $2, 'contributor')", [project, fede])))).toMatch(/No permitido/);
-    expect(await failure(() => db.as(caro, (q) => q("select set_project_member($1, $2, 'contributor')", [project, vero])))).toMatch(/viewer/);
-    expect(await failure(() => db.as(caro, (q) => q("select set_project_member($1, $2, 'contributor')", [project, eva])))).toMatch(/viewer/);
+    expect(await failure(() => db.as(caro, (q) => q("select set_project_member($1, $2, 'contributor')", [project, vero])))).toMatch(/observador/);
+    expect(await failure(() => db.as(caro, (q) => q("select set_project_member($1, $2, 'contributor')", [project, eva])))).toMatch(/observador/);
   });
 
   it('solo owner y admin archivan; archivado no admite cambios hasta desarchivar (AC-2)', async () => {
@@ -162,8 +162,8 @@ describe('tareas (filas 18 y 19)', () => {
 
   it('solo un miembro del proyecto puede ser responsable (AC-8)', async () => {
     // v2: a alguien del equipo fuera del proyecto se le añade al asignarlo (AC-21); a un viewer o a alguien de fuera, no.
-    expect(await failure(() => db.as(caro, (q) => createTask(q, project, 'X', vero)))).toMatch(/viewer/);
-    expect(await failure(() => db.as(ana, (q) => createTask(q, project, 'X', eva)))).toMatch(/viewer/);
+    expect(await failure(() => db.as(caro, (q) => createTask(q, project, 'X', vero)))).toMatch(/observador/);
+    expect(await failure(() => db.as(ana, (q) => createTask(q, project, 'X', eva)))).toMatch(/observador/);
   });
 
   it('gana la última modificación y updated_at lo pone el servidor (AC-16, SY-04)', async () => {

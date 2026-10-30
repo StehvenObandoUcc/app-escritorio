@@ -136,7 +136,7 @@ describe('responsable y apoyos (AC-21, AC-22, fila 29)', () => {
     expect(other).toBeTruthy();
     await db.as(caro, (q) => q('select set_task_collaborators($1, $2)', [locked, [caro]]));
     expect((await taskOf(caro, locked)).collaborators).toEqual([caro]);
-    expect(await failure(() => db.as(caro, (q) => q('select set_task_collaborators($1, $2)', [locked, [vero]])))).toMatch(/viewer/);
+    expect(await failure(() => db.as(caro, (q) => q('select set_task_collaborators($1, $2)', [locked, [vero]])))).toMatch(/observador/);
   });
 });
 

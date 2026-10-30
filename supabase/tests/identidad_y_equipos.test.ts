@@ -152,11 +152,11 @@ describe('cambiar roles', () => {
 describe('el equipo siempre conserva un owner', () => {
   it('el último owner no puede salir ni degradarse', async () => {
     expect(await failure(() => db.as(ana, (q) => q('select leave_team($1)', [teamA])))).toMatch(
-      /al menos un owner/,
+      /al menos un propietario/,
     );
     expect(
       await failure(() => db.as(ana, (q) => q('select set_member_role($1, $2, $3)', [teamA, ana, 'admin']))),
-    ).toMatch(/al menos un owner/);
+    ).toMatch(/al menos un propietario/);
     expect(await roleOf(teamA, ana)).toBe('owner');
   });
 
