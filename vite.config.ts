@@ -20,6 +20,8 @@ export default defineConfig({
           environment: 'jsdom',
           include: ['src/**/*.test.{ts,tsx}', 'scripts/**/*.test.mjs'],
           setupFiles: ['src/test-setup.ts'],
+          // Holgura para varias esperas de 3 s (asyncUtilTimeout en test-setup.ts) en una misma prueba.
+          testTimeout: 15_000,
         },
       },
       {
