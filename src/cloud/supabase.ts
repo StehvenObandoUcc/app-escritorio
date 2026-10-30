@@ -120,6 +120,8 @@ export function toCloudError(error: { message: string; code?: string | null; sta
     const msg = /row-level security/i.test(error.message) ? t('cloud.forbidden') : error.message;
     return new CloudError(msg, 'forbidden');
   }
+  // save_report: los hechos cambiaron desde que se calcularon (spec F4 §2).
+  if (code === 'PT409') return new CloudError(error.message, 'changed');
   if (code === 'P0001' || code === '22023' || code.startsWith('23')) return new CloudError(error.message, 'invalid');
   if (code.startsWith('PGRST')) return new CloudError(t('cloud.rejected'), 'unknown');
   // Lo demás es texto técnico (de Postgres o de la librería, en inglés): a la persona, un aviso general (F-20).
