@@ -93,7 +93,8 @@ export function ReportesPage() {
     setAnswerErrors(null);
     const req = request();
     try {
-      if (req.period === 'today') {
+      // «Ayer» también: si anoche no se sincronizó, lo pendiente subiría mientras la persona está en el chat (PT409).
+      if (req.period === 'today' || req.period === 'yesterday') {
         setBusy(t('reports.generate.syncing'));
         await syncNow();
       }
@@ -227,7 +228,11 @@ export function ReportesPage() {
                     value={answer}
                     invalid={Boolean(answerErrors)}
                     aria-describedby={answerErrors ? 'respuesta-manual-error' : undefined}
-                    onChange={(e) => setAnswer(e.target.value)}
+                    onChange={(e) => {
+                      setAnswer(e.target.value);
+                      // Los errores (y «Copiar corrección») eran de la respuesta anterior.
+                      setAnswerErrors(null);
+                    }}
                     mono
                   />
                 </label>

@@ -65,6 +65,20 @@ describe('Reportes · modo Manual (F6-6)', () => {
     expect(alert).not.toHaveTextContent('No se pudo');
   }, LONG);
 
+  it('con «Ayer» también sube antes lo pendiente, para que no cambie mientras se va al chat', async () => {
+    const user = userEvent.setup();
+    const { cloud } = await setup();
+    const { engine } = renderWithSession(<ReportesPage />, { path: '/reportes', cloud });
+    const sync = vi.spyOn(engine, 'syncNow');
+    await screen.findByRole('option', { name: 'Mi trabajo' });
+    await choose('Modo', 'Manual (copiar y pegar)');
+    // La sesión también sincroniza al arrancar: solo cuenta la llamada de «Generar».
+    sync.mockClear();
+    await user.click(screen.getByRole('button', { name: 'Generar' }));
+    await screen.findByLabelText('Respuesta de la IA');
+    expect(sync).toHaveBeenCalled();
+  }, LONG);
+
   it('el código PT409 de Supabase llega como un CloudError «changed»', () => {
     const error = toCloudError({ message: 'Los datos cambiaron mientras se generaba el reporte: vuelve a generarlo', code: 'PT409' });
     expect(error).toBeInstanceOf(CloudError);
@@ -89,6 +103,23 @@ describe('Reportes · modo Manual (F6-7)', () => {
     expect(copied).toContain('solo con el objeto JSON');
     expect(copied).toBe(retryText([{ code: 'no_json' }]));
     expect(await screen.findByText('Corrección copiada')).toBeInTheDocument();
+  }, LONG);
+
+  it('al cambiar la respuesta, los errores y «Copiar corrección» de la anterior desaparecen', async () => {
+    const user = userEvent.setup();
+    const { cloud } = await setup();
+    renderWithSession(<ReportesPage />, { path: '/reportes', cloud });
+    await screen.findByRole('option', { name: 'Mi trabajo' });
+    await choose('Modo', 'Manual (copiar y pegar)');
+    await user.click(screen.getByRole('button', { name: 'Generar' }));
+    const field = await screen.findByLabelText('Respuesta de la IA');
+    await user.click(field);
+    await user.paste('Sin JSON.');
+    await user.click(screen.getByRole('button', { name: 'Validar y guardar' }));
+    await screen.findByRole('button', { name: 'Copiar corrección' });
+    await user.type(field, ' otra');
+    expect(screen.queryByRole('button', { name: 'Copiar corrección' })).not.toBeInTheDocument();
+    expect(screen.queryByText('No se encontró un objeto JSON en la respuesta.')).not.toBeInTheDocument();
   }, LONG);
 
   it('retryText es el mismo texto que el reintento automático', () => {
