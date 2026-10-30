@@ -907,6 +907,7 @@ export const es = {
       submit: 'Validar y guardar',
       empty: 'Pega la respuesta de la IA.',
       invalid: 'La respuesta no cumple el formato del reporte. Pide a la IA que la corrija o vuelve a generarla:',
+      changed: 'Los datos cambiaron desde que copiaste el prompt, así que no se puede guardar. Elige «Ayer» (no cambia) o vuelve a generar y pega la nueva respuesta.',
       errors: {
         no_json: 'No se encontró un objeto JSON en la respuesta.',
         schema: '«{field}» no tiene la forma pedida.',

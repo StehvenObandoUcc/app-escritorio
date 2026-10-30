@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Calculator, Copy, Download, FileText } from 'lucide-react';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { useSession } from '@/app/session';
-import { REPORT_MODES, REPORT_PERIODS, TrialError, type ReportFacts, type ReportMode, type ReportPeriod, type ReportRequest, type ReportRun } from '@/cloud/contract';
+import { CloudError, REPORT_MODES, REPORT_PERIODS, TrialError, type ReportFacts, type ReportMode, type ReportPeriod, type ReportRequest, type ReportRun } from '@/cloud/contract';
 import { errorMessage, getLocale, t } from '@/i18n';
 import { describeError, downloadText, finishManual, generateWithOwnKey, ManualAnswerError, prepareManual, toCsvFile, toJson, toMarkdown, type ValidationError } from '@/lib/reports';
 import { Badge, Button, Heading, Select, Surface, Textarea } from '@/ui/atoms';
@@ -33,8 +33,11 @@ export function ReportesPage() {
   const aiConfig = useQuery({ queryKey: ['ai-config'], queryFn: () => bridge.aiConfigGet() });
 
   const [about, setAbout] = useState('personal');
-  const [period, setPeriod] = useState<ReportPeriod>('today');
+  const [chosenPeriod, setPeriod] = useState<ReportPeriod | null>(null);
   const [mode, setMode] = useState<ReportMode>('free');
+  // Sin elección, Manual usa «Ayer»: mientras la persona está en el chat de IA, «hoy» sigue cambiando y el
+  // guardado lo rechaza (PT409). Un periodo cerrado no cambia.
+  const period = chosenPeriod ?? (mode === 'manual' ? 'yesterday' : 'today');
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -127,6 +130,7 @@ export function ReportesPage() {
       setAnswerErrors(null);
     } catch (cause) {
       if (cause instanceof ManualAnswerError) setAnswerErrors(cause.errors);
+      else if (cause instanceof CloudError && cause.kind === 'changed') setError(t('reports.manual.changed'));
       else setError(t('reports.failed', { error: errorMessage(cause) }));
     } finally {
       setBusy(null);
