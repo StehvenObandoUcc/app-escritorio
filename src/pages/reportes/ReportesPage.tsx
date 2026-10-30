@@ -2,9 +2,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Calculator, Copy, Download, FileText } from 'lucide-react';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { useSession } from '@/app/session';
-import { REPORT_MODES, REPORT_PERIODS, TrialError, type ReportFacts, type ReportMode, type ReportPeriod, type ReportRequest, type ReportRun } from '@/cloud/contract';
+import { CloudError, REPORT_MODES, REPORT_PERIODS, TrialError, type ReportFacts, type ReportMode, type ReportPeriod, type ReportRequest, type ReportRun } from '@/cloud/contract';
 import { errorMessage, getLocale, t } from '@/i18n';
-import { describeError, downloadText, finishManual, generateWithOwnKey, ManualAnswerError, prepareManual, toCsvFile, toJson, toMarkdown, type ValidationError } from '@/lib/reports';
+import { describeError, downloadText, retryText, finishManual, generateWithOwnKey, ManualAnswerError, prepareManual, toCsvFile, toJson, toMarkdown, type ValidationError } from '@/lib/reports';
 import { Badge, Button, Heading, Select, Surface, Textarea } from '@/ui/atoms';
 import { EmptyState, Toast } from '@/ui/molecules';
 import { ReportHistory, ReportView, type ExportFormat } from '@/ui/organisms';
@@ -33,8 +33,11 @@ export function ReportesPage() {
   const aiConfig = useQuery({ queryKey: ['ai-config'], queryFn: () => bridge.aiConfigGet() });
 
   const [about, setAbout] = useState('personal');
-  const [period, setPeriod] = useState<ReportPeriod>('today');
+  const [chosenPeriod, setPeriod] = useState<ReportPeriod | null>(null);
   const [mode, setMode] = useState<ReportMode>('free');
+  // Sin elección, Manual usa «Ayer»: mientras la persona está en el chat de IA, «hoy» sigue cambiando y el
+  // guardado lo rechaza (PT409). Un periodo cerrado no cambia.
+  const period = chosenPeriod ?? (mode === 'manual' ? 'yesterday' : 'today');
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -90,7 +93,8 @@ export function ReportesPage() {
     setAnswerErrors(null);
     const req = request();
     try {
-      if (req.period === 'today') {
+      // «Ayer» también: si anoche no se sincronizó, lo pendiente subiría mientras la persona está en el chat (PT409).
+      if (req.period === 'today' || req.period === 'yesterday') {
         setBusy(t('reports.generate.syncing'));
         await syncNow();
       }
@@ -127,6 +131,7 @@ export function ReportesPage() {
       setAnswerErrors(null);
     } catch (cause) {
       if (cause instanceof ManualAnswerError) setAnswerErrors(cause.errors);
+      else if (cause instanceof CloudError && cause.kind === 'changed') setError(t('reports.manual.changed'));
       else setError(t('reports.failed', { error: errorMessage(cause) }));
     } finally {
       setBusy(null);
@@ -223,7 +228,11 @@ export function ReportesPage() {
                     value={answer}
                     invalid={Boolean(answerErrors)}
                     aria-describedby={answerErrors ? 'respuesta-manual-error' : undefined}
-                    onChange={(e) => setAnswer(e.target.value)}
+                    onChange={(e) => {
+                      setAnswer(e.target.value);
+                      // Los errores (y «Copiar corrección») eran de la respuesta anterior.
+                      setAnswerErrors(null);
+                    }}
                     mono
                   />
                 </label>
@@ -237,6 +246,19 @@ export function ReportesPage() {
                         ))}
                       </ul>
                     )}
+                  </div>
+                )}
+                {answerErrors && answer.trim() && (
+                  <div className="flex flex-col items-start gap-1">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      icon={<Copy size={16} aria-hidden="true" />}
+                      onClick={() => void navigator.clipboard.writeText(retryText(answerErrors)).then(() => setNotice(t('reports.manual.fixCopied')))}
+                    >
+                      {t('reports.manual.copyFix')}
+                    </Button>
+                    <p className="text-sm text-fg-muted">{t('reports.manual.copyFixHint')}</p>
                   </div>
                 )}
                 <div>

@@ -239,7 +239,7 @@ describe('Equipo (EQ-01 a EQ-08, PS-02)', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Salir del equipo' }));
     const dialog = await screen.findByRole('dialog', { name: 'Salir del equipo' });
     await userEvent.click(within(dialog).getByRole('button', { name: 'Sí, salir de Equipo A' }));
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent('al menos un owner');
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('al menos un propietario');
   });
 
   it('con dos equipos, cambiar el activo cambia los datos y el equipo de las filas nuevas (AC-11)', async () => {

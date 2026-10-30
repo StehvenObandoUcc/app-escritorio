@@ -80,12 +80,13 @@ const explain = (e: ValidationError): string => {
   }
 };
 
+/** Qué falló y la petición de responder de nuevo. En Manual la persona lo copia y lo pega en el mismo chat. */
+export const retryText = (errors: ValidationError[]): string =>
+  `Tu respuesta no cumple las reglas: ${errors.slice(0, 8).map(explain).join('; ')}. Responde de nuevo solo con el objeto JSON, siguiendo todas las reglas.`;
+
 /** Reintento (D-8): la conversación anterior más la respuesta inválida y qué falló. */
 export const retryMessages = (messages: ChatMessage[], answer: string, errors: ValidationError[]): ChatMessage[] => [
   ...messages,
   { role: 'assistant', content: answer },
-  {
-    role: 'user',
-    content: `Tu respuesta no cumple las reglas: ${errors.slice(0, 8).map(explain).join('; ')}. Responde de nuevo solo con el objeto JSON, siguiendo todas las reglas.`,
-  },
+  { role: 'user', content: retryText(errors) },
 ];

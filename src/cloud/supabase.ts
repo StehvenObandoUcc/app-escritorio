@@ -8,6 +8,7 @@ import type { Bridge, SyncBlock, SyncClosure, SyncEntry, TeamRule } from '@/brid
 import { t, type TKey } from '@/i18n';
 import type { Database } from '@/lib/database.types';
 import { LIMITS } from '@/lib/limits';
+import { systemTimezone } from '@/lib/time';
 import { PROMPT_VERSION } from '../../supabase/functions/_shared/report-prompt.ts';
 import {
   CloudError,
@@ -120,6 +121,8 @@ export function toCloudError(error: { message: string; code?: string | null; sta
     const msg = /row-level security/i.test(error.message) ? t('cloud.forbidden') : error.message;
     return new CloudError(msg, 'forbidden');
   }
+  // save_report: los hechos cambiaron desde que se calcularon (spec F4 §2).
+  if (code === 'PT409') return new CloudError(error.message, 'changed');
   if (code === 'P0001' || code === '22023' || code.startsWith('23')) return new CloudError(error.message, 'invalid');
   if (code.startsWith('PGRST')) return new CloudError(t('cloud.rejected'), 'unknown');
   // Lo demás es texto técnico (de Postgres o de la librería, en inglés): a la persona, un aviso general (F-20).
@@ -355,7 +358,8 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
       return () => data.subscription.unsubscribe();
     },
     signUp: async (email, password, displayName) => {
-      await run(auth.signUp({ email, password, options: { data: { display_name: displayName } } }));
+      // El trigger users_create_profile crea el perfil con estos datos (F6-2).
+      await run(auth.signUp({ email, password, options: { data: { display_name: displayName, timezone: systemTimezone() } } }));
     },
     verifySignUp: async (email, code) => {
       await run(auth.verifyOtp({ email, token: code, type: 'signup' }));

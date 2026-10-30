@@ -24,7 +24,7 @@ beforeAll(async () => {
   dani = await db.createUser('dani@pulso.test');
   eva = await db.createUser('eva@pulso.test');
   for (const [id, name] of [[ana, 'Ana'], [beto, 'Beto'], [caro, 'Caro'], [dani, 'Dani'], [eva, 'Eva']] as const) {
-    await db.as(id, (q) => q('insert into profiles (id, display_name) values ($1, $2)', [id, name]));
+    await db.as(id, (q) => q('update profiles set display_name = $2 where id = $1', [id, name]));
   }
 
   teamA = (await db.as(ana, (q) => q<{ id: string }>("select create_team('Equipo A') as id")))[0]!.id;
@@ -152,11 +152,11 @@ describe('cambiar roles', () => {
 describe('el equipo siempre conserva un owner', () => {
   it('el último owner no puede salir ni degradarse', async () => {
     expect(await failure(() => db.as(ana, (q) => q('select leave_team($1)', [teamA])))).toMatch(
-      /al menos un owner/,
+      /al menos un propietario/,
     );
     expect(
       await failure(() => db.as(ana, (q) => q('select set_member_role($1, $2, $3)', [teamA, ana, 'admin']))),
-    ).toMatch(/al menos un owner/);
+    ).toMatch(/al menos un propietario/);
     expect(await roleOf(teamA, ana)).toBe('owner');
   });
 
