@@ -104,6 +104,12 @@ pub fn session_clear(t: Tr) -> Result<()> {
   t.session_clear()
 }
 
+/// CU-08: borra lo local de la cuenta tras eliminarla en la nube.
+#[tauri::command]
+pub fn local_data_clear(t: Tr) -> Result<()> {
+  t.local_data_clear(Utc::now())
+}
+
 #[tauri::command]
 pub fn active_team_set(t: Tr, team_id: Option<String>, user_id: Option<String>) -> Result<()> {
   t.active_team_set(Utc::now(), team_id.as_deref(), user_id.as_deref())

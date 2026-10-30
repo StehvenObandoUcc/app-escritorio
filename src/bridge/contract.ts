@@ -259,6 +259,11 @@ export interface Bridge {
   sessionGet(): Promise<string | null>;
   sessionSet(json: string): Promise<void>;
   sessionClear(): Promise<void>;
+  /**
+   * CU-08 (spec F7): tras eliminar la cuenta en la nube, borra lo local de la cuenta activa (bloques, tiempo,
+   * cierres, copia de tareas), la sesión y lo del equipo activo. Conserva las preferencias de la app.
+   */
+  localDataClear(): Promise<void>;
 
   /**
    * Equipo y cuenta de las filas nuevas (ADR-0007, ADR-0013). El equipo solo con consentimiento (si no,

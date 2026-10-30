@@ -839,6 +839,29 @@ impl Tracker {
     self.lock()?.store.setting_delete(KEY_SESSION)
   }
 
+  /// CU-08 (spec F7): tras eliminar la cuenta en la nube, borra lo local de esa cuenta, la sesión y lo del equipo
+  /// (equipo activo, reglas y política). Las preferencias de la app (umbral, apps ocultas, idioma) se quedan.
+  pub fn local_data_clear(&self, now: DateTime<Utc>) -> Result<()> {
+    let mut g = self.lock()?;
+    // El bloque abierto se guarda primero para que también se borre.
+    let changes = g.engine.close_open(now);
+    g.record(changes);
+    g.flush(now)?;
+    g.store.delete_account_rows()?;
+    for key in [KEY_ACTIVE_TEAM, KEY_ACTIVE_USER, KEY_TEAM_RULES, KEY_SESSION, KEY_ALLOW_HIDDEN, KEY_ALERT, KEY_ALERT_REPEAT] {
+      g.store.setting_delete(key)?;
+    }
+    g.store.set_user(None);
+    g.active_team = None;
+    g.team_rules.clear();
+    g.allow_hidden = true;
+    g.alert_enabled = true;
+    g.alert_repeat_minutes = DEFAULT_ALERT_REPEAT;
+    g.entry_versions.clear();
+    g.usage_versions.clear();
+    Ok(())
+  }
+
   // ---- F3: copia local de tareas (PT-09) ----
 
   /// Guarda la lista tal cual para el equipo y la cuenta activos; sin ellos no hace nada.
@@ -1610,5 +1633,42 @@ mod tests {
     let err = t.export_my_data_to(at(13, 0, 0), &dir, &Utc).unwrap_err();
     assert_eq!(err, "Inicia sesión para exportar tus datos.");
     assert!(!dir.exists());
+  }
+
+  // ---- CU-08: eliminar mi cuenta (spec F7, AC-5) ----
+
+  #[test]
+  fn local_data_clear_removes_the_account_data_and_keeps_app_preferences() {
+    let t = tracker();
+    // Beto usó este mismo equipo de cómputo: lo suyo se queda.
+    t.active_team_set(at(11, 59, 0), Some(TEAM), Some(BETO)).unwrap();
+    feed(&t, 0, 20, win("brave", "Docs"));
+    t.active_team_set(at(12, 0, 22), Some(TEAM), Some(ANA)).unwrap();
+    t.settings_set(SettingsPatch { idle_minutes: Some(7), language: Some("en".into()), ..Default::default() }).unwrap();
+    t.session_set(r#"{"token":"x"}"#).unwrap();
+    t.rules_set(r#"[{"match":"process","pattern":"code","category":"distraction","ai_tool":null}]"#).unwrap();
+    t.team_policy_set(TeamPolicy { allow_hidden_apps: false, alert_not_allowed: false, alert_repeat_minutes: 5 }).unwrap();
+    t.tasks_cache_put(at(12, 0, 23), "{}").unwrap();
+    t.time_entry_add(at(12, 0, 24), "2026-10-05T10:00:00Z", "2026-10-05T11:00:00Z", None).unwrap();
+    feed(&t, 24, 60, win("code", "a.rs"));
+
+    t.local_data_clear(at(12, 1, 2)).unwrap();
+
+    let mut g = t.inner.lock().unwrap();
+    for key in [KEY_ACTIVE_TEAM, KEY_ACTIVE_USER, KEY_TEAM_RULES, KEY_SESSION, KEY_ALLOW_HIDDEN, KEY_ALERT, KEY_ALERT_REPEAT] {
+      assert_eq!(g.store.setting_get(key).unwrap(), None, "{key}");
+    }
+    assert_eq!(g.store.user(), None);
+    assert_eq!(g.active_team, None);
+    assert!(g.team_rules.is_empty() && g.allow_hidden && g.alert_enabled);
+    g.store.set_user(Some(ANA.into()));
+    let ana = g.store.export_rows().unwrap();
+    assert!(ana.blocks.is_empty() && ana.entries.is_empty() && ana.closures.is_empty());
+    assert_eq!(g.store.tasks_cache_get(TEAM).unwrap(), None);
+    g.store.set_user(Some(BETO.into()));
+    assert_eq!(g.store.export_rows().unwrap().blocks.len(), 1);
+    // Preferencias de la app.
+    assert_eq!(g.settings.idle_minutes, 7);
+    assert_eq!(g.settings.language, "en");
   }
 }

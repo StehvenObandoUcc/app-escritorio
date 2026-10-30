@@ -200,6 +200,7 @@ pub fn run() {
       commands::session_get,
       commands::session_set,
       commands::session_clear,
+      commands::local_data_clear,
       commands::active_team_set,
       commands::sync_pending,
       commands::sync_mark_synced,

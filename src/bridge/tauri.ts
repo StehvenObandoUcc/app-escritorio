@@ -53,6 +53,9 @@ export function createTauriBridge(): Bridge {
     sessionClear: async () => {
       await invoke('session_clear');
     },
+    localDataClear: async () => {
+      await invoke('local_data_clear');
+    },
     activeTeamSet: async (teamId, userId) => {
       await invoke('active_team_set', { teamId, userId });
     },
