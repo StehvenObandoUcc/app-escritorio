@@ -166,10 +166,10 @@ describe('hechos del reporte (AC-1 a AC-4)', () => {
 describe('quién genera y quién ve (AC-5 a AC-7)', () => {
   it('cada rol genera solo lo que le toca', async () => {
     expect(await failure(() => facts(dani, teamA, 'personal', fede))).toMatch(/solo sobre ti/);
-    expect(await failure(() => facts(dani, teamA, 'team', teamA))).toMatch(/owner o admin/);
-    expect(await failure(() => facts(dani, teamA, 'project', project))).toMatch(/lead del proyecto/);
+    expect(await failure(() => facts(dani, teamA, 'team', teamA))).toMatch(/propietarios o administradores/);
+    expect(await failure(() => facts(dani, teamA, 'project', project))).toMatch(/líder del proyecto/);
     await expect(facts(fede, teamA, 'project', project)).resolves.toBeTruthy();
-    expect(await failure(() => facts(fede, teamA, 'project', project2))).toMatch(/lead del proyecto/);
+    expect(await failure(() => facts(fede, teamA, 'project', project2))).toMatch(/líder del proyecto/);
     expect(await failure(() => facts(vera, teamA, 'personal', vera))).toMatch(/No permitido/);
     expect(await failure(() => facts(ana, teamA, 'personal', ana, 'mañana'))).toMatch(/Periodo desconocido/);
   });

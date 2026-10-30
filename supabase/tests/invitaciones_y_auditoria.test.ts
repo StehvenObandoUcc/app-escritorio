@@ -311,7 +311,7 @@ describe('ceder la propiedad (EQ-06)', () => {
     expect(await roleOf(teamC, hugo)).toBe('owner');
     expect(await roleOf(teamC, eva)).toBe('member');
     expect(await failure(() => db.as(hugo, (q) => q("select set_member_role($1, $2, 'member')", [teamC, hugo])))).toMatch(
-      /al menos un owner/,
+      /al menos un propietario/,
     );
   });
 });

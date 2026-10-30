@@ -283,7 +283,7 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
     if (!canManageProject(projectId, caller)) fail('Esa persona no está en el proyecto: pide a quien lo gestiona que la añada', 'invalid');
     const team = projects.find((p) => p.id === projectId)?.teamId ?? '';
     if (!['owner', 'admin', 'member'].includes(roleIn(team, userId) ?? '')) {
-      fail('Solo se añaden owners, admins o members del equipo; un viewer no pertenece a proyectos', 'invalid');
+      fail('Solo se añaden propietarios, administradores o miembros del equipo; un observador no pertenece a proyectos', 'invalid');
     }
     projectMembers.push({ projectId, userId, role: 'contributor' });
   };
@@ -358,8 +358,8 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
     const role = roleIn(req.teamId, userId);
     if (!role || role === 'viewer') fail('No permitido');
     if (req.scope === 'personal' && req.subjectId !== userId) fail('No permitido: el reporte personal es solo sobre ti');
-    if (req.scope === 'project' && !canManageProject(req.subjectId, userId)) fail('No permitido: el reporte de proyecto lo generan owner, admin o el lead del proyecto');
-    if (req.scope === 'team' && (req.subjectId !== req.teamId || !['owner', 'admin'].includes(role!))) fail('No permitido: el reporte de equipo lo generan owner o admin');
+    if (req.scope === 'project' && !canManageProject(req.subjectId, userId)) fail('No permitido: el reporte de proyecto lo generan propietarios, administradores o el líder del proyecto');
+    if (req.scope === 'team' && (req.subjectId !== req.teamId || !['owner', 'admin'].includes(role!))) fail('No permitido: el reporte de equipo lo generan propietarios o administradores');
     if (req.scope !== 'personal' && groupMembers(req) < 2) fail('Hacen falta al menos 2 miembros para un reporte de grupo', 'invalid');
   };
   const periodOf = (period: ReportRequest['period']) => {
@@ -546,7 +546,7 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
       const allowed =
         caller === 'owner' || (caller === 'admin' && (target === 'member' || target === 'viewer') && (role === 'member' || role === 'viewer'));
       if (!target || !allowed) fail('No permitido');
-      if (target === 'owner' && role !== 'owner' && owners(teamId) === 1) fail('El equipo debe conservar al menos un owner', 'invalid');
+      if (target === 'owner' && role !== 'owner' && owners(teamId) === 1) fail('El equipo debe conservar al menos un propietario', 'invalid');
       members = members.map((m) => (m.teamId === teamId && m.userId === userId ? { ...m, role } : m));
       if (role === 'viewer') leaveWork(teamId, userId);
     },
@@ -557,7 +557,7 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
       if (!target || userId === a.id || !(caller === 'owner' || (caller === 'admin' && (target === 'member' || target === 'viewer')))) {
         fail('No permitido');
       }
-      if (target === 'owner' && owners(teamId) === 1) fail('El equipo debe conservar al menos un owner', 'invalid');
+      if (target === 'owner' && owners(teamId) === 1) fail('El equipo debe conservar al menos un propietario', 'invalid');
       members = members.filter((m) => !(m.teamId === teamId && m.userId === userId));
       leaveWork(teamId, userId);
       dropPersonalReports(teamId, userId);
@@ -566,7 +566,7 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
       const a = me();
       const mine = roleIn(teamId, a.id);
       if (!mine) fail('No perteneces a este equipo');
-      if (mine === 'owner' && owners(teamId) === 1) fail('El equipo debe conservar al menos un owner', 'invalid');
+      if (mine === 'owner' && owners(teamId) === 1) fail('El equipo debe conservar al menos un propietario', 'invalid');
       members = members.filter((m) => !(m.teamId === teamId && m.userId === a.id));
       leaveWork(teamId, a.id);
       dropPersonalReports(teamId, a.id);
@@ -771,7 +771,7 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
       if (!canManageProject(projectId, me().id)) fail('No permitido');
       const team = projects.find((p) => p.id === projectId)?.teamId ?? '';
       if (!['owner', 'admin', 'member'].includes(roleIn(team, userId) ?? '')) {
-        fail('Solo se añaden owners, admins o members del equipo; un viewer no pertenece a proyectos', 'invalid');
+        fail('Solo se añaden propietarios, administradores o miembros del equipo; un observador no pertenece a proyectos', 'invalid');
       }
       const existing = projectMembers.find((m) => m.projectId === projectId && m.userId === userId);
       if (existing) existing.role = role;
