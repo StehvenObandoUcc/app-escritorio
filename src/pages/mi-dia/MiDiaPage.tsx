@@ -98,10 +98,11 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
   const aiTools = useMemo(() => (allBlocks ? aiToolTotals(allBlocks) : []), [allBlocks]);
   const totalsBySite = useMemo(() => (blocks ? domainTotals(blocks) : []), [blocks]);
   const session = useOptionalSession();
-  // Tope diario de pausa del equipo (F5 D-11); 0 = sin tope. Se aplica aquí, no en Rust.
+  // Tope diario de pausa del equipo (F5 D-11); 0 = sin tope. Aquí se ofrece lo que queda; Rust también lo aplica.
   const pauseCap = session?.activeTeam?.pauseCapMinutes ?? 0;
   const pausedToday = usePausedToday(bridge, date, state.phase === 'ready' ? (state.day.totals.paused ?? 0) : null, pauseCap > 0);
-  const pauseUnknown = pauseCap > 0 && pausedToday === null;
+  // Mientras cargan los equipos no se sabe el tope: no se ofrece la pausa.
+  const pauseUnknown = Boolean(session?.teamsLoading) || (pauseCap > 0 && pausedToday === null);
   const pauseLeft = pauseCap > 0 && pausedToday !== null ? Math.max(0, pauseCap - Math.ceil(pausedToday / 60)) : null;
   const pauseMinutes = pauseLeft === null ? PAUSE_MINUTES : Math.min(PAUSE_MINUTES, pauseLeft);
   const notAllowed = useMemo(() => new Set(session?.notAllowedDomains ?? []), [session?.notAllowedDomains]);

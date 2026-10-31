@@ -117,6 +117,7 @@ Comandos (nombres exactos; `src/bridge/contract.ts` es su espejo en TypeScript):
 | F4 | `ai_chat(messages)` | texto de la respuesta |
 | F4 | `block_set_ai_usage(id, usage)` (ADR-0022) | — (etiqueta un bloque de IA: `code` · `writing` · `analysis` · `other` · `null`) |
 | F5 | `export_my_data()` (ADR-0023) | ruta del archivo en Descargas |
+| F7 | `local_data_clear()` (spec F7, CU-08) | — (borra lo local de la cuenta activa, la sesión y lo del equipo; conserva las preferencias) |
 
 Agregar un comando exige actualizar esta tabla, `contract.ts` y `mock.ts` en el mismo cambio.
 

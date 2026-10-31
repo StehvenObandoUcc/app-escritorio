@@ -20,7 +20,7 @@ Resumen: 111 funcionalidades en total: 93 antes de la entrega y 18 después (TA-
 | CU-05 | Foto de perfil | 03 | F7 | — |
 | CU-06 | Preferencias de notificación | 03 | ✂ recortada el 12 oct: después de la entrega | Desactivar un aviso y comprobar que no llega |
 | CU-07 | Exportar mis datos a un archivo | — | F5 | El archivo contiene mis bloques y entradas |
-| CU-08 | Eliminar mi cuenta | — | F7 | — |
+| CU-08 | Eliminar mi cuenta; si eres la única propietaria de un equipo con más personas, primero cedes la propiedad (spec F7) | — | F7 ✔ | Prueba de base de datos + pantalla: tras eliminarla, la cuenta no vuelve a entrar |
 
 ## B. Equipos y roles (RF-02)
 

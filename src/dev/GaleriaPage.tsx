@@ -58,6 +58,7 @@ import { DashboardBody, TableroPage } from '@/pages/tablero/TableroPage';
 import { PresenceSection } from '@/pages/tablero/sections';
 import { formatDuration } from '@/lib/time';
 import { errorMessage, t } from '@/i18n';
+import { EliminarCuentaSection } from '@/pages/ajustes/EliminarCuentaSection';
 import { MiPrivacidadSection } from '@/pages/ajustes/MiPrivacidadSection';
 import { TeamSettingsSection } from '@/pages/equipo/AjustesEquipo';
 import { AuditoriaTab } from '@/pages/equipo/AuditoriaTab';
@@ -562,7 +563,14 @@ function GalleryEquipo({ privacy = false }: { privacy?: boolean }) {
 function GalleryEquipoPieces({ privacy }: { privacy: boolean }) {
   const { activeTeam } = useSession();
   if (!activeTeam) return <p role="status">{t('common.loading')}</p>;
-  if (privacy) return <MiPrivacidadSection bridge={GALLERY_BRIDGE} />;
+  if (privacy) {
+    return (
+      <div className="flex flex-col gap-4">
+        <MiPrivacidadSection bridge={GALLERY_BRIDGE} />
+        <EliminarCuentaSection bridge={GALLERY_BRIDGE} />
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col gap-4">
       <TeamSettingsSection team={activeTeam} />

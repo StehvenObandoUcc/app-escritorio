@@ -123,6 +123,8 @@ export function createMockBridge(now: () => Date = () => new Date()): Bridge {
   let session: string | null = null;
   let activeTeam: string | null = null;
   let activeUser: string | null = null;
+  /** Tope diario de pausa del equipo (F5 D-11), como en Rust. */
+  let pauseCap = 0;
   /** Copia de tareas por equipo y cuenta, como en Rust (ADR-0013). */
   const tasksCache = new Map<string, string>();
   // F4: configuración de IA; la clave nunca se devuelve, como en Rust.
@@ -216,12 +218,20 @@ export function createMockBridge(now: () => Date = () => new Date()): Bridge {
     },
     breakStart: async () => set({ ...status, state: 'break' }),
     breakEnd: async () => set({ ...status, state: 'tracking' }),
-    privacyPause: async (minutes) =>
-      set({
+    privacyPause: async (minutes) => {
+      // Mismo tope que Rust (F5 D-11): cuenta lo pausado hoy en el día de ejemplo.
+      let granted = minutes;
+      if (pauseCap > 0) {
+        const left = Math.max(0, pauseCap - Math.ceil(sampleDay(localDate(now())).totals.paused / 60));
+        if (left === 0) throw new Error(`Ya usaste el tope de pausa de hoy (${pauseCap} min).`);
+        granted = Math.min(minutes, left);
+      }
+      return set({
         ...status,
         state: 'paused',
-        pausedUntil: new Date(now().getTime() + minutes * 60_000).toISOString(),
-      }),
+        pausedUntil: new Date(now().getTime() + granted * 60_000).toISOString(),
+      });
+    },
     privacyResume: async () => set({ ...status, state: 'tracking', pausedUntil: null }),
     sessionGet: async () => session,
     sessionSet: async (json) => {
@@ -229,6 +239,15 @@ export function createMockBridge(now: () => Date = () => new Date()): Bridge {
     },
     sessionClear: async () => {
       session = null;
+    },
+    // Datos de ejemplo: los bloques del día son fijos; se borra lo que la persona registró.
+    localDataClear: async () => {
+      const key = cacheKey();
+      if (key) tasksCache.delete(key);
+      entries = [];
+      session = null;
+      activeTeam = null;
+      activeUser = null;
     },
     activeTeamSet: async (teamId, userId) => {
       activeTeam = teamId;
@@ -251,7 +270,9 @@ export function createMockBridge(now: () => Date = () => new Date()): Bridge {
     rulesSet: async (rules) => {
       rules.forEach((r) => TeamRuleSchema.parse(r));
     },
-    teamPolicySet: async () => {},
+    teamPolicySet: async (policy) => {
+      pauseCap = policy.pauseCapMinutes;
+    },
     notificationsStatus: async () => ({ windowsToastsEnabled: true }),
     // Datos de ejemplo: nunca hay avisos reales.
     onNotAllowedAlert: () => () => {},

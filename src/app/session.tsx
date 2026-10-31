@@ -176,9 +176,10 @@ export function SessionProvider({
         allowHiddenApps: activeTeam?.allowHiddenApps ?? true,
         alertNotAllowed: activeTeam?.alertNotAllowed ?? true,
         alertRepeatMinutes: activeTeam?.alertRepeatMinutes ?? 10,
+        pauseCapMinutes: activeTeam?.pauseCapMinutes ?? 0,
       })
       .catch(reportCore);
-  }, [bridge, user, teamsQuery.isSuccess, uploading?.id, activeTeam?.allowHiddenApps, activeTeam?.alertNotAllowed, activeTeam?.alertRepeatMinutes, reportCore]);
+  }, [bridge, user, teamsQuery.isSuccess, uploading?.id, activeTeam?.allowHiddenApps, activeTeam?.alertNotAllowed, activeTeam?.alertRepeatMinutes, activeTeam?.pauseCapMinutes, reportCore]);
 
   // Reglas del equipo para el clasificador: se vuelven a leer cada 5 min y al enfocar la ventana, y se
   // envían a Rust cada vez que cambian. Antes solo se enviaban al arrancar y una regla nueva no llegaba.
