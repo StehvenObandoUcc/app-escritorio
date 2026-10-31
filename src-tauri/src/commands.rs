@@ -167,8 +167,9 @@ pub fn notifications_status() -> crate::system::NotificationsStatus {
 #[tauri::command]
 pub fn team_policy_set(t: Tr, policy: TeamPolicyInput) -> Result<()> {
   // Tope diario de pausa (F5 D-11): Rust lo aplica también, no solo la interfaz.
-  t.team_pause_cap_set(policy.pause_cap_minutes)?;
-  t.team_policy_set(policy.policy)
+  // Primero la política (valida el aviso): si falla, el tope no cambia.
+  t.team_policy_set(policy.policy)?;
+  t.team_pause_cap_set(policy.pause_cap_minutes)
 }
 
 // ---- F4 ----

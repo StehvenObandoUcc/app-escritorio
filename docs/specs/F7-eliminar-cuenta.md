@@ -25,10 +25,11 @@ vuelve a la pantalla de acceso. Con esa cuenta ya no se puede iniciar sesión.
 
 - Datos (migración `supabase/migrations/20261031000001_eliminar_cuenta.sql`): `teams.created_by`,
   `classification_rules.created_by`, `projects.created_by` y `tasks.created_by` pasan a admitir nulo con
-  `on delete set null`. Función `delete_my_account_data() → void` (solo `authenticated`): aplica D-1, D-2 y D-4.
+  `on delete set null`. Función `delete_my_account_data(p_user) → void` (solo `service_role`: una sesión no puede
+  llamarla sin borrar la cuenta): aplica D-1, D-2 y D-4.
   No borra `auth.users`.
-- Edge Function `delete-account` (POST, con el JWT de la persona): `delete_my_account_data` con el cliente de la
-  persona → `auth.admin.deleteUser(id)` con el de servicio. Respuestas: 401 sin sesión, 409 con `message` si la
+- Edge Function `delete-account` (POST, con el JWT de la persona): se comprueba la persona del JWT y, con el cliente de
+  servicio, `delete_my_account_data(id)` → `auth.admin.deleteUser(id)`. Respuestas: 401 sin sesión, 409 con `message` si la
   base lo bloquea (P0001), 500 si falla otra cosa, 200 al terminar.
 - Nube: `deleteAccount(): Promise<void>` en `src/cloud/contract.ts`.
 - Puente: `localDataClear(): Promise<void>` (comando de Rust `local_data_clear`).

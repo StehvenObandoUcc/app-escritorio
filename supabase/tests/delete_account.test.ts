@@ -32,10 +32,10 @@ describe('delete-account', () => {
     expect(s.deleteUser).not.toHaveBeenCalled();
   });
 
-  it('prepara los datos con el JWT de la persona y luego borra su cuenta de acceso', async () => {
+  it('prepara los datos de la persona del JWT y luego borra su cuenta de acceso', async () => {
     const s = setup();
     expect(await handleDeleteAccount(s.deps)).toEqual({ status: 200, body: { ok: true } });
-    expect(s.rpc).toHaveBeenCalledWith('delete_my_account_data');
+    expect(s.rpc).toHaveBeenCalledWith('delete_my_account_data', { p_user: USER });
     expect(s.deleteUser).toHaveBeenCalledWith(USER);
   });
 

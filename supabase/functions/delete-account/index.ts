@@ -30,8 +30,8 @@ Deno.serve(async (request) => {
 
   const result = await handleDeleteAccount({
     userId: auth.user?.id ?? null,
-    async rpc(fn) {
-      const { error } = await user.rpc(fn);
+    async rpc(fn, args) {
+      const { error } = await service.rpc(fn, args);
       return { error: error ? { message: error.message, code: error.code } : null };
     },
     async deleteUser(id) {

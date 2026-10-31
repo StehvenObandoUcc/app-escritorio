@@ -900,7 +900,7 @@ impl Tracker {
     g.record(changes);
     g.flush(now)?;
     g.store.delete_account_rows()?;
-    for key in [KEY_ACTIVE_TEAM, KEY_ACTIVE_USER, KEY_TEAM_RULES, KEY_SESSION, KEY_ALLOW_HIDDEN, KEY_ALERT, KEY_ALERT_REPEAT] {
+    for key in [KEY_ACTIVE_TEAM, KEY_ACTIVE_USER, KEY_TEAM_RULES, KEY_SESSION, KEY_ALLOW_HIDDEN, KEY_ALERT, KEY_ALERT_REPEAT, KEY_PAUSE_CAP] {
       g.store.setting_delete(key)?;
     }
     g.store.set_user(None);
@@ -909,6 +909,7 @@ impl Tracker {
     g.allow_hidden = true;
     g.alert_enabled = true;
     g.alert_repeat_minutes = DEFAULT_ALERT_REPEAT;
+    g.pause_cap_minutes = 0;
     g.entry_versions.clear();
     g.usage_versions.clear();
     Ok(())
@@ -1761,6 +1762,7 @@ mod tests {
     t.session_set(r#"{"token":"x"}"#).unwrap();
     t.rules_set(r#"[{"match":"process","pattern":"code","category":"distraction","ai_tool":null}]"#).unwrap();
     t.team_policy_set(TeamPolicy { allow_hidden_apps: false, alert_not_allowed: false, alert_repeat_minutes: 5 }).unwrap();
+    t.team_pause_cap_set(30).unwrap();
     t.tasks_cache_put(at(12, 0, 23), "{}").unwrap();
     t.time_entry_add(at(12, 0, 24), "2026-10-05T10:00:00Z", "2026-10-05T11:00:00Z", None).unwrap();
     feed(&t, 24, 60, win("code", "a.rs"));
@@ -1768,12 +1770,12 @@ mod tests {
     t.local_data_clear(at(12, 1, 2)).unwrap();
 
     let mut g = t.inner.lock().unwrap();
-    for key in [KEY_ACTIVE_TEAM, KEY_ACTIVE_USER, KEY_TEAM_RULES, KEY_SESSION, KEY_ALLOW_HIDDEN, KEY_ALERT, KEY_ALERT_REPEAT] {
+    for key in [KEY_ACTIVE_TEAM, KEY_ACTIVE_USER, KEY_TEAM_RULES, KEY_SESSION, KEY_ALLOW_HIDDEN, KEY_ALERT, KEY_ALERT_REPEAT, KEY_PAUSE_CAP] {
       assert_eq!(g.store.setting_get(key).unwrap(), None, "{key}");
     }
     assert_eq!(g.store.user(), None);
     assert_eq!(g.active_team, None);
-    assert!(g.team_rules.is_empty() && g.allow_hidden && g.alert_enabled);
+    assert!(g.team_rules.is_empty() && g.allow_hidden && g.alert_enabled && g.pause_cap_minutes == 0);
     g.store.set_user(Some(ANA.into()));
     let ana = g.store.export_rows().unwrap();
     assert!(ana.blocks.is_empty() && ana.entries.is_empty() && ana.closures.is_empty());

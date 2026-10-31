@@ -15,7 +15,7 @@ let project: string, task: string;
 
 const createTeam = async (user: string, name: string) =>
   (await db.as(user, (q) => q<{ id: string }>('select create_team($1) as id', [name])))[0]!.id;
-const deleteMyData = (user: string | null) => db.as(user, (q) => q('select delete_my_account_data()'));
+const deleteMyData = (user: string | null) => db.service((q) => q('select delete_my_account_data($1)', [user]));
 
 beforeAll(async () => {
   db = await createTestDb();
@@ -60,8 +60,12 @@ beforeAll(async () => {
 afterAll(() => db.close());
 
 describe('eliminar mi cuenta (CU-08)', () => {
-  it('sin sesión no se puede llamar', async () => {
-    expect(await failure(() => deleteMyData(null))).toMatch(/permission denied|Debes iniciar sesión/);
+  it('sin persona no hace nada', async () => {
+    expect(await failure(() => deleteMyData(null))).toBe('Debes iniciar sesión');
+  });
+
+  it('una sesión no puede llamarla: solo la Edge Function con la clave de servicio', async () => {
+    expect(await failure(() => db.as(dani, (q) => q('select delete_my_account_data($1)', [dani])))).toMatch(/permission denied/);
   });
 
   it('AC-1: la única propietaria de un equipo con más personas no puede eliminarla y no se borra nada', async () => {
