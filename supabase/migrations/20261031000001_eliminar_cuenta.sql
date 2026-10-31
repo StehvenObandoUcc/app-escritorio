@@ -23,11 +23,13 @@ alter table public.tasks alter column created_by drop not null,
 -- ───────────────────── Preparar el borrado (D-1, D-2, D-4) ─────────────────────
 
 -- No borra auth.users: eso lo hace la Edge Function con la clave de servicio.
-create function public.delete_my_account_data() returns void
+-- Solo la ejecuta service_role (la Edge Function, con la persona del JWT ya comprobada): si una sesión pudiera
+-- llamarla sin borrar la cuenta, dejaría salidas falsas en la auditoría y borraría sus equipos a medias.
+create function public.delete_my_account_data(p_user uuid) returns void
 language plpgsql security definer set search_path = ''
 as $$
 declare
-  v_user uuid := auth.uid();
+  v_user uuid := p_user;
   v_blocked text;
   v_member record;
 begin
@@ -54,13 +56,20 @@ begin
 
   -- D-4: constancia en los demás equipos, como leave_team.
   for v_member in select m.team_id, m.role from public.team_members m where m.user_id = v_user loop
-    perform public.write_audit(v_member.team_id, 'member_left', v_user, jsonb_build_object('role', v_member.role));
+    -- Directo y no con write_audit: con la clave de servicio auth.uid() es nulo y quien se va es p_user.
+    insert into public.audit_log (team_id, actor_id, action, target_user, details)
+    values (v_member.team_id, v_user, 'member_left', v_user, jsonb_build_object('role', v_member.role));
   end loop;
 
   -- D-4: la evidencia se queda en el equipo; sin dueño, Supabase deja borrar la cuenta.
-  update storage.objects set owner = null, owner_id = null
-  where owner = v_user or owner_id = v_user::text;
+  -- Si el rol dueño no puede tocar storage.objects, se sigue: la Edge Function informará si Supabase no deja borrar.
+  begin
+    update storage.objects set owner = null, owner_id = null
+    where owner = v_user or owner_id = v_user::text;
+  exception when insufficient_privilege then
+    null;
+  end;
 end $$;
 
-revoke execute on function public.delete_my_account_data() from public, anon;
-grant execute on function public.delete_my_account_data() to authenticated;
+revoke execute on function public.delete_my_account_data(uuid) from public, anon, authenticated;
+grant execute on function public.delete_my_account_data(uuid) to service_role;
