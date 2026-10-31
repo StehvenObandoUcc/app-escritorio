@@ -54,6 +54,8 @@ create table storage.objects (
   bucket_id text references storage.buckets (id),
   name text not null,
   owner uuid default auth.uid(),
+  -- Como en Supabase: el dueño también como texto. Con un valor aquí, Auth no deja borrar la cuenta.
+  owner_id text,
   -- Storage guarda aquí el tamaño y el tipo del archivo subido.
   metadata jsonb,
   created_at timestamptz not null default now()

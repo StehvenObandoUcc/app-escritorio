@@ -349,7 +349,7 @@ export const TaskSchema = z.object({
   loggedSeconds: z.number().nonnegative(),
   startedAt: z.string().nullable(),
   completedAt: z.string().nullable(),
-  createdBy: z.uuid(),
+  createdBy: z.uuid().nullable(),
   updatedAt: z.string(),
   collaborators: z.array(z.uuid()),
   criteria: z.array(z.object({ id: z.uuid(), text: z.string(), met: z.boolean() })),
@@ -510,6 +510,12 @@ export interface Cloud {
   resendSignUpCode(email: string): Promise<void>;
   signIn(email: string, password: string): Promise<void>;
   signOut(): Promise<void>;
+  /**
+   * CU-08 (spec F7): elimina la cuenta en la nube (Edge Function `delete-account`). No cierra la sesión local:
+   * eso lo hace quien llama después de borrar lo local. Falla con `invalid` si es la única propietaria de un
+   * equipo con más personas.
+   */
+  deleteAccount(): Promise<void>;
   requestPasswordReset(email: string): Promise<void>;
   resetPassword(email: string, code: string, newPassword: string): Promise<void>;
 

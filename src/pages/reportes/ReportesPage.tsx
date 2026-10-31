@@ -39,7 +39,8 @@ export function ReportesPage() {
   // guardado lo rechaza (PT409). Un periodo cerrado no cambia.
   const period = chosenPeriod ?? (mode === 'manual' ? 'yesterday' : 'today');
   const [busy, setBusy] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  // Cada error se muestra solo en el formulario que lo produjo (antes salía dos veces con Manual abierto).
+  const [error, setError] = useState<{ from: 'generate' | 'manual'; text: string } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [selected, setSelected] = useState<ReportRun | null>(null);
   const [manual, setManual] = useState<{ req: ReportRequest; facts: ReportFacts; prompt: string } | null>(null);
@@ -114,7 +115,8 @@ export function ReportesPage() {
         }
       }
     } catch (cause) {
-      setError(cause instanceof TrialError && cause.reason in TRIAL_MESSAGE ? TRIAL_MESSAGE[cause.reason]!() : t('reports.failed', { error: errorMessage(cause) }));
+      const text = cause instanceof TrialError && cause.reason in TRIAL_MESSAGE ? TRIAL_MESSAGE[cause.reason]!() : t('reports.failed', { error: errorMessage(cause) });
+      setError({ from: 'generate', text });
     } finally {
       setBusy(null);
     }
@@ -131,8 +133,8 @@ export function ReportesPage() {
       setAnswerErrors(null);
     } catch (cause) {
       if (cause instanceof ManualAnswerError) setAnswerErrors(cause.errors);
-      else if (cause instanceof CloudError && cause.kind === 'changed') setError(t('reports.manual.changed'));
-      else setError(t('reports.failed', { error: errorMessage(cause) }));
+      else if (cause instanceof CloudError && cause.kind === 'changed') setError({ from: 'manual', text: t('reports.manual.changed') });
+      else setError({ from: 'manual', text: t('reports.failed', { error: errorMessage(cause) }) });
     } finally {
       setBusy(null);
     }
@@ -170,9 +172,9 @@ export function ReportesPage() {
                 <Button type="submit" variant="primary" disabled={Boolean(busy) || (mode === 'own_key' && !ownKeyReady)}>
                   {busy ?? t('reports.generate.submit')}
                 </Button>
-                {error && (
+                {error?.from === 'generate' && (
                   <p role="alert" className="text-sm text-danger">
-                    {error}
+                    {error.text}
                   </p>
                 )}
               </form>
@@ -266,9 +268,9 @@ export function ReportesPage() {
                     {busy ?? t('reports.manual.submit')}
                   </Button>
                 </div>
-                {error && (
+                {error?.from === 'manual' && (
                   <p role="alert" className="text-sm text-danger">
-                    {error}
+                    {error.text}
                   </p>
                 )}
               </form>

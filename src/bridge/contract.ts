@@ -185,6 +185,8 @@ export interface TeamPolicy {
   alertNotAllowed: boolean;
   /** Cada cuántos minutos se repite el aviso si sigue en el sitio (0 = solo al entrar). */
   alertRepeatMinutes: number;
+  /** Tope diario de pausa de privacidad en minutos (F5 D-11); 0 = sin tope. Rust recorta o rechaza la pausa. */
+  pauseCapMinutes: number;
 }
 
 /** App instalada o abierta, para el selector de apps ocultas (ADR-0010). Solo local. */
@@ -259,6 +261,11 @@ export interface Bridge {
   sessionGet(): Promise<string | null>;
   sessionSet(json: string): Promise<void>;
   sessionClear(): Promise<void>;
+  /**
+   * CU-08 (spec F7): tras eliminar la cuenta en la nube, borra lo local de la cuenta activa (bloques, tiempo,
+   * cierres, copia de tareas), la sesión y lo del equipo activo. Conserva las preferencias de la app.
+   */
+  localDataClear(): Promise<void>;
 
   /**
    * Equipo y cuenta de las filas nuevas (ADR-0007, ADR-0013). El equipo solo con consentimiento (si no,

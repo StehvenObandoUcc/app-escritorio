@@ -680,6 +680,16 @@ export const en: Dict = {
     exporting: 'Exporting…',
     exported: 'Saved to {path}',
   },
+  deleteAccount: {
+    title: 'Delete my account',
+    hint: 'Deletes your Pulso account and your data, in the cloud and on this computer. This cannot be undone.',
+    button: 'Delete my account',
+    confirmTitle: 'Delete your account forever?',
+    confirmMessage: 'Your profile, activity, logged hours, personal reports and the teams where nobody else is are deleted. In teams with more people, the projects, tasks and evidence you uploaded stay. If you are the only one who owns a team with more people, transfer ownership first.',
+    exportFirst: 'Export my data first',
+    typeEmail: 'Type your email ({email}) to confirm',
+    confirmYes: 'Delete my account',
+  },
   pause: {
     capReached: 'You have used today’s pause limit ({min} min).',
   },

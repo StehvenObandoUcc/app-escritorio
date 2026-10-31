@@ -378,6 +378,18 @@ export function createSupabaseCloud(bridge: Bridge, url: string, anonKey: string
         await bridge.sessionClear();
       }
     },
+    deleteAccount: async () => {
+      const { error } = await client.functions.invoke('delete-account', { method: 'POST' });
+      if (!error) return;
+      if (error instanceof FunctionsFetchError) throw new CloudError(t('cloud.offline'), 'network');
+      const body = error instanceof FunctionsHttpError
+        ? z.object({ reason: z.string(), message: z.string().optional() }).safeParse(await (error.context as Response).json().catch(() => null))
+        : null;
+      // 409: la base lo bloqueó con un mensaje para la persona (P0001).
+      if (body?.success && body.data.reason === 'blocked' && body.data.message) throw toCloudError({ message: body.data.message, code: 'P0001' });
+      if (body?.success && body.data.reason === 'unauthorized') throw new CloudError(t('cloud.sessionEnded'), 'auth');
+      throw new CloudError(t('cloud.unexpected'), 'unknown');
+    },
     requestPasswordReset: async (email) => {
       await run(auth.resetPasswordForEmail(email));
     },

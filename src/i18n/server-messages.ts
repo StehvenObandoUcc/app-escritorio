@@ -85,6 +85,7 @@ export const SERVER_MESSAGES: Record<string, string> = {
   'El umbral de inactividad debe estar entre 3 y 15 minutos': 'The idle threshold must be between 3 and 15 minutes',
   'Los ajustes necesitan un valor': 'The settings need a value',
   'El tope de pausa debe ser 0 (sin tope), 15, 30, 60, 120 o 240 minutos': 'The pause cap must be 0 (no cap), 15, 30, 60, 120 or 240 minutes',
+  'El tope de pausa debe ser 0 (sin tope), 15, 30, 60, 120 o 240 minutos.': 'The pause cap must be 0 (no cap), 15, 30, 60, 120 or 240 minutes.',
   'La jornada necesita días, inicio y fin': 'The workday needs days, a start and an end',
   'La jornada necesita al menos un día': 'The workday needs at least one day',
   'Los días de la jornada van de 1 (lunes) a 7 (domingo)': 'The workday days go from 1 (Monday) to 7 (Sunday)',
@@ -157,8 +158,10 @@ export const SERVER_PATTERNS: [RegExp, string][] = [
   [/^Fecha inválida: «(.+)»\. Usa AAAA-MM-DD\.$/, 'Invalid date: “$1”. Use YYYY-MM-DD.'],
   [/^Fecha y hora inválidas: «(.+)»\.$/, 'Invalid date and time: “$1”.'],
   [/^La pausa debe durar entre 1 y (\d+) minutos\.$/, 'The pause must last between 1 and $1 minutes.'],
+  [/^Ya usaste el tope de pausa de hoy \((\d+) min\)\.$/, 'You have used today’s pause limit ($1 min).'],
   [/^Puedes ocultar hasta (\d+) apps\.$/, 'You can hide up to $1 apps.'],
   [/^Tipo de registro desconocido: «(.+)»\.$/, 'Unknown record type: “$1”.'],
   [/^No se pudo abrir el enlace: (.+)$/, 'The link could not be opened: $1'],
   [/^El proveedor de IA respondió con un error \((\d+)\)\.$/, 'The AI provider responded with an error ($1).'],
+  [/^Antes de eliminar tu cuenta, pasa la propiedad de «(.+)» a otra persona$/, 'Before deleting your account, transfer ownership of “$1” to someone else'],
 ];
