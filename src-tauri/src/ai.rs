@@ -12,7 +12,8 @@ use std::time::Duration;
 pub type Result<T> = std::result::Result<T, String>;
 
 const SERVICE: &str = "pulso";
-/// Nombre de la clave en el almacén seguro. Las pruebas usan otro para no tocar la real.
+/// Nombre de la clave en el almacén seguro hasta 0.1.2, una por equipo de cómputo. Ahora cada cuenta tiene la
+/// suya (`key_name`) y esta solo se lee para migrarla.
 pub const KEY_USER: &str = "ai-key";
 const MAX_MODEL: usize = 200;
 const MAX_KEY: usize = 500;
@@ -85,6 +86,20 @@ pub fn key_clear(user: &str) -> Result<()> {
     Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
     Err(e) => Err(format!("almacén seguro: {e}")),
   }
+}
+
+/// Nombre de la clave de una cuenta en el almacén seguro.
+pub fn key_name(user_id: &str) -> String {
+  format!("{KEY_USER}:{user_id}")
+}
+
+/// Pasa la clave `legacy` a `to` si `to` no tiene una, y la borra: así solo la recibe la primera cuenta.
+pub fn key_migrate(legacy: &str, to: &str) -> Result<()> {
+  let Some(old) = key_get(legacy)? else { return Ok(()) };
+  if key_get(to)?.is_none() {
+    entry(to)?.set_password(&old).map_err(|e| format!("almacén seguro: {e}"))?;
+  }
+  key_clear(legacy)
 }
 
 // ---- Llamada al proveedor ----
@@ -258,5 +273,28 @@ mod tests {
     assert_eq!(key_get(TEST_USER).unwrap().as_deref(), Some("sk-prueba"));
     key_clear(TEST_USER).unwrap();
     assert_eq!(key_get(TEST_USER).unwrap(), None);
+  }
+
+  /// La clave es de cada cuenta: la de Ana no la ve Beto. La de versiones anteriores (una por equipo de
+  /// cómputo) pasa a la primera cuenta que abre la configuración y desaparece. Almacén real, nombres de prueba.
+  #[test]
+  #[cfg(windows)]
+  fn the_key_is_per_account_and_the_legacy_one_moves_to_the_first_account() {
+    const LEGACY: &str = "ai-key-test-legacy";
+    let (ana, beto, carla) = (key_name("test-ana"), key_name("test-beto"), key_name("test-carla"));
+    for k in [LEGACY, &ana, &beto, &carla] {
+      key_clear(k).unwrap();
+    }
+    key_set(&ana, "sk-ana").unwrap();
+    assert_eq!(key_get(&beto).unwrap(), None);
+    key_set(LEGACY, "sk-vieja").unwrap();
+    key_migrate(LEGACY, &carla).unwrap();
+    assert_eq!(key_get(&carla).unwrap().as_deref(), Some("sk-vieja"));
+    assert_eq!(key_get(LEGACY).unwrap(), None);
+    key_migrate(LEGACY, &beto).unwrap();
+    assert_eq!(key_get(&beto).unwrap(), None, "solo se migra una vez");
+    for k in [&ana, &beto, &carla] {
+      key_clear(k).unwrap();
+    }
   }
 }

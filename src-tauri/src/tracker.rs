@@ -212,6 +212,13 @@ fn parse_team_rules(json: &str) -> Result<Vec<Rule>> {
   Ok(rules)
 }
 
+pub const AI_NEEDS_ACCOUNT: &str = "Inicia sesión para configurar la IA.";
+
+/// Ajustes de URL y modelo de IA de la cuenta activa.
+fn ai_keys(g: &Inner) -> Option<[String; 2]> {
+  g.store.user().map(|u| [format!("{KEY_AI_BASE_URL}:{u}"), format!("{KEY_AI_MODEL}:{u}")])
+}
+
 fn to_hex(bytes: &[u8]) -> String {
   bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
@@ -878,22 +885,43 @@ impl Tracker {
     g.store.set_block_ai_usage(id, usage)
   }
 
-  /// URL base y modelo de la IA con clave propia; `has_key` lo pone quien llama (la clave vive en el almacén seguro).
+  /// Cuenta activa (`None`: sin sesión).
+  pub fn active_user(&self) -> Result<Option<String>> {
+    Ok(self.lock()?.store.user().map(String::from))
+  }
+
+  /// URL base y modelo de la IA con clave propia de la cuenta activa; sin sesión, nada. `has_key` lo pone quien
+  /// llama (la clave vive en el almacén seguro). La configuración de versiones anteriores, una por equipo de
+  /// cómputo, pasa una sola vez a la primera cuenta que la lee.
   pub fn ai_config_get(&self) -> Result<(Option<String>, Option<String>)> {
     let g = self.lock()?;
-    Ok((g.store.setting_get(KEY_AI_BASE_URL)?, g.store.setting_get(KEY_AI_MODEL)?))
+    let Some([url_key, model_key]) = ai_keys(&g) else {
+      return Ok((None, None));
+    };
+    for (legacy, key) in [(KEY_AI_BASE_URL, &url_key), (KEY_AI_MODEL, &model_key)] {
+      if let Some(v) = g.store.setting_get(legacy)? {
+        if g.store.setting_get(key)?.is_none() {
+          g.store.setting_set(key, &v)?;
+        }
+        g.store.setting_delete(legacy)?;
+      }
+    }
+    Ok((g.store.setting_get(&url_key)?, g.store.setting_get(&model_key)?))
   }
 
   pub fn ai_config_set(&self, base_url: &str, model: &str) -> Result<()> {
     let g = self.lock()?;
-    g.store.setting_set(KEY_AI_BASE_URL, base_url)?;
-    g.store.setting_set(KEY_AI_MODEL, model)
+    let [url_key, model_key] = ai_keys(&g).ok_or(AI_NEEDS_ACCOUNT)?;
+    g.store.setting_set(&url_key, base_url)?;
+    g.store.setting_set(&model_key, model)
   }
 
   pub fn ai_config_clear(&self) -> Result<()> {
     let g = self.lock()?;
-    g.store.setting_delete(KEY_AI_BASE_URL)?;
-    g.store.setting_delete(KEY_AI_MODEL)
+    for key in ai_keys(&g).into_iter().flatten() {
+      g.store.setting_delete(&key)?;
+    }
+    Ok(())
   }
 
   // ---- Sesión de Supabase (F2, PS-08) ----
@@ -1874,5 +1902,28 @@ mod tests {
     let d = day(&t, at(12, 30, 0));
     let idle = d.blocks.iter().find(|b| b.category == Category::Idle).expect("bloque de inactividad");
     assert!(parse_ts(&idle.started_at).unwrap() >= at(12, 25, 0), "{:?}", d.blocks);
+  }
+
+  // ---- Auditoría: la configuración de IA es de cada cuenta ----
+
+  #[test]
+  fn ai_config_is_per_account_and_the_legacy_one_moves_to_the_first_account() {
+    let t = tracker();
+    // Configuración de una versión anterior, guardada para todo el equipo de cómputo.
+    {
+      let g = t.inner.lock().unwrap();
+      g.store.setting_set(KEY_AI_BASE_URL, "https://vieja.example/v1").unwrap();
+      g.store.setting_set(KEY_AI_MODEL, "viejo").unwrap();
+    }
+    // Sin sesión no hay configuración y no se puede guardar.
+    assert_eq!(t.ai_config_get().unwrap(), (None, None));
+    assert_eq!(t.ai_config_set("https://x.example/v1", "m").unwrap_err(), "Inicia sesión para configurar la IA.");
+    t.active_team_set(at(12, 0, 0), None, Some(ANA)).unwrap();
+    assert_eq!(t.ai_config_get().unwrap(), (Some("https://vieja.example/v1".into()), Some("viejo".into())));
+    t.ai_config_set("https://ana.example/v1", "modelo-ana").unwrap();
+    t.active_team_set(at(12, 0, 2), None, Some(BETO)).unwrap();
+    assert_eq!(t.ai_config_get().unwrap(), (None, None), "Beto no ve la configuración de Ana ni la antigua");
+    t.active_team_set(at(12, 0, 4), None, Some(ANA)).unwrap();
+    assert_eq!(t.ai_config_get().unwrap(), (Some("https://ana.example/v1".into()), Some("modelo-ana".into())));
   }
 }
