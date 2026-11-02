@@ -595,7 +595,8 @@ export function createMockCloud(now: () => Date = () => new Date(), { confirmEma
       const mine = roleIn(teamId, a.id);
       if (mine !== 'owner' && mine !== 'admin') return [];
       return invitations
-        .filter((i) => i.teamId === teamId && i.status === 'pending')
+        // Como la política invitations_select: el admin solo ve las de member y viewer.
+        .filter((i) => i.teamId === teamId && i.status === 'pending' && (mine === 'owner' || i.role === 'member' || i.role === 'viewer'))
         .map((i) => ({ id: i.id, email: i.email, role: i.role, expiresAt: i.expiresAt, code: i.code }));
     },
     invite: async (teamId, email, role) => {
