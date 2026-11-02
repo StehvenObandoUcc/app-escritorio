@@ -231,7 +231,8 @@ pub async fn ai_chat(t: Tr<'_>, messages: Vec<ChatMessage>) -> Result<String> {
 /// CU-07 (ADR-0023): exporta los datos de la cuenta activa a `%USERPROFILE%\Downloads` y devuelve la ruta.
 #[tauri::command]
 pub fn export_my_data(t: Tr) -> Result<String> {
-  let profile = std::env::var("USERPROFILE").map_err(|_| "No se encontró tu carpeta de usuario para guardar el archivo.".to_string())?;
+  // En macOS y Linux la carpeta de usuario es HOME (ADR-0024).
+  let profile = std::env::var("USERPROFILE").or_else(|_| std::env::var("HOME")).map_err(|_| "No se encontró tu carpeta de usuario para guardar el archivo.".to_string())?;
   let dir = std::path::Path::new(&profile).join("Downloads");
   let path = t.export_my_data_to(Utc::now(), &dir, &Local)?;
   Ok(path.to_string_lossy().into_owned())

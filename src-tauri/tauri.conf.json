@@ -43,6 +43,14 @@
     },
     "publisher": "Pulso",
     "shortDescription": "Pulso: actividad y tareas de tu equipo, con tus datos privados",
+    "linux": {
+      "deb": {
+        "depends": ["libxss1"]
+      },
+      "rpm": {
+        "depends": ["libXScrnSaver"]
+      }
+    },
     "windows": {
       "nsis": {
         "languages": [

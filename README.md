@@ -62,7 +62,7 @@ las herramientas de monitoreo habituales invaden la privacidad. Pulso mide lo ne
 
 **F1 · Sensor y *Mi día***
 
-- Sensor de actividad en Windows (app activa, título e inactividad cada 2 s) con clasificación por reglas
+- Sensor de actividad en Windows, macOS y Linux con X11 (app activa, título e inactividad cada 2 s; el dominio del navegador, solo en Windows) con clasificación por reglas
   (`productive`, `neutral`, `distraction`, `ai`, `break`, `idle`, `paused`) y detección de uso de IA. Funciona sin conexión.
 - *Mi día* con datos reales: franja del día, totales por categoría, temporizador, descansos, pausa de privacidad y
   registro manual de tiempo (crear, editar y eliminar).
@@ -91,7 +91,7 @@ las herramientas de monitoreo habituales invaden la privacidad. Pulso mide lo ne
 
 - Reportes personal, de proyecto y de equipo, con historial.
 - **Tres modos:** *Gratis* (Edge Function `ai-trial`, límite de 5 reportes al día por usuario), *Proveedor propio*
-  (URL, modelo y clave en formato OpenAI; la clave vive en el Administrador de credenciales de Windows) y *Manual* (copiar el prompt y pegar la respuesta).
+  (URL, modelo y clave en formato OpenAI; la clave vive en el almacén seguro del sistema) y *Manual* (copiar el prompt y pegar la respuesta).
 - Cifras calculadas en SQL y **validador anti-alucinación** que rechaza números, hechos o nombres que no estén en los
   hechos; si falla, se usa una plantilla fija sin IA.
 - Etiquetado de las sesiones de IA por tipo de uso (código, redacción, análisis u otro).
@@ -207,16 +207,18 @@ Calendario y puertas en [`docs/PLAN.md`](docs/PLAN.md). Estado al domingo 18 de 
 
 ## Instalación para usuarios
 
-### [⬇ Descargar Pulso para Windows](https://github.com/StehvenObandoUcc/app-escritorio/releases/latest/download/Pulso_0.1.0_x64-setup.exe)
+### [⬇ Descargar Pulso (Windows, macOS y Linux)](https://github.com/StehvenObandoUcc/app-escritorio/releases/latest)
 
-También en la página de [versiones publicadas](https://github.com/StehvenObandoUcc/app-escritorio/releases).
+En la [última versión publicada](https://github.com/StehvenObandoUcc/app-escritorio/releases/latest) elige el archivo de tu sistema.
+Ningún instalador está firmado con certificado de código.
 
-1. Descarga y ejecuta **`Pulso_0.1.0_x64-setup.exe`** (unos 4 MB). Si compilas tú con `npm run tauri build`, queda en
-   `src-tauri/target/release/bundle/nsis/`.
-2. Windows mostrará un aviso porque el instalador **no está firmado** (no hay certificado de código). Pulsa **«Más información»** y luego **«Ejecutar de todas formas»**.
-3. Abre Pulso, crea una cuenta o inicia sesión y, si te invitan a un equipo, acepta el consentimiento.
+- **Windows 10/11:** `Pulso_<versión>_x64-setup.exe`. SmartScreen mostrará un aviso: pulsa **«Más información»** y luego **«Ejecutar de todas formas»**. Requiere WebView2 (ya viene en las versiones actualizadas).
+- **macOS (Apple Silicon e Intel):** `Pulso_<versión>_universal.dmg`. La primera vez haz clic derecho sobre Pulso → **«Abrir»** (o en Terminal: `xattr -cr /Applications/Pulso.app`). Para ver los títulos de ventana, da a Pulso el permiso **«Grabación de pantalla»**.
+- **Linux:** `.deb`, `.rpm` o `.AppImage`. Requiere una sesión **X11**: en Wayland la actividad no se registra.
 
-**Requisitos:** Windows 10 u 11 con WebView2 (ya viene en las versiones actualizadas). Pulso registra tu actividad también sin conexión y la sincroniza cuando vuelve la red.
+Después abre Pulso, crea una cuenta o inicia sesión y, si te invitan a un equipo, acepta el consentimiento.
+Pulso registra tu actividad también sin conexión y la sincroniza cuando vuelve la red. En macOS y Linux no se registra
+el dominio del navegador (ADR-0024). Si compilas tú con `npm run tauri build`, los instaladores quedan en `src-tauri/target/release/bundle/`.
 
 ## Desarrollo
 
@@ -252,7 +254,7 @@ Variables de `.env.example`: `VITE_BRIDGE`, `VITE_SUPABASE_URL` y `VITE_SUPABASE
 | `npm run test:db` | Solo pruebas de permisos (Postgres en memoria, sin Docker) |
 | `npm run db:push` | Aplica las migraciones al proyecto de Supabase enlazado |
 | `npm run db:types` | Regenera `src/lib/database.types.ts` desde el proyecto enlazado |
-| `npm run tauri build` | Genera el instalador de Windows |
+| `npm run tauri build` | Genera el instalador del sistema donde se ejecuta (la versión publicada la genera `.github/workflows/release.yml`) |
 
 ## Estructura de carpetas
 
@@ -280,9 +282,9 @@ Pendientes anotados en [`docs/PLAN.md`](docs/PLAN.md) §9.3 (todos P2, no bloque
 
 Limitaciones generales:
 
-- Instalador sin firma de código (Windows muestra un aviso).
+- Instaladores sin firma de código (Windows y macOS muestran un aviso).
 - Sin actualizaciones automáticas.
-- Solo Windows 10/11.
+- macOS y Linux (X11) con sensor básico: sin dominio del navegador; Wayland no soportado (ADR-0024).
 - El plan gratuito de Supabase pausa los proyectos sin uso: conviene abrir el proyecto el día antes de una demostración.
 - Con exactamente 2 miembros, quien solo ve totales podría deducir las cifras del otro (riesgo aceptado).
 - El tope diario de pausa se aplica en la interfaz, no en Rust.
