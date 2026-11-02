@@ -354,6 +354,8 @@ export const en: Dict = {
     forbidden: 'The server did not accept your data. Check in Team that you are still in the team and accepted the consent.',
     failed: 'Could not sync: {error}',
     coreError: 'The sensor did not receive the team settings: {error} Close and reopen Pulso.',
+    newConsent: 'There is a new version of the consent for {team}. Until you accept it, your activity is not shared.',
+    newConsentLink: 'Review in Team',
   },
   theme: { change: 'Change theme', system: 'System theme', light: 'Light theme', dark: 'Dark theme' },
   locale: { label: 'Language (Idioma)', changed: 'Language changed to {name}.' },

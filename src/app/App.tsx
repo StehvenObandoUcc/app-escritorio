@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ChartColumn, FolderKanban, Keyboard, LayoutDashboard, ListChecks, Settings, Sun, Users } from 'lucide-react';
 import { useCallback, useState } from 'react';
-import { HashRouter, Navigate, Route, Routes } from 'react-router';
+import { HashRouter, Navigate, Route, Routes, useLocation } from 'react-router';
 import { bridge } from '@/bridge';
 import { createCloud } from '@/cloud';
 import { GaleriaPage } from '@/dev/GaleriaPage';
@@ -73,6 +73,24 @@ function NavFooter({ onHelp }: { onHelp: () => void }) {
   );
 }
 
+/**
+ * Tras subir la versión del consentimiento, quien aceptó una anterior deja de sincronizar: se le avisa
+ * (sin bloquear) y se le lleva a Equipo, donde el panel pide la versión nueva.
+ */
+export function ConsentNotice() {
+  const { needsNewConsent, activeTeam } = useSession();
+  const onTeamPage = useLocation().pathname === '/equipo';
+  if (!needsNewConsent || !activeTeam || onTeamPage) return null;
+  return (
+    <div role="status" className="mx-4 mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-line-strong bg-surface p-3 md:mx-6 lg:mx-8 print:hidden">
+      <p className="text-sm text-fg">{t('sync.newConsent', { team: activeTeam.name })}</p>
+      <a href="#/equipo" className="rounded-xs text-sm font-medium text-fg underline hover:text-fg-muted">
+        {t('sync.newConsentLink')}
+      </a>
+    </div>
+  );
+}
+
 /** Temporizador en marcha en la navegación: se ve y se detiene desde cualquier pantalla. */
 function NavTimer() {
   const timer = useRunningTimer();
@@ -107,6 +125,7 @@ function Gate() {
       <AppShell nav={<AppNav items={nav()} timer={<NavTimer />} footer={<NavFooter onHelp={openHelp} />} />}>
         <AlertBanner alerts={alerts} onDismiss={dismiss} />
         <TaskNoticeBanner notices={taskNotices.notices} onDismiss={taskNotices.dismiss} />
+        <ConsentNotice />
         <KeyboardHelp open={help} onClose={() => setHelp(false)} sectionCount={ROUTES.length} />
         <Routes>
           <Route path="/" element={<Navigate to="/mi-dia" replace />} />
