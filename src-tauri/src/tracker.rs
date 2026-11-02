@@ -243,6 +243,18 @@ impl Inner {
     Ok(s)
   }
 
+  /// Política y tope de pausa del equipo a sus valores por defecto (sin equipo).
+  fn reset_team_policy(&mut self) -> Result<()> {
+    for key in [KEY_ALLOW_HIDDEN, KEY_ALERT, KEY_ALERT_REPEAT, KEY_PAUSE_CAP] {
+      self.store.setting_delete(key)?;
+    }
+    self.allow_hidden = true;
+    self.alert_enabled = true;
+    self.alert_repeat_minutes = DEFAULT_ALERT_REPEAT;
+    self.pause_cap_minutes = 0;
+    Ok(())
+  }
+
   fn idle_threshold(&self) -> u64 {
     u64::from(self.settings.idle_minutes) * 60
   }
@@ -753,6 +765,14 @@ impl Tracker {
         None => g.store.setting_delete(key)?,
       }
     }
+    // Lo del equipo anterior no se aplica al nuevo: la interfaz vuelve a enviar reglas y política al cargarlo.
+    if g.active_team.as_deref() != team_id {
+      g.store.setting_delete(KEY_TEAM_RULES)?;
+      g.team_rules.clear();
+      if team_id.is_none() {
+        g.reset_team_policy()?;
+      }
+    }
     g.active_team = team_id.map(String::from);
     g.store.set_user(user_id.map(String::from));
     g.entry_versions.clear();
@@ -900,16 +920,13 @@ impl Tracker {
     g.record(changes);
     g.flush(now)?;
     g.store.delete_account_rows()?;
-    for key in [KEY_ACTIVE_TEAM, KEY_ACTIVE_USER, KEY_TEAM_RULES, KEY_SESSION, KEY_ALLOW_HIDDEN, KEY_ALERT, KEY_ALERT_REPEAT, KEY_PAUSE_CAP] {
+    for key in [KEY_ACTIVE_TEAM, KEY_ACTIVE_USER, KEY_TEAM_RULES, KEY_SESSION] {
       g.store.setting_delete(key)?;
     }
+    g.reset_team_policy()?;
     g.store.set_user(None);
     g.active_team = None;
     g.team_rules.clear();
-    g.allow_hidden = true;
-    g.alert_enabled = true;
-    g.alert_repeat_minutes = DEFAULT_ALERT_REPEAT;
-    g.pause_cap_minutes = 0;
     g.entry_versions.clear();
     g.usage_versions.clear();
     Ok(())
@@ -1785,5 +1802,38 @@ mod tests {
     // Preferencias de la app.
     assert_eq!(g.settings.idle_minutes, 7);
     assert_eq!(g.settings.language, "en");
+  }
+
+  // ---- Auditoría: lo del equipo no sobrevive al cambio de equipo ni al cierre de sesión ----
+
+  fn set_team_stuff(t: &Tracker) {
+    t.rules_set(r#"[{"match":"process","pattern":"code","category":"distraction","ai_tool":null}]"#).unwrap();
+    t.team_policy_set(TeamPolicy { allow_hidden_apps: false, alert_not_allowed: false, alert_repeat_minutes: 5 }).unwrap();
+    t.team_pause_cap_set(30).unwrap();
+  }
+
+  #[test]
+  fn signing_out_resets_team_rules_policy_and_pause_cap() {
+    let t = tracker();
+    t.active_team_set(at(12, 0, 0), Some(TEAM), Some(ANA)).unwrap();
+    set_team_stuff(&t);
+    t.active_team_set(at(12, 0, 2), None, None).unwrap();
+    let g = t.inner.lock().unwrap();
+    for key in [KEY_TEAM_RULES, KEY_ALLOW_HIDDEN, KEY_ALERT, KEY_ALERT_REPEAT, KEY_PAUSE_CAP] {
+      assert_eq!(g.store.setting_get(key).unwrap(), None, "{key}");
+    }
+    assert!(g.team_rules.is_empty() && g.allow_hidden && g.alert_enabled);
+    assert_eq!((g.alert_repeat_minutes, g.pause_cap_minutes), (DEFAULT_ALERT_REPEAT, 0));
+  }
+
+  #[test]
+  fn switching_team_clears_the_previous_team_rules() {
+    let t = tracker();
+    t.active_team_set(at(12, 0, 0), Some(TEAM), Some(ANA)).unwrap();
+    set_team_stuff(&t);
+    t.active_team_set(at(12, 0, 2), Some(OTHER), Some(ANA)).unwrap();
+    let g = t.inner.lock().unwrap();
+    assert_eq!(g.store.setting_get(KEY_TEAM_RULES).unwrap(), None);
+    assert!(g.team_rules.is_empty());
   }
 }
