@@ -178,14 +178,18 @@ export function SessionProvider({
       return;
     }
     if (!teamsQuery.isSuccess) return; // sin red: se conserva el último equipo conocido
-    void bridge.activeTeamSet(uploading?.id ?? null, user.id).then(() => setCoreError(null), reportCore);
-    // La política se aplica aunque no haya consentimiento: ocultar o avisar es local.
+    // La política va después del equipo: Rust la reinicia cuando el equipo pasa a ninguno.
+    // Se aplica aunque no haya consentimiento: ocultar o avisar es local.
     void bridge
-      .teamPolicySet({
-        allowHiddenApps: activeTeam?.allowHiddenApps ?? true,
-        alertNotAllowed: activeTeam?.alertNotAllowed ?? true,
-        alertRepeatMinutes: activeTeam?.alertRepeatMinutes ?? 10,
-        pauseCapMinutes: activeTeam?.pauseCapMinutes ?? 0,
+      .activeTeamSet(uploading?.id ?? null, user.id)
+      .then(() => {
+        setCoreError(null);
+        return bridge.teamPolicySet({
+          allowHiddenApps: activeTeam?.allowHiddenApps ?? true,
+          alertNotAllowed: activeTeam?.alertNotAllowed ?? true,
+          alertRepeatMinutes: activeTeam?.alertRepeatMinutes ?? 10,
+          pauseCapMinutes: activeTeam?.pauseCapMinutes ?? 0,
+        });
       })
       .catch(reportCore);
   }, [bridge, user, teamsQuery.isSuccess, uploading?.id, activeTeam?.allowHiddenApps, activeTeam?.alertNotAllowed, activeTeam?.alertRepeatMinutes, activeTeam?.pauseCapMinutes, reportCore]);
