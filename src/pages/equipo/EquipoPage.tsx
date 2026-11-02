@@ -422,6 +422,7 @@ function Members({ team }: { team: MyTeam }) {
         message={toViewer ? toViewerMessage(toViewer.name, openTasks(toViewer.userId)) : ''}
         confirmLabel={t('team.toViewer.confirm')}
         busy={action.busy}
+        error={action.error}
         onCancel={() => setToViewer(null)}
         onConfirm={() =>
           void action.run(async () => {
@@ -439,6 +440,7 @@ function Members({ team }: { team: MyTeam }) {
         confirmLabel={t('team.remove')}
         danger
         busy={action.busy}
+        error={action.error}
         onCancel={() => setRemoving(null)}
         onConfirm={() =>
           void action.run(async () => {
