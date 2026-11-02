@@ -87,7 +87,7 @@ La interfaz muestra la etiqueta "Datos de ejemplo" siempre que usa el puente sim
 | `classifier` | Asigna categoría con reglas: primero las del equipo, luego `rules/default.json`. Gana la primera coincidencia. | Llamar a la red. |
 | `store` | Único dueño de SQLite (modo WAL). Migraciones locales versionadas. Escribe en lote cada 10 s. | Exponer SQL a la interfaz. |
 | `crypto` | Cifra y descifra títulos. | |
-| `secrets` | Guarda sesión y clave de IA en el almacén seguro del sistema. | Devolver la clave de IA a la interfaz. |
+| `secrets` | Guarda sesión y clave de IA (una por cuenta) en el almacén seguro del sistema. | Devolver la clave de IA a la interfaz. |
 | `ai` | Llama al proveedor del usuario (formato OpenAI) con su clave. | Enviar algo distinto del prompt con hechos. |
 
 Comandos (nombres exactos; `src/bridge/contract.ts` es su espejo en TypeScript):
