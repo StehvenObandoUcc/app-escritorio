@@ -352,6 +352,8 @@ export const es = {
     forbidden: 'El servidor no aceptó tus datos. Revisa en Equipo que sigas en el equipo y hayas aceptado el consentimiento.',
     failed: 'No se pudo sincronizar: {error}',
     coreError: 'El sensor no recibió la configuración del equipo: {error} Cierra y vuelve a abrir Pulso.',
+    newConsent: 'Hay una versión nueva del consentimiento de {team}. Hasta que la aceptes, tu actividad no se comparte.',
+    newConsentLink: 'Revisar en Equipo',
   },
   theme: { change: 'Cambiar tema', system: 'Tema del sistema', light: 'Tema claro', dark: 'Tema oscuro' },
   /** El nombre del control lleva los dos idiomas para que se encuentre aunque no se lea el actual. */
