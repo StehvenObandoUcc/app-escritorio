@@ -42,3 +42,47 @@ jobs:
       # Tauri necesita que exista dist/ para compilar.
       - run: npm run build
       - run: npm run verify:rust
+
+  rust-linux:
+    name: Núcleo Rust (Linux)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      # WebKitGTK para Tauri; libxss para la inactividad; Xvfb, openbox y xterm para probar el sensor (ADR-0024).
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev libxss-dev xvfb openbox xterm
+      - run: npm ci
+      - run: npm run build
+      - run: cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings
+      # Sesión X virtual con gestor de ventanas y una xterm activa: la prueba del sensor exige verla.
+      - run: xvfb-run -a sh -c 'openbox & sleep 1; xterm & sleep 2; PULSO_SENSOR_EXPECT=xterm cargo test --manifest-path src-tauri/Cargo.toml'
+
+  rust-macos:
+    name: Núcleo Rust (macOS)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: npm ci
+      - run: npm run build
+      - run: npm run verify:rust

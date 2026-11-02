@@ -1,0 +1,80 @@
+name: Release
+
+# Instaladores de Windows, macOS y Linux en un borrador de versión (ADR-0024).
+# Se publica a mano desde GitHub después de revisar el borrador.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Instalador (${{ matrix.platform }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            args: ''
+            rust-targets: ''
+          - platform: ubuntu-22.04
+            args: ''
+            rust-targets: ''
+          - platform: macos-latest
+            args: '--target universal-apple-darwin'
+            rust-targets: 'aarch64-apple-darwin,x86_64-apple-darwin'
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+      - if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev libxss-dev
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-targets }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: npm ci
+      # Sin la nube configurada la app no inicia sesión: se corta antes de compilar.
+      - name: Comprobar secretos de Supabase
+        shell: bash
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
+            echo "::error::Faltan los secretos VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY del repositorio."
+            exit 1
+          fi
+      # `beforeBuildCommand` (npm run build) lee estas variables igual que el .env local.
+      - uses: tauri-apps/tauri-action@v0.6.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VITE_BRIDGE: tauri
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        with:
+          tagName: v__VERSION__
+          releaseName: Pulso v__VERSION__
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
+          releaseBody: |
+            Instaladores de Pulso para Windows, macOS y Linux. Ninguno está firmado con certificado de código.
+
+            **Windows 10/11** · `Pulso_*_x64-setup.exe`. SmartScreen avisará: pulsa «Más información» y luego «Ejecutar de todas formas».
+
+            **macOS (Apple Silicon e Intel)** · `Pulso_*_universal.dmg`. Sin firma ni notarización: la primera vez haz clic derecho sobre Pulso → «Abrir», o en Terminal `xattr -cr /Applications/Pulso.app`. Para ver los títulos de ventana, dale a Pulso el permiso «Grabación de pantalla» en Ajustes del Sistema → Privacidad y seguridad.
+
+            **Linux** · `.deb`, `.rpm` o `.AppImage`. Requiere una sesión **X11**: en Wayland la actividad no se registra.
+
+            En macOS y Linux no se registra el dominio del navegador (solo la app y el título).

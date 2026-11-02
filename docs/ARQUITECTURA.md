@@ -9,7 +9,7 @@ App de escritorio para equipos que trabajan con IA. Registra tiempo y actividad,
 tareas y genera reportes con IA. Promesa: *entiende cómo trabaja tu equipo con IA, sin vigilarlo*.
 
 - Entrega: **lunes 19 de octubre de 2026**. Congelamiento: jueves 15 a las 23:59.
-- Plataforma v1: **Windows 10/11**. macOS y Linux quedan para después de la entrega.
+- Plataformas: **Windows 10/11** (v1). Desde F7, también **macOS** y **Linux con X11**, con sensor básico: sin dominio del navegador ni Wayland (ADR-0024).
 
 ## 2. Glosario (vocabulario cerrado)
 

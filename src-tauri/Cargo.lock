@@ -3187,6 +3187,8 @@ dependencies = [
  "chrono",
  "keyring",
  "log",
+ "objc2-core-foundation",
+ "objc2-core-graphics",
  "reqwest",
  "rusqlite",
  "serde",
@@ -3198,6 +3200,7 @@ dependencies = [
  "tauri-plugin-opener",
  "uuid",
  "windows",
+ "x11-dl",
 ]
 
 [[package]]
