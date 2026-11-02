@@ -13,7 +13,7 @@ const FOCUSABLE = 'a[href], button:not(:disabled), input:not(:disabled):not([typ
 /** Campos que usan las flechas para su propio valor: ahí las flechas no mueven el foco. */
 const OWN_ARROWS = 'textarea, select, input[type=number], input[type=date], input[type=time], input[type=range], [role=tab], [contenteditable=true]';
 
-const isTyping = (el: EventTarget | null) =>
+export const isTyping = (el: EventTarget | null) =>
   el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement || (el instanceof HTMLElement && el.isContentEditable);
 
 /**

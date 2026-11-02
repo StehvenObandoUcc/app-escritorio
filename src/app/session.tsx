@@ -104,18 +104,27 @@ export function SessionProvider({
   const [user, setUser] = useState<CloudUser | null | undefined>(undefined);
   const [chosenTeam, setChosenTeam] = useState<string | null>(readStoredTeam);
 
+  // En un equipo compartido, la siguiente persona no debe ver ni un instante los datos de la anterior:
+  // al cambiar de persona (también al cerrar sesión) se vacía la caché antes de que arranquen sus consultas.
+  const lastUserId = useRef<string | null | undefined>(undefined);
   useEffect(() => {
     let alive = true;
+    const apply = (u: CloudUser | null) => {
+      const id = u?.id ?? null;
+      if (lastUserId.current !== undefined && lastUserId.current !== id) queryClient.clear();
+      lastUserId.current = id;
+      setUser(u);
+    };
     cloud
       .currentUser()
-      .then((u) => alive && setUser(u))
-      .catch(() => alive && setUser(null));
-    const stop = cloud.onUserChange((u) => setUser(u));
+      .then((u) => alive && apply(u))
+      .catch(() => alive && apply(null));
+    const stop = cloud.onUserChange(apply);
     return () => {
       alive = false;
       stop();
     };
-  }, [cloud]);
+  }, [cloud, queryClient]);
 
   const userId = user?.id ?? null;
 
@@ -169,14 +178,18 @@ export function SessionProvider({
       return;
     }
     if (!teamsQuery.isSuccess) return; // sin red: se conserva el último equipo conocido
-    void bridge.activeTeamSet(uploading?.id ?? null, user.id).then(() => setCoreError(null), reportCore);
-    // La política se aplica aunque no haya consentimiento: ocultar o avisar es local.
+    // La política va después del equipo: Rust la reinicia cuando el equipo pasa a ninguno.
+    // Se aplica aunque no haya consentimiento: ocultar o avisar es local.
     void bridge
-      .teamPolicySet({
-        allowHiddenApps: activeTeam?.allowHiddenApps ?? true,
-        alertNotAllowed: activeTeam?.alertNotAllowed ?? true,
-        alertRepeatMinutes: activeTeam?.alertRepeatMinutes ?? 10,
-        pauseCapMinutes: activeTeam?.pauseCapMinutes ?? 0,
+      .activeTeamSet(uploading?.id ?? null, user.id)
+      .then(() => {
+        setCoreError(null);
+        return bridge.teamPolicySet({
+          allowHiddenApps: activeTeam?.allowHiddenApps ?? true,
+          alertNotAllowed: activeTeam?.alertNotAllowed ?? true,
+          alertRepeatMinutes: activeTeam?.alertRepeatMinutes ?? 10,
+          pauseCapMinutes: activeTeam?.pauseCapMinutes ?? 0,
+        });
       })
       .catch(reportCore);
   }, [bridge, user, teamsQuery.isSuccess, uploading?.id, activeTeam?.allowHiddenApps, activeTeam?.alertNotAllowed, activeTeam?.alertRepeatMinutes, activeTeam?.pauseCapMinutes, reportCore]);

@@ -55,7 +55,8 @@ export function ConfirmDialog({
       ref={ref}
       onCancel={(e) => {
         e.preventDefault();
-        onCancel();
+        // Con la acción en curso, Esc no cierra (igual que el botón Cancelar, que está desactivado).
+        if (!busy) onCancel();
       }}
       aria-labelledby={titleId}
       className="m-auto w-full max-w-auth rounded-lg bg-surface p-5 text-fg shadow-overlay"
