@@ -951,7 +951,7 @@ impl Tracker {
   }
 
   /// CU-08 (spec F7): tras eliminar la cuenta en la nube, borra lo local de esa cuenta, la sesión y lo del equipo
-  /// (equipo activo, reglas y política). Las preferencias de la app (umbral, apps ocultas, idioma) se quedan.
+  /// (equipo activo, reglas y política) y su configuración de IA. Las preferencias de la app (umbral, apps ocultas, idioma) se quedan.
   pub fn local_data_clear(&self, now: DateTime<Utc>) -> Result<()> {
     let mut g = self.lock()?;
     // El bloque abierto se guarda primero para que también se borre.
@@ -959,6 +959,13 @@ impl Tracker {
     g.record(changes);
     g.flush(now)?;
     g.store.delete_account_rows()?;
+    // La configuración de IA de la cuenta (clave en el almacén seguro, URL y modelo en ajustes).
+    if let Some(user) = g.store.user() {
+      crate::ai::key_clear(&crate::ai::key_name(user))?;
+    }
+    for key in ai_keys(&g).into_iter().flatten() {
+      g.store.setting_delete(&key)?;
+    }
     for key in [KEY_ACTIVE_TEAM, KEY_ACTIVE_USER, KEY_TEAM_RULES, KEY_SESSION] {
       g.store.setting_delete(key)?;
     }
@@ -1925,5 +1932,24 @@ mod tests {
     assert_eq!(t.ai_config_get().unwrap(), (None, None), "Beto no ve la configuración de Ana ni la antigua");
     t.active_team_set(at(12, 0, 4), None, Some(ANA)).unwrap();
     assert_eq!(t.ai_config_get().unwrap(), (Some("https://ana.example/v1".into()), Some("modelo-ana".into())));
+  }
+
+  #[test]
+  fn local_data_clear_removes_the_account_ai_config() {
+    let t = tracker();
+    t.active_team_set(at(12, 0, 0), None, Some(BETO)).unwrap();
+    t.ai_config_set("https://beto.example/v1", "modelo-beto").unwrap();
+    t.active_team_set(at(12, 0, 2), None, Some(ANA)).unwrap();
+    t.ai_config_set("https://ana.example/v1", "modelo-ana").unwrap();
+    #[cfg(windows)]
+    crate::ai::key_set(&crate::ai::key_name(ANA), "sk-ana").unwrap();
+    t.local_data_clear(at(12, 0, 4)).unwrap();
+    #[cfg(windows)]
+    assert_eq!(crate::ai::key_get(&crate::ai::key_name(ANA)).unwrap(), None);
+    t.active_team_set(at(12, 0, 6), None, Some(ANA)).unwrap();
+    assert_eq!(t.ai_config_get().unwrap(), (None, None));
+    // La de otra cuenta en el mismo equipo de cómputo se queda.
+    t.active_team_set(at(12, 0, 8), None, Some(BETO)).unwrap();
+    assert_eq!(t.ai_config_get().unwrap(), (Some("https://beto.example/v1".into()), Some("modelo-beto".into())));
   }
 }
