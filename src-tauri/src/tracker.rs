@@ -959,9 +959,12 @@ impl Tracker {
     g.record(changes);
     g.flush(now)?;
     g.store.delete_account_rows()?;
-    // La configuración de IA de la cuenta (clave en el almacén seguro, URL y modelo en ajustes).
-    if let Some(user) = g.store.user() {
-      crate::ai::key_clear(&crate::ai::key_name(user))?;
+    // La configuración de IA de la cuenta (clave en el almacén seguro, URL y modelo en ajustes). Si el almacén
+    // seguro falla, se registra y se sigue: lo demás de la cuenta se borra igual.
+    if let Some(user) = g.store.user()
+      && let Err(e) = crate::ai::key_clear(&crate::ai::key_name(user))
+    {
+      log::error!("borrar la clave de IA de la cuenta: {e}");
     }
     for key in ai_keys(&g).into_iter().flatten() {
       g.store.setting_delete(&key)?;
