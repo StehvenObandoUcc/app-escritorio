@@ -8,6 +8,10 @@ pub mod engine;
 mod url;
 #[cfg(windows)]
 mod windows_impl;
+#[cfg(target_os = "linux")]
+mod linux_impl;
+#[cfg(target_os = "macos")]
+mod macos_impl;
 
 /// Ventana en primer plano en un instante.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -80,7 +84,16 @@ impl Sensor {
       }
       Some(window)
     }
-    #[cfg(not(windows))]
+    // En Linux y macOS no se lee el dominio del navegador (ADR-0024).
+    #[cfg(target_os = "linux")]
+    {
+      linux_impl::foreground()
+    }
+    #[cfg(target_os = "macos")]
+    {
+      macos_impl::foreground()
+    }
+    #[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
     {
       None
     }
@@ -107,7 +120,17 @@ pub fn idle_seconds() -> Option<u64> {
   windows_impl::idle_seconds()
 }
 
-#[cfg(not(windows))]
+#[cfg(target_os = "linux")]
+pub fn idle_seconds() -> Option<u64> {
+  linux_impl::idle_seconds()
+}
+
+#[cfg(target_os = "macos")]
+pub fn idle_seconds() -> Option<u64> {
+  macos_impl::idle_seconds()
+}
+
+#[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
 pub fn idle_seconds() -> Option<u64> {
   None
 }
