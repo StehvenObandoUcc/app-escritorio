@@ -104,18 +104,27 @@ export function SessionProvider({
   const [user, setUser] = useState<CloudUser | null | undefined>(undefined);
   const [chosenTeam, setChosenTeam] = useState<string | null>(readStoredTeam);
 
+  // En un equipo compartido, la siguiente persona no debe ver ni un instante los datos de la anterior:
+  // al cambiar de persona (también al cerrar sesión) se vacía la caché antes de que arranquen sus consultas.
+  const lastUserId = useRef<string | null | undefined>(undefined);
   useEffect(() => {
     let alive = true;
+    const apply = (u: CloudUser | null) => {
+      const id = u?.id ?? null;
+      if (lastUserId.current !== undefined && lastUserId.current !== id) queryClient.clear();
+      lastUserId.current = id;
+      setUser(u);
+    };
     cloud
       .currentUser()
-      .then((u) => alive && setUser(u))
-      .catch(() => alive && setUser(null));
-    const stop = cloud.onUserChange((u) => setUser(u));
+      .then((u) => alive && apply(u))
+      .catch(() => alive && apply(null));
+    const stop = cloud.onUserChange(apply);
     return () => {
       alive = false;
       stop();
     };
-  }, [cloud]);
+  }, [cloud, queryClient]);
 
   const userId = user?.id ?? null;
 
