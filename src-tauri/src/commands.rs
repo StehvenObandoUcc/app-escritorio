@@ -174,11 +174,23 @@ pub fn team_policy_set(t: Tr, policy: TeamPolicyInput) -> Result<()> {
 
 // ---- F4 ----
 
-/// URL base, modelo y si hay clave guardada. **Nunca** la clave (AC-19).
+/// Nombre de la clave de IA de la cuenta activa (la de versiones anteriores pasa a ella). Sin sesión, `None`.
+fn ai_key_name(t: &Tracker) -> Result<Option<String>> {
+  let Some(user) = t.active_user()? else { return Ok(None) };
+  let name = ai::key_name(&user);
+  ai::key_migrate(ai::KEY_USER, &name)?;
+  Ok(Some(name))
+}
+
+/// URL base, modelo y si hay clave guardada para la cuenta activa. **Nunca** la clave (AC-19).
 #[tauri::command]
 pub fn ai_config_get(t: Tr) -> Result<AiConfig> {
+  let has_key = match ai_key_name(&t)? {
+    Some(name) => ai::key_get(&name)?.is_some(),
+    None => false,
+  };
   let (base_url, model) = t.ai_config_get()?;
-  Ok(AiConfig { base_url, model, has_key: ai::key_get(ai::KEY_USER)?.is_some() })
+  Ok(AiConfig { base_url, model, has_key })
 }
 
 /// Guarda URL y modelo; la clave solo si llega (si no, se conserva la que había).
@@ -186,8 +198,9 @@ pub fn ai_config_get(t: Tr) -> Result<AiConfig> {
 pub fn ai_config_set(t: Tr, base_url: String, model: String, key: Option<String>) -> Result<AiConfig> {
   let base_url = ai::check_base_url(&base_url)?;
   let model = ai::check_model(&model)?;
+  let name = ai_key_name(&t)?.ok_or(crate::tracker::AI_NEEDS_ACCOUNT)?;
   if let Some(k) = key.as_deref().filter(|k| !k.trim().is_empty()) {
-    ai::key_set(ai::KEY_USER, k)?;
+    ai::key_set(&name, k)?;
   }
   t.ai_config_set(&base_url, &model)?;
   ai_config_get(t)
@@ -195,7 +208,9 @@ pub fn ai_config_set(t: Tr, base_url: String, model: String, key: Option<String>
 
 #[tauri::command]
 pub fn ai_config_clear(t: Tr) -> Result<()> {
-  ai::key_clear(ai::KEY_USER)?;
+  if let Some(name) = ai_key_name(&t)? {
+    ai::key_clear(&name)?;
+  }
   t.ai_config_clear()
 }
 
@@ -206,14 +221,18 @@ pub async fn ai_chat(t: Tr<'_>, messages: Vec<ChatMessage>) -> Result<String> {
   let (Some(base_url), Some(model)) = (base_url, model) else {
     return Err("Configura primero el proveedor de IA en Ajustes.".into());
   };
-  let key = ai::key_get(ai::KEY_USER)?;
+  let key = match ai_key_name(&t)? {
+    Some(name) => ai::key_get(&name)?,
+    None => None,
+  };
   ai::chat(&base_url, &model, key.as_deref(), &messages).await
 }
 
 /// CU-07 (ADR-0023): exporta los datos de la cuenta activa a `%USERPROFILE%\Downloads` y devuelve la ruta.
 #[tauri::command]
 pub fn export_my_data(t: Tr) -> Result<String> {
-  let profile = std::env::var("USERPROFILE").map_err(|_| "No se encontró tu carpeta de usuario para guardar el archivo.".to_string())?;
+  // En macOS y Linux la carpeta de usuario es HOME (ADR-0024).
+  let profile = std::env::var("USERPROFILE").or_else(|_| std::env::var("HOME")).map_err(|_| "No se encontró tu carpeta de usuario para guardar el archivo.".to_string())?;
   let dir = std::path::Path::new(&profile).join("Downloads");
   let path = t.export_my_data_to(Utc::now(), &dir, &Local)?;
   Ok(path.to_string_lossy().into_owned())

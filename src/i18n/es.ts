@@ -123,7 +123,10 @@ export const es = {
       readOnlyHint: 'Esta tarea es de otra persona: puedes verla, pero no cambiarla.',
       deleteTitle: '¿Borrar «{title}»?',
       deleteHint: 'Se borran sus criterios, revisiones e historial. El tiempo registrado se conserva sin tarea.',
-      deleteWithSubtasks: 'También se borran sus {n} subtareas, criterios, revisiones e historial. El tiempo registrado se conserva sin tarea.',
+      deleteWithSubtasks: {
+        one: 'También se borran su subtarea, sus criterios, revisiones e historial. El tiempo registrado se conserva sin tarea.',
+        other: 'También se borran sus {n} subtareas, criterios, revisiones e historial. El tiempo registrado se conserva sin tarea.',
+      },
     },
     filters: {
       assignee: 'Responsable',
@@ -352,6 +355,8 @@ export const es = {
     forbidden: 'El servidor no aceptó tus datos. Revisa en Equipo que sigas en el equipo y hayas aceptado el consentimiento.',
     failed: 'No se pudo sincronizar: {error}',
     coreError: 'El sensor no recibió la configuración del equipo: {error} Cierra y vuelve a abrir Pulso.',
+    newConsent: 'Hay una versión nueva del consentimiento de {team}. Hasta que la aceptes, tu actividad no se comparte.',
+    newConsentLink: 'Revisar en Equipo',
   },
   theme: { change: 'Cambiar tema', system: 'Tema del sistema', light: 'Tema claro', dark: 'Tema oscuro' },
   /** El nombre del control lleva los dos idiomas para que se encuentre aunque no se lea el actual. */
@@ -566,7 +571,7 @@ export const es = {
     moreLaterHint: 'Las reglas y la jornada del equipo están en Equipo → General.',
     language: 'Idioma',
     languageLabel: 'Idioma de Pulso',
-    languageHint: 'Se aplica al instante: cambia toda la app y las notificaciones de Windows. Se guarda en este computador. Los campos de fecha y hora toman el formato nuevo al volver a abrir Pulso.',
+    languageHint: 'Se aplica al instante: cambia toda la app y las notificaciones del sistema. Se guarda en este computador. Los campos de fecha y hora toman el formato nuevo al volver a abrir Pulso.',
     preferences: 'Tema, atajos y sincronización',
     languages: { es: 'Español', en: 'English' },
   },
@@ -655,7 +660,7 @@ export const es = {
     notAllowed: 'Sitios no permitidos',
     notAllowedHint: 'Cuentan como distracción y se marcan «No permitido». Pulso no los bloquea.',
     alert: 'Avisar con sonido al entrar a un sitio no permitido',
-    alertHint: 'Notificación de Windows en el computador de la persona. No se registra nada más.',
+    alertHint: 'Notificación del sistema en el computador de la persona. No se registra nada más.',
     repeatLabel: 'Repetir el aviso si sigue en el sitio:',
     repeat: 'Repetir el aviso',
     site: 'Sitio',
@@ -965,7 +970,7 @@ export const es = {
   },
   aiSettings: {
     title: 'IA con tu propio proveedor',
-    hint: 'Pulso habla con cualquier proveedor compatible con OpenAI. La clave se guarda en el almacén seguro de Windows y solo se envía a tu proveedor.',
+    hint: 'Pulso habla con cualquier proveedor compatible con OpenAI. La clave se guarda en el almacén seguro del sistema y solo se envía a tu proveedor.',
     provider: 'Proveedor',
     providers: { openrouter: 'OpenRouter', openai: 'OpenAI', gemini: 'Google Gemini', deepseek: 'DeepSeek', groq: 'Groq', ollama: 'Ollama (en este computador)', other: 'Otro' },
     baseUrl: 'URL base',

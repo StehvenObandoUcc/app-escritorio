@@ -75,7 +75,7 @@ function useTaskTitle(bridge: Bridge, taskId: string | null) {
 }
 
 export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date?: string }) {
-  const { state, run, reload } = useDay(bridge, date);
+  const { state, run, reload, actionError } = useDay(bridge, date);
   const status = state.phase === 'ready' ? state.status : null;
   const elapsed = useElapsed(status?.timer.startedAt ?? null);
   const taskTitle = useTaskTitle(bridge, status?.timer.taskId ?? null);
@@ -101,7 +101,8 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
   // Tope diario de pausa del equipo (F5 D-11); 0 = sin tope. Aquí se ofrece lo que queda; Rust también lo aplica.
   const pauseCap = session?.activeTeam?.pauseCapMinutes ?? 0;
   const pausedToday = usePausedToday(bridge, date, state.phase === 'ready' ? (state.day.totals.paused ?? 0) : null, pauseCap > 0);
-  // Mientras cargan los equipos no se sabe el tope: no se ofrece la pausa.
+  // Mientras cargan los equipos (o si no se pudieron leer) no se sabe el tope: no se ofrece la pausa.
+  // Sin red al arrancar no se bloquea la pausa: Rust aplica el último tope que conoce del equipo.
   const pauseUnknown = Boolean(session?.teamsLoading) || (pauseCap > 0 && pausedToday === null);
   const pauseLeft = pauseCap > 0 && pausedToday !== null ? Math.max(0, pauseCap - Math.ceil(pausedToday / 60)) : null;
   const pauseMinutes = pauseLeft === null ? PAUSE_MINUTES : Math.min(PAUSE_MINUTES, pauseLeft);
@@ -191,6 +192,11 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
             pauseDisabled={pauseUnknown}
             pauseDisabledReason={pauseLeft === 0 ? t('pause.capReached', { min: pauseCap }) : null}
           />
+          {actionError && (
+            <p role="alert" className="mt-3 text-sm text-danger">
+              {actionError}
+            </p>
+          )}
         </Surface>
         <Surface as="section" aria-label={t('myDay.breakdown')} className="lg:flex-1">
           <CategoryBreakdown totals={day.totals} categories={BREAKDOWN} />

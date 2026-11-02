@@ -54,15 +54,18 @@ export function useDay(bridge: Bridge, date: string) {
   /** Vuelve a cargar ahora mismo (p. ej. tras guardar una entrada). */
   const reload = useCallback(() => setVersion((v) => v + 1), []);
 
+  // Una acción que falla no es que no se pueda leer el día: el día sigue a la vista y el error se dice aparte.
+  const [actionError, setActionError] = useState<string | null>(null);
   const run = useCallback((action: () => Promise<SensorStatus>) => {
     action()
       .then((status) => {
+        setActionError(null);
         setState((s) => (s.phase === 'ready' ? { ...s, status } : s));
         // El temporizador crea o cierra una entrada de tiempo: se recarga Mi día y se entera la navegación.
         window.dispatchEvent(new Event(TIMER_CHANGED));
       })
-      .catch((cause: unknown) => setState({ phase: 'error', message: errorMessage(cause) }));
+      .catch((cause: unknown) => setActionError(errorMessage(cause)));
   }, []);
 
-  return { state, run, reload };
+  return { state, run, reload, actionError };
 }

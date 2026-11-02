@@ -81,6 +81,8 @@ Están aprobadas pero aún no instaladas. Quien las instale anota aquí la versi
 | `reqwest` (TLS de Windows, `native-tls`; ADR-0022) | F4 | Llamada a la IA con clave propia | 0.13.5 |
 | `tauri-plugin-notification` | F2 (adelantado, ADR-0010) | Avisos del sistema; se usa solo desde Rust | 2.5.1 |
 | `tauri-plugin-opener` | F3 (ADR-0017) | Abrir enlaces `https://` de la evidencia en el navegador; solo desde Rust (`open_external`) | 2.7.0 |
+| `x11-dl` (solo Linux; ya venía con GTK) | F7 (ADR-0024) | Ventana activa (EWMH) e inactividad (MIT-SCREEN-SAVER) en X11; carga libX11/libXss al vuelo | 2.21.0 |
+| `objc2-core-graphics`, `objc2-core-foundation` (solo macOS; ya venían con Tauri) | F7 (ADR-0024) | Ventanas visibles e inactividad con Core Graphics. *Features* `CGWindow`, `CGEventSource`, `CGEventTypes` y `CFArray`, `CFDictionary`, `CFNumber`, `CFString` | 0.3.2 · 0.3.2 |
 | `tauri-plugin-autostart` | F6 | Abrir con el sistema | pendiente |
 
 Los crates se agregan con `cargo add <nombre>` dentro de `src-tauri`, que toma la última versión estable; no se escribe la versión de memoria.

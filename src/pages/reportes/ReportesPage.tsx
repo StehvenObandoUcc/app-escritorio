@@ -23,6 +23,11 @@ const EXTENSION: Record<Exclude<ExportFormat, 'pdf'>, [string, string]> = {
  * Antes de generar «hoy» se suben los datos pendientes (D-18). El `viewer` solo ve los de equipo ya generados.
  */
 export function ReportesPage() {
+  // Lo elegido (sobre qué, reporte abierto, Manual, errores) es de un equipo: al cambiar de equipo se empieza de cero.
+  return <TeamReports key={useSession().activeTeam?.id ?? 'sin-equipo'} />;
+}
+
+function TeamReports() {
   const { cloud, bridge, user, activeTeam, sync, syncNow } = useSession();
   const queryClient = useQueryClient();
   const teamId = activeTeam?.id ?? null;
@@ -32,7 +37,7 @@ export function ReportesPage() {
   const history = useQuery({ queryKey: ['reports', teamId], queryFn: () => cloud.reports(teamId!), enabled: teamId !== null });
   const aiConfig = useQuery({ queryKey: ['ai-config'], queryFn: () => bridge.aiConfigGet() });
 
-  const [about, setAbout] = useState('personal');
+  const [chosenAbout, setAbout] = useState('personal');
   const [chosenPeriod, setPeriod] = useState<ReportPeriod | null>(null);
   const [mode, setMode] = useState<ReportMode>('free');
   // Sin elección, Manual usa «Ayer»: mientras la persona está en el chat de IA, «hoy» sigue cambiando y el
@@ -64,6 +69,8 @@ export function ReportesPage() {
     ...projects.filter((p) => !p.archivedAt && p.myRole !== 'contributor').map((p) => ({ value: `project:${p.id}`, label: t('reports.scopes.project', { name: p.name }) })),
     ...(role === 'owner' || role === 'admin' ? [{ value: 'team', label: t('reports.scopes.team', { name: activeTeam.name }) }] : []),
   ];
+  // Solo se pide lo que se ofrece (p. ej. si el rol cambió o el proyecto se archivó): si no, el propio trabajo.
+  const about = aboutOptions.some((o) => o.value === chosenAbout) ? chosenAbout : 'personal';
   const request = (): ReportRequest =>
     about === 'team'
       ? { teamId, scope: 'team', subjectId: teamId, period }
