@@ -35,7 +35,7 @@ describe('Mi día: acciones del temporizador', () => {
     expect(await screen.findByRole('button', { name: 'Tomar un descanso' })).toBeDisabled();
   });
 
-  it('si no se pudieron leer los equipos, no se ofrece la pausa (no se sabe el tope)', async () => {
+  it('si no se pudieron leer los equipos, la pausa sigue disponible (Rust aplica el último tope conocido)', async () => {
     const cloud = createMockCloud();
     const ana = cloud.debug.addAccount('ana@pulso.test', 'secreto-123', 'Ana');
     cloud.debug.addTeam('Equipo A', ana);
@@ -44,6 +44,6 @@ describe('Mi día: acciones del temporizador', () => {
     renderWithSession(<MiDiaPage bridge={createMockBridge()} date={localDate()} />, { cloud });
     const button = await screen.findByRole('button', { name: /^Pausar/ });
     await new Promise((r) => setTimeout(r, 100)); // que la lectura de equipos termine en error
-    expect(button).toBeDisabled();
+    expect(button).toBeEnabled();
   });
 });

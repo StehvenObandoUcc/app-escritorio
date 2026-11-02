@@ -171,17 +171,20 @@ export function SessionProvider({
   const reportCore = useCallback((cause: unknown) => setCoreError(t('sync.coreError', { error: errorMessage(cause) })), []);
 
   // Equipo activo en Rust y política del equipo (apps ocultas y avisos, ADR-0009/0010).
+  // Última llamada a activeTeamSet: las reglas esperan a que termine, porque Rust las borra al cambiar de equipo.
+  const teamSet = useRef<Promise<unknown>>(Promise.resolve());
   useEffect(() => {
     if (user === undefined) return;
     if (user === null) {
-      void bridge.activeTeamSet(null, null).catch(reportCore);
+      teamSet.current = bridge.activeTeamSet(null, null).catch(reportCore);
       return;
     }
     if (!teamsQuery.isSuccess) return; // sin red: se conserva el último equipo conocido
     // La política va después del equipo: Rust la reinicia cuando el equipo pasa a ninguno.
     // Se aplica aunque no haya consentimiento: ocultar o avisar es local.
-    void bridge
-      .activeTeamSet(uploading?.id ?? null, user.id)
+    const set = bridge.activeTeamSet(uploading?.id ?? null, user.id);
+    teamSet.current = set.catch(() => undefined);
+    void set
       .then(() => {
         setCoreError(null);
         return bridge.teamPolicySet({
@@ -204,7 +207,8 @@ export function SessionProvider({
     refetchOnWindowFocus: true,
   });
   useEffect(() => {
-    if (rulesQuery.data) void bridge.rulesSet(rulesQuery.data).catch(reportCore);
+    const rules = rulesQuery.data;
+    if (rules) void teamSet.current.then(() => bridge.rulesSet(rules)).catch(reportCore);
   }, [bridge, rulesQuery.data, reportCore]);
 
   // Umbral de inactividad del equipo (F5 D-10): si el equipo define uno, manda sobre el ajuste personal.

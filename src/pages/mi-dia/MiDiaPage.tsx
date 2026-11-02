@@ -102,8 +102,8 @@ export function MiDiaPage({ bridge, date = localDate() }: { bridge: Bridge; date
   const pauseCap = session?.activeTeam?.pauseCapMinutes ?? 0;
   const pausedToday = usePausedToday(bridge, date, state.phase === 'ready' ? (state.day.totals.paused ?? 0) : null, pauseCap > 0);
   // Mientras cargan los equipos (o si no se pudieron leer) no se sabe el tope: no se ofrece la pausa.
-  const teamsFailed = Boolean(session?.teamsError) && !session?.activeTeam;
-  const pauseUnknown = Boolean(session?.teamsLoading) || teamsFailed || (pauseCap > 0 && pausedToday === null);
+  // Sin red al arrancar no se bloquea la pausa: Rust aplica el último tope que conoce del equipo.
+  const pauseUnknown = Boolean(session?.teamsLoading) || (pauseCap > 0 && pausedToday === null);
   const pauseLeft = pauseCap > 0 && pausedToday !== null ? Math.max(0, pauseCap - Math.ceil(pausedToday / 60)) : null;
   const pauseMinutes = pauseLeft === null ? PAUSE_MINUTES : Math.min(PAUSE_MINUTES, pauseLeft);
   const notAllowed = useMemo(() => new Set(session?.notAllowedDomains ?? []), [session?.notAllowedDomains]);

@@ -15,6 +15,7 @@ Fecha: 2026-11-02 · Estado: propuesto (pendiente de aprobación de StehvenOband
   - Crate **`x11-dl` 2.21.0**, que ya estaba en `Cargo.lock` (lo trae GTK). Carga libX11 y libXss al vuelo: el binario no enlaza con X, arranca igual en Wayland y, si falta libXss, solo se pierde la inactividad. Se descartó `x11rb` (puro Rust, mejor manejo de errores) porque añadía 3–4 crates nuevos al árbol.
   - Xlib termina el proceso ante un error del servidor (p. ej. `BadWindow` si la ventana se cierra entre dos lecturas). Se instala un manejador que ignora solo los errores de **nuestra** conexión y pasa los demás al manejador anterior (el de GTK).
   - Sin `DISPLAY` (Wayland sin XWayland) todo devuelve `None` sin fallar.
+  - En una sesión Wayland (`WAYLAND_DISPLAY` o `XDG_SESSION_TYPE=wayland`) tampoco se lee nada: XWayland no ve las apps nativas y su inactividad no cuenta su entrada, así que se registraría «sin actividad» a quien trabaja.
   - Paquetes: el `.deb` depende de `libxss1` y el `.rpm` de `libXScrnSaver`.
 - **macOS** · `src-tauri/src/sensor/macos_impl.rs`:
   - App en primer plano: dueña de la primera ventana de capa 0 en `CGWindowListCopyWindowInfo` (ventanas visibles, sin escritorio, de delante hacia atrás). El proceso es `kCGWindowOwnerName` (el nombre de la app, p. ej. «Google Chrome»; las reglas buscan por «contiene» y en minúsculas). Se evita `NSWorkspace` para no depender del hilo principal ni de AppKit.
@@ -28,7 +29,7 @@ Fecha: 2026-11-02 · Estado: propuesto (pendiente de aprobación de StehvenOband
 - **Publicación:** `.github/workflows/release.yml` con `tauri-apps/tauri-action` v0.6.2 al subir una etiqueta `v*` (o a mano). Crea un **borrador** «Pulso vX.Y.Z» con el instalador de Windows (NSIS/MSI), el `.dmg` universal (Apple Silicon e Intel) y `.deb`/`.rpm`/`.AppImage`. Las variables `VITE_*` salen de los secretos del repositorio.
 
 ## Consecuencias
-- Limitaciones aceptadas: sin dominio del navegador fuera de Windows; Wayland no soportado (en XWayland solo se ven las apps X11); título vacío en macOS sin «Grabación de pantalla»; instaladores sin firma (macOS pide «Abrir» con clic derecho o `xattr -cr`).
+- Limitaciones aceptadas: sin dominio del navegador fuera de Windows; Wayland no soportado (no se registra nada); en Linux hace falta un almacén de claves (gnome-keyring o KWallet; el `.deb` y el `.rpm` recomiendan `gnome-keyring`) porque la clave de cifrado de títulos vive ahí y sin él Pulso no abre; en macOS, al no estar firmada, el Llavero puede volver a pedir permiso en cada versión; título vacío en macOS sin «Grabación de pantalla»; instaladores sin firma (macOS pide «Abrir» con clic derecho o `xattr -cr`).
 - `/proc/<pid>/comm` corta los nombres largos a 15 caracteres (p. ej. `gnome-terminal-`); las reglas por «contiene» siguen funcionando.
 - Lo que se comprueba en CI: en Linux, que la inactividad responde bajo Xvfb y que el sensor ve la xterm activa (proceso `xterm`, sin dominio); en macOS, que la inactividad responde y que leer la ventana no falla. No se prueba a mano en un equipo real.
 - La segunda instancia en macOS y Linux se cierra sin mensaje (el aviso es un cuadro de Windows).

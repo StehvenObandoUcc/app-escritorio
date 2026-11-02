@@ -52,10 +52,20 @@ unsafe extern "C" fn ignore_own_errors(display: *mut Display, event: *mut XError
   }
 }
 
+fn is_wayland() -> bool {
+  std::env::var_os("WAYLAND_DISPLAY").is_some()
+    || std::env::var("XDG_SESSION_TYPE").is_ok_and(|v| v.eq_ignore_ascii_case("wayland"))
+}
+
 impl Connection {
   fn open() -> Option<Self> {
     // Sin DISPLAY no hay sesión X: ni siquiera se carga libX11.
     std::env::var_os("DISPLAY")?;
+    // En Wayland, XWayland solo ve las apps X11 y su contador de inactividad no cuenta la entrada a las apps
+    // nativas: se registraría «sin actividad» a quien trabaja. Mejor no registrar (ADR-0024).
+    if is_wayland() {
+      return None;
+    }
     let xlib = Xlib::open().ok()?;
     // SAFETY: funciones de Xlib cargadas arriba; `display` se comprueba antes de usarla y las cadenas
     // son literales terminados en cero.
