@@ -125,7 +125,10 @@ export const en: Dict = {
       readOnlyHint: 'This task belongs to someone else: you can see it, but not change it.',
       deleteTitle: 'Delete “{title}”?',
       deleteHint: 'Its criteria, reviews and history are deleted. Recorded time is kept without a task.',
-      deleteWithSubtasks: 'Its {n} subtasks, criteria, reviews and history are deleted too. Recorded time is kept without a task.',
+      deleteWithSubtasks: {
+        one: 'Its subtask, criteria, reviews and history are deleted too. Recorded time is kept without a task.',
+        other: 'Its {n} subtasks, criteria, reviews and history are deleted too. Recorded time is kept without a task.',
+      },
     },
     filters: {
       assignee: 'Assignee',
