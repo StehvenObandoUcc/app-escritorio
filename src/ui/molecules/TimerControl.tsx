@@ -69,7 +69,8 @@ export function TimerControl({
             {t('timer.start')}
           </Button>
         )}
-        <Button icon={<Coffee size={16} aria-hidden="true" />} onClick={onBreakToggle}>
+        {/* En pausa de privacidad no se registra nada: un descanso no tiene sentido hasta reanudar. */}
+        <Button icon={<Coffee size={16} aria-hidden="true" />} onClick={onBreakToggle} disabled={state === 'paused'}>
           {state === 'break' ? t('timer.endBreak') : t('timer.takeBreak')}
         </Button>
         <Button

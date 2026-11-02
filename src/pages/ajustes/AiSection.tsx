@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { QueryClientContext } from '@tanstack/react-query';
+import { useCallback, useContext, useEffect, useState, type FormEvent } from 'react';
 import type { AiConfig, Bridge } from '@/bridge/contract';
 import { errorMessage, t } from '@/i18n';
 import { Button, Heading, Select, Surface } from '@/ui/atoms';
@@ -24,12 +25,19 @@ const PING = [{ role: 'user' as const, content: 'Responde solo con este JSON: {"
 export function AiSection({ bridge }: { bridge: Bridge }) {
   const [config, setConfig] = useState<AiConfig | null>(null);
   const load = useCallback(() => bridge.aiConfigGet().then(setConfig), [bridge]);
+  // Reportes lee la configuración con react-query (['ai-config']): tras guardar o borrar, se le avisa.
+  // Por contexto y no con useQueryClient: la sección también se monta sin proveedor (pruebas de F4).
+  const queryClient = useContext(QueryClientContext);
+  const changed = useCallback(async () => {
+    await load();
+    await queryClient?.invalidateQueries({ queryKey: ['ai-config'] });
+  }, [load, queryClient]);
   useEffect(() => {
     void load().catch(() => setConfig({ baseUrl: null, model: null, hasKey: false }));
   }, [load]);
   if (!config) return null;
   // Los campos se inician con la primera lectura; después solo cambian `hasKey` y si hay configuración.
-  return <AiForm bridge={bridge} initial={config} onChanged={load} />;
+  return <AiForm bridge={bridge} initial={config} onChanged={changed} />;
 }
 
 function AiForm({ bridge, initial, onChanged }: { bridge: Bridge; initial: AiConfig; onChanged: () => Promise<void> }) {

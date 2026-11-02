@@ -123,7 +123,10 @@ export const es = {
       readOnlyHint: 'Esta tarea es de otra persona: puedes verla, pero no cambiarla.',
       deleteTitle: '¿Borrar «{title}»?',
       deleteHint: 'Se borran sus criterios, revisiones e historial. El tiempo registrado se conserva sin tarea.',
-      deleteWithSubtasks: 'También se borran sus {n} subtareas, criterios, revisiones e historial. El tiempo registrado se conserva sin tarea.',
+      deleteWithSubtasks: {
+        one: 'También se borran su subtarea, sus criterios, revisiones e historial. El tiempo registrado se conserva sin tarea.',
+        other: 'También se borran sus {n} subtareas, criterios, revisiones e historial. El tiempo registrado se conserva sin tarea.',
+      },
     },
     filters: {
       assignee: 'Responsable',
@@ -352,6 +355,8 @@ export const es = {
     forbidden: 'El servidor no aceptó tus datos. Revisa en Equipo que sigas en el equipo y hayas aceptado el consentimiento.',
     failed: 'No se pudo sincronizar: {error}',
     coreError: 'El sensor no recibió la configuración del equipo: {error} Cierra y vuelve a abrir Pulso.',
+    newConsent: 'Hay una versión nueva del consentimiento de {team}. Hasta que la aceptes, tu actividad no se comparte.',
+    newConsentLink: 'Revisar en Equipo',
   },
   theme: { change: 'Cambiar tema', system: 'Tema del sistema', light: 'Tema claro', dark: 'Tema oscuro' },
   /** El nombre del control lleva los dos idiomas para que se encuentre aunque no se lea el actual. */

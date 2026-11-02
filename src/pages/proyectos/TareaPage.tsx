@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
+import { isTyping } from '@/app/keyboard';
 import { markDecidedHere } from '@/app/taskNotices';
 import { useAction } from '@/app/useAction';
 import type { Project, Task } from '@/cloud/contract';
@@ -90,9 +91,12 @@ function TaskView({ ctx, project, task, back }: { ctx: Ctx; project: Project; ta
   }, [requested, setParams]);
 
   // Esc vuelve al proyecto cuando no hay un formulario abierto (los formularios cancelan con su propio Esc).
+  // Tampoco mientras se escribe en un campo (comentario, criterios, colaboradores) o con un diálogo abierto.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && mode === 'view' && !confirmDelete && !e.defaultPrevented) navigate(backTo);
+      if (e.key !== 'Escape' || mode !== 'view' || confirmDelete || e.defaultPrevented) return;
+      if (isTyping(e.target) || document.querySelector('dialog[open]')) return;
+      navigate(backTo);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);

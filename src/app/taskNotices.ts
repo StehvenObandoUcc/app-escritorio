@@ -70,6 +70,13 @@ export function useTaskNotices() {
   const queryClient = useQueryClient();
   const [notices, setNotices] = useState<TaskNotice[]>([]);
   const userId = user?.id ?? null;
+  // Los avisos son de una persona en un equipo: al cambiar cualquiera de los dos, se descartan.
+  const scope = `${userId}:${teamId}`;
+  const [noticeScope, setNoticeScope] = useState(scope);
+  if (scope !== noticeScope) {
+    setNoticeScope(scope);
+    setNotices([]);
+  }
 
   useEffect(() => {
     if (!teamId || !userId) return;

@@ -125,7 +125,10 @@ export const en: Dict = {
       readOnlyHint: 'This task belongs to someone else: you can see it, but not change it.',
       deleteTitle: 'Delete “{title}”?',
       deleteHint: 'Its criteria, reviews and history are deleted. Recorded time is kept without a task.',
-      deleteWithSubtasks: 'Its {n} subtasks, criteria, reviews and history are deleted too. Recorded time is kept without a task.',
+      deleteWithSubtasks: {
+        one: 'Its subtask, criteria, reviews and history are deleted too. Recorded time is kept without a task.',
+        other: 'Its {n} subtasks, criteria, reviews and history are deleted too. Recorded time is kept without a task.',
+      },
     },
     filters: {
       assignee: 'Assignee',
@@ -354,6 +357,8 @@ export const en: Dict = {
     forbidden: 'The server did not accept your data. Check in Team that you are still in the team and accepted the consent.',
     failed: 'Could not sync: {error}',
     coreError: 'The sensor did not receive the team settings: {error} Close and reopen Pulso.',
+    newConsent: 'There is a new version of the consent for {team}. Until you accept it, your activity is not shared.',
+    newConsentLink: 'Review in Team',
   },
   theme: { change: 'Change theme', system: 'System theme', light: 'Light theme', dark: 'Dark theme' },
   locale: { label: 'Language (Idioma)', changed: 'Language changed to {name}.' },
