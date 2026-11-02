@@ -3,7 +3,9 @@
 -- security definer y search_path: los permisos de ejecución se conservan).
 --   1. review_task: sin revisor pedido (reviewer_id nulo) cualquier colaborador podía decidir.
 --      Las comparaciones con auth.uid() van con coalesce(..., false).
---   2. (validate_entry_task queda fuera: la prueba AC-13 exige rechazar un task_id inexistente.)
+--   2. validate_entry_task: si la tarea se borró (la llave puso task_id en null en la nube), la subida posterior
+--      con el task_id viejo se rechazaba y el temporizador quedaba abierto para siempre. Ahora, si la tarea no
+--      existe y la fila guardada con ese id ya no tiene tarea, se guarda sin tarea. Lo demás sigue rechazándose.
 --   3. set_task_evidence: con created_by nulo (quien creó la tarea borró su cuenta) dejaba pasar a cualquiera.
 --      coalesce(..., false).
 --   4. invitations_select: un admin leía el código de invitaciones de owner o admin y podía hacerse owner.
@@ -53,6 +55,30 @@ begin
   where id = v_review.task_id;
   perform public.log_task_event(v_review.task_id, case when p_approve then 'review_approved' else 'changes_requested' end,
     jsonb_build_object('review', p_review, 'comment', nullif(trim(coalesce(p_comment, '')), '')));
+end $$;
+
+-- ─────────── 2. validate_entry_task (de 20261008000001_proyectos_y_tareas.sql) ───────────
+
+-- La tarea de una entrada debe ser del mismo equipo. SECURITY DEFINER: una entrada hecha sin conexión
+-- sigue subiendo aunque la persona ya no vea la tarea (por ejemplo, si salió del proyecto).
+-- Si la tarea ya se borró y la fila guardada ya quedó sin tarea (la llave la puso en null), la subida
+-- con el task_id viejo se guarda sin tarea en vez de rechazarse. Se mira la fila guardada por id y no OLD:
+-- en un upsert (insert ... on conflict do update) el disparador BEFORE INSERT corre antes que el UPDATE.
+-- Una entrada nueva con una tarea inexistente sigue rechazándose (AC-13).
+create or replace function public.validate_entry_task() returns trigger
+language plpgsql security definer set search_path = ''
+as $$
+begin
+  if new.task_id is not null
+     and not exists (select 1 from public.tasks t where t.id = new.task_id)
+     and exists (select 1 from public.time_entries e where e.id = new.id and e.task_id is null) then
+    new.task_id := null;
+  end if;
+  if new.task_id is not null
+     and not exists (select 1 from public.tasks t where t.id = new.task_id and t.team_id = new.team_id) then
+    raise exception 'La tarea no es de este equipo' using errcode = '23514';
+  end if;
+  return new;
 end $$;
 
 -- ─────────── 3. set_task_evidence (de 20261008000005_evidencia_por_tarea.sql) ───────────
