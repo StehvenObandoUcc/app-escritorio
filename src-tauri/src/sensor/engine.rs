@@ -188,7 +188,18 @@ impl Engine {
   }
 
   fn transition(&mut self, t: DateTime<Utc>, now: DateTime<Utc>, d: Observation, out: &mut Vec<Change>) {
+    let open_id = self.open_draft().map(|c| c.id.clone());
     self.close_open_at(t, out);
+    // Si el bloque abierto quedó en cero (el nuevo empieza donde él empezaba, p. ej. «sin actividad» tras
+    // Win+L), puede que ya esté en la nube, que solo hace upsert: el nuevo bloque hereda su id para
+    // sobrescribirlo allí en vez de dejarlo huérfano y solapado.
+    let mut reuse = match (open_id, out.last()) {
+      (Some(id), Some(Change::Remove(r))) if *r == id => {
+        out.pop();
+        Some(id)
+      }
+      _ => None,
+    };
 
     let key = d.key();
     let n = self.tail.len();
@@ -213,7 +224,7 @@ impl Engine {
       out.push(Change::Upsert(cur.clone()));
     } else {
       let draft = Draft {
-        id: Uuid::new_v4().to_string(),
+        id: reuse.take().unwrap_or_else(|| Uuid::new_v4().to_string()),
         started_at: t,
         ended_at: now,
         app_name: d.app_name,
@@ -224,6 +235,10 @@ impl Engine {
       };
       out.push(Change::Upsert(draft.clone()));
       self.tail.push(draft);
+    }
+    // Se reabrió un bloque previo: el de cero sí se borra.
+    if let Some(id) = reuse {
+      out.push(Change::Remove(id));
     }
     self.open = true;
 
@@ -491,6 +506,30 @@ mod tests {
     assert_eq!(blocks[0].category, Category::Break);
     assert_eq!(blocks[1].category, Category::Idle);
     assert!(blocks[1].started_at >= blocks[0].ended_at);
+  }
+
+  #[test]
+  fn idle_that_swallows_the_open_block_reuses_its_id() {
+    // Win+L: la última entrada fue en 0:00 y la pantalla de bloqueo pasa al frente en 0:01. Al
+    // cumplirse el umbral, «sin actividad» empieza donde empezaba ese bloque: se reutiliza su id
+    // para que la nube (que solo hace upsert) lo sobrescriba en vez de quedarse con él.
+    let (mut e, mut d) = (Engine::new(), Disk::default());
+    let lock = obs("LockApp", Category::Neutral);
+    d.apply(e.tick(at(0, 1), Some(&lock), 1, Mode::Tracking, IDLE_LIMIT));
+    let a_id = d.sorted()[0].id.clone();
+    let mut s = 3;
+    while s < 300 {
+      d.apply(e.tick(at(s / 60, s % 60), Some(&lock), s as u64, Mode::Tracking, IDLE_LIMIT));
+      s += 2;
+    }
+    let changes = e.tick(at(5, 0), Some(&lock), 300, Mode::Tracking, IDLE_LIMIT);
+    assert!(!changes.contains(&Change::Remove(a_id.clone())), "{changes:#?}");
+    d.apply(changes);
+    let blocks = d.sorted();
+    assert_eq!(blocks.len(), 1, "{blocks:#?}");
+    assert_eq!(blocks[0].category, Category::Idle);
+    assert_eq!(blocks[0].id, a_id);
+    assert_eq!(blocks[0].title, None);
   }
 
   #[test]

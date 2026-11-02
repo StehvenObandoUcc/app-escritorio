@@ -129,6 +129,8 @@ struct Inner {
   last_alert: Option<(String, DateTime<Utc>)>,
   /// Tope diario de pausa de privacidad del equipo en minutos (F5 D-11); 0 = sin tope.
   pause_cap_minutes: u32,
+  /// Última lectura con una app «sin teclado» delante (ADR-0013): la inactividad no retrocede antes de ella.
+  last_keep_active: Option<DateTime<Utc>>,
 }
 
 fn default_true() -> bool {
@@ -210,6 +212,13 @@ fn parse_team_rules(json: &str) -> Result<Vec<Rule>> {
   Ok(rules)
 }
 
+pub const AI_NEEDS_ACCOUNT: &str = "Inicia sesión para configurar la IA.";
+
+/// Ajustes de URL y modelo de IA de la cuenta activa.
+fn ai_keys(g: &Inner) -> Option<[String; 2]> {
+  g.store.user().map(|u| [format!("{KEY_AI_BASE_URL}:{u}"), format!("{KEY_AI_MODEL}:{u}")])
+}
+
 fn to_hex(bytes: &[u8]) -> String {
   bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
@@ -241,6 +250,18 @@ impl Inner {
       s.language = v;
     }
     Ok(s)
+  }
+
+  /// Política y tope de pausa del equipo a sus valores por defecto (sin equipo).
+  fn reset_team_policy(&mut self) -> Result<()> {
+    for key in [KEY_ALLOW_HIDDEN, KEY_ALERT, KEY_ALERT_REPEAT, KEY_PAUSE_CAP] {
+      self.store.setting_delete(key)?;
+    }
+    self.allow_hidden = true;
+    self.alert_enabled = true;
+    self.alert_repeat_minutes = DEFAULT_ALERT_REPEAT;
+    self.pause_cap_minutes = 0;
+    Ok(())
   }
 
   fn idle_threshold(&self) -> u64 {
@@ -429,6 +450,7 @@ impl Tracker {
         alert_repeat_minutes,
         last_alert: None,
         pause_cap_minutes,
+        last_keep_active: None,
       }),
     })
   }
@@ -525,10 +547,18 @@ impl Tracker {
     let obs = seen.map(|(o, _, _)| o);
     // Leer o estar en una reunión no usa teclado: con esas apps delante el umbral sube a 30 min (ADR-0013).
     let thr = if keep_active { g.idle_threshold().max(KEEP_ACTIVE_IDLE_SECS) } else { g.idle_threshold() };
+    // Al dejar una reunión sin tocar nada, la inactividad se cuenta desde que dejó de estar delante:
+    // si no, empezaría en la última entrada y se comería la reunión.
+    let mut idle_secs = idle_secs.unwrap_or(0);
+    if keep_active {
+      g.last_keep_active = Some(now);
+    } else if let Some(k) = g.last_keep_active {
+      idle_secs = idle_secs.min(u64::try_from((now - k).num_seconds()).unwrap_or(0));
+    }
     // Sin uso de teclado ni ratón por encima del umbral no se avisa: la persona no está ahí.
-    let idle = idle_secs.unwrap_or(0) >= thr;
+    let idle = idle_secs >= thr;
     let alert = g.alert_for(now, obs.as_ref().filter(|_| !idle), not_allowed);
-    let changes = g.engine.tick(now, obs.as_ref(), idle_secs.unwrap_or(0), mode, thr);
+    let changes = g.engine.tick(now, obs.as_ref(), idle_secs, mode, thr);
     g.record(changes);
     if g.last_flush.is_none_or(|t| now - t >= FLUSH_EVERY) {
       g.flush(now)?;
@@ -753,6 +783,14 @@ impl Tracker {
         None => g.store.setting_delete(key)?,
       }
     }
+    // Lo del equipo anterior no se aplica al nuevo: la interfaz vuelve a enviar reglas y política al cargarlo.
+    if g.active_team.as_deref() != team_id {
+      g.store.setting_delete(KEY_TEAM_RULES)?;
+      g.team_rules.clear();
+      if team_id.is_none() {
+        g.reset_team_policy()?;
+      }
+    }
     g.active_team = team_id.map(String::from);
     g.store.set_user(user_id.map(String::from));
     g.entry_versions.clear();
@@ -847,22 +885,43 @@ impl Tracker {
     g.store.set_block_ai_usage(id, usage)
   }
 
-  /// URL base y modelo de la IA con clave propia; `has_key` lo pone quien llama (la clave vive en el almacén seguro).
+  /// Cuenta activa (`None`: sin sesión).
+  pub fn active_user(&self) -> Result<Option<String>> {
+    Ok(self.lock()?.store.user().map(String::from))
+  }
+
+  /// URL base y modelo de la IA con clave propia de la cuenta activa; sin sesión, nada. `has_key` lo pone quien
+  /// llama (la clave vive en el almacén seguro). La configuración de versiones anteriores, una por equipo de
+  /// cómputo, pasa una sola vez a la primera cuenta que la lee.
   pub fn ai_config_get(&self) -> Result<(Option<String>, Option<String>)> {
     let g = self.lock()?;
-    Ok((g.store.setting_get(KEY_AI_BASE_URL)?, g.store.setting_get(KEY_AI_MODEL)?))
+    let Some([url_key, model_key]) = ai_keys(&g) else {
+      return Ok((None, None));
+    };
+    for (legacy, key) in [(KEY_AI_BASE_URL, &url_key), (KEY_AI_MODEL, &model_key)] {
+      if let Some(v) = g.store.setting_get(legacy)? {
+        if g.store.setting_get(key)?.is_none() {
+          g.store.setting_set(key, &v)?;
+        }
+        g.store.setting_delete(legacy)?;
+      }
+    }
+    Ok((g.store.setting_get(&url_key)?, g.store.setting_get(&model_key)?))
   }
 
   pub fn ai_config_set(&self, base_url: &str, model: &str) -> Result<()> {
     let g = self.lock()?;
-    g.store.setting_set(KEY_AI_BASE_URL, base_url)?;
-    g.store.setting_set(KEY_AI_MODEL, model)
+    let [url_key, model_key] = ai_keys(&g).ok_or(AI_NEEDS_ACCOUNT)?;
+    g.store.setting_set(&url_key, base_url)?;
+    g.store.setting_set(&model_key, model)
   }
 
   pub fn ai_config_clear(&self) -> Result<()> {
     let g = self.lock()?;
-    g.store.setting_delete(KEY_AI_BASE_URL)?;
-    g.store.setting_delete(KEY_AI_MODEL)
+    for key in ai_keys(&g).into_iter().flatten() {
+      g.store.setting_delete(&key)?;
+    }
+    Ok(())
   }
 
   // ---- Sesión de Supabase (F2, PS-08) ----
@@ -892,7 +951,7 @@ impl Tracker {
   }
 
   /// CU-08 (spec F7): tras eliminar la cuenta en la nube, borra lo local de esa cuenta, la sesión y lo del equipo
-  /// (equipo activo, reglas y política). Las preferencias de la app (umbral, apps ocultas, idioma) se quedan.
+  /// (equipo activo, reglas y política) y su configuración de IA. Las preferencias de la app (umbral, apps ocultas, idioma) se quedan.
   pub fn local_data_clear(&self, now: DateTime<Utc>) -> Result<()> {
     let mut g = self.lock()?;
     // El bloque abierto se guarda primero para que también se borre.
@@ -900,16 +959,23 @@ impl Tracker {
     g.record(changes);
     g.flush(now)?;
     g.store.delete_account_rows()?;
-    for key in [KEY_ACTIVE_TEAM, KEY_ACTIVE_USER, KEY_TEAM_RULES, KEY_SESSION, KEY_ALLOW_HIDDEN, KEY_ALERT, KEY_ALERT_REPEAT, KEY_PAUSE_CAP] {
+    // La configuración de IA de la cuenta (clave en el almacén seguro, URL y modelo en ajustes). Si el almacén
+    // seguro falla, se registra y se sigue: lo demás de la cuenta se borra igual.
+    if let Some(user) = g.store.user()
+      && let Err(e) = crate::ai::key_clear(&crate::ai::key_name(user))
+    {
+      log::error!("borrar la clave de IA de la cuenta: {e}");
+    }
+    for key in ai_keys(&g).into_iter().flatten() {
+      g.store.setting_delete(&key)?;
+    }
+    for key in [KEY_ACTIVE_TEAM, KEY_ACTIVE_USER, KEY_TEAM_RULES, KEY_SESSION] {
       g.store.setting_delete(key)?;
     }
+    g.reset_team_policy()?;
     g.store.set_user(None);
     g.active_team = None;
     g.team_rules.clear();
-    g.allow_hidden = true;
-    g.alert_enabled = true;
-    g.alert_repeat_minutes = DEFAULT_ALERT_REPEAT;
-    g.pause_cap_minutes = 0;
     g.entry_versions.clear();
     g.usage_versions.clear();
     Ok(())
@@ -1785,5 +1851,108 @@ mod tests {
     // Preferencias de la app.
     assert_eq!(g.settings.idle_minutes, 7);
     assert_eq!(g.settings.language, "en");
+  }
+
+  // ---- Auditoría: lo del equipo no sobrevive al cambio de equipo ni al cierre de sesión ----
+
+  fn set_team_stuff(t: &Tracker) {
+    t.rules_set(r#"[{"match":"process","pattern":"code","category":"distraction","ai_tool":null}]"#).unwrap();
+    t.team_policy_set(TeamPolicy { allow_hidden_apps: false, alert_not_allowed: false, alert_repeat_minutes: 5 }).unwrap();
+    t.team_pause_cap_set(30).unwrap();
+  }
+
+  #[test]
+  fn signing_out_resets_team_rules_policy_and_pause_cap() {
+    let t = tracker();
+    t.active_team_set(at(12, 0, 0), Some(TEAM), Some(ANA)).unwrap();
+    set_team_stuff(&t);
+    t.active_team_set(at(12, 0, 2), None, None).unwrap();
+    let g = t.inner.lock().unwrap();
+    for key in [KEY_TEAM_RULES, KEY_ALLOW_HIDDEN, KEY_ALERT, KEY_ALERT_REPEAT, KEY_PAUSE_CAP] {
+      assert_eq!(g.store.setting_get(key).unwrap(), None, "{key}");
+    }
+    assert!(g.team_rules.is_empty() && g.allow_hidden && g.alert_enabled);
+    assert_eq!((g.alert_repeat_minutes, g.pause_cap_minutes), (DEFAULT_ALERT_REPEAT, 0));
+  }
+
+  #[test]
+  fn switching_team_clears_the_previous_team_rules() {
+    let t = tracker();
+    t.active_team_set(at(12, 0, 0), Some(TEAM), Some(ANA)).unwrap();
+    set_team_stuff(&t);
+    t.active_team_set(at(12, 0, 2), Some(OTHER), Some(ANA)).unwrap();
+    let g = t.inner.lock().unwrap();
+    assert_eq!(g.store.setting_get(KEY_TEAM_RULES).unwrap(), None);
+    assert!(g.team_rules.is_empty());
+  }
+
+  // ---- Auditoría: la inactividad no retrocede sobre una reunión (ADR-0013) ----
+
+  #[test]
+  fn idle_after_a_meeting_does_not_eat_the_meeting() {
+    // 25 min en Zoom sin teclado (umbral personal de 3 min) y luego pasa al frente VS Code, aún sin tocar nada.
+    let t = tracker();
+    t.settings_set(SettingsPatch { idle_minutes: Some(3), ..Default::default() }).unwrap();
+    feed_without_input(&t, 0, 25 * 60, win("Zoom", "Reunión"));
+    let switch = 25 * 60 + 2;
+    let mut s = switch;
+    while s <= switch + 60 {
+      t.tick(at(12, s / 60, s % 60), win("code", "main.rs"), Some(u64::from(s))).unwrap();
+      s += 2;
+    }
+    let d = day(&t, at(12, 27, 0));
+    let zoom = d.blocks.iter().find(|b| b.app_name == "Zoom").expect("bloque de Zoom");
+    assert!(parse_ts(&zoom.ended_at).unwrap() >= at(12, 25, 0), "la reunión no se recorta: {:?}", d.blocks);
+    assert_eq!(d.totals["idle"], 0, "un minuto después del cambio aún no hay inactividad: {:?}", d.blocks);
+    // Pasado el umbral normal desde el cambio, la inactividad empieza en el cambio, no antes.
+    while s <= switch + 240 {
+      t.tick(at(12, s / 60, s % 60), win("code", "main.rs"), Some(u64::from(s))).unwrap();
+      s += 2;
+    }
+    let d = day(&t, at(12, 30, 0));
+    let idle = d.blocks.iter().find(|b| b.category == Category::Idle).expect("bloque de inactividad");
+    assert!(parse_ts(&idle.started_at).unwrap() >= at(12, 25, 0), "{:?}", d.blocks);
+  }
+
+  // ---- Auditoría: la configuración de IA es de cada cuenta ----
+
+  #[test]
+  fn ai_config_is_per_account_and_the_legacy_one_moves_to_the_first_account() {
+    let t = tracker();
+    // Configuración de una versión anterior, guardada para todo el equipo de cómputo.
+    {
+      let g = t.inner.lock().unwrap();
+      g.store.setting_set(KEY_AI_BASE_URL, "https://vieja.example/v1").unwrap();
+      g.store.setting_set(KEY_AI_MODEL, "viejo").unwrap();
+    }
+    // Sin sesión no hay configuración y no se puede guardar.
+    assert_eq!(t.ai_config_get().unwrap(), (None, None));
+    assert_eq!(t.ai_config_set("https://x.example/v1", "m").unwrap_err(), "Inicia sesión para configurar la IA.");
+    t.active_team_set(at(12, 0, 0), None, Some(ANA)).unwrap();
+    assert_eq!(t.ai_config_get().unwrap(), (Some("https://vieja.example/v1".into()), Some("viejo".into())));
+    t.ai_config_set("https://ana.example/v1", "modelo-ana").unwrap();
+    t.active_team_set(at(12, 0, 2), None, Some(BETO)).unwrap();
+    assert_eq!(t.ai_config_get().unwrap(), (None, None), "Beto no ve la configuración de Ana ni la antigua");
+    t.active_team_set(at(12, 0, 4), None, Some(ANA)).unwrap();
+    assert_eq!(t.ai_config_get().unwrap(), (Some("https://ana.example/v1".into()), Some("modelo-ana".into())));
+  }
+
+  #[test]
+  fn local_data_clear_removes_the_account_ai_config() {
+    let t = tracker();
+    t.active_team_set(at(12, 0, 0), None, Some(BETO)).unwrap();
+    t.ai_config_set("https://beto.example/v1", "modelo-beto").unwrap();
+    t.active_team_set(at(12, 0, 2), None, Some(ANA)).unwrap();
+    t.ai_config_set("https://ana.example/v1", "modelo-ana").unwrap();
+    #[cfg(windows)]
+    crate::ai::key_set(&crate::ai::key_name(ANA), "sk-ana").unwrap();
+    t.local_data_clear(at(12, 0, 4)).unwrap();
+    #[cfg(windows)]
+    assert_eq!(crate::ai::key_get(&crate::ai::key_name(ANA)).unwrap(), None);
+    t.active_team_set(at(12, 0, 6), None, Some(ANA)).unwrap();
+    assert_eq!(t.ai_config_get().unwrap(), (None, None));
+    // La de otra cuenta en el mismo equipo de cómputo se queda.
+    t.active_team_set(at(12, 0, 8), None, Some(BETO)).unwrap();
+    assert_eq!(t.ai_config_get().unwrap(), (Some("https://beto.example/v1".into()), Some("modelo-beto".into())));
   }
 }
