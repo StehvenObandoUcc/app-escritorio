@@ -56,6 +56,38 @@ describe('1. review_task sin revisor pedido', () => {
   });
 });
 
+describe('2. validate_entry_task con la tarea ya borrada', () => {
+  // Como el cliente (PostgREST upsert): insert ... on conflict (id) do update.
+  const upsert = (q: Query, id: string, started: string, ended: string | null, task: string) =>
+    q(
+      `insert into time_entries (id, team_id, user_id, started_at, ended_at, task_id, source) values ($1, $2, $3, $4, $5, $6, 'timer')
+       on conflict (id) do update set ended_at = excluded.ended_at, task_id = excluded.task_id`,
+      [id, teamA, caro, started, ended, task],
+    );
+
+  it('la entrada que vuelve con el task_id viejo se guarda sin tarea y se cierra', async () => {
+    const task = await db.as(ana, (q) => createTask(q, 'Temporal', caro));
+    const id = randomUUID();
+    const started = minsAgo(30);
+    await db.as(caro, (q) => upsert(q, id, started, null, task));
+    await db.admin('delete from tasks where id = $1', [task]);
+    const ended = minsAgo(5);
+    await db.as(caro, (q) => upsert(q, id, started, ended, task));
+    const [row] = await db.admin<{ task_id: string | null; ended_at: Date | null }>(
+      'select task_id, ended_at from time_entries where id = $1',
+      [id],
+    );
+    expect(row!.task_id).toBeNull();
+    expect(row!.ended_at?.toISOString()).toBe(ended);
+  });
+
+  it('una entrada nueva con una tarea que no existe sigue rechazándose', async () => {
+    expect(await failure(() => db.as(caro, (q) => upsert(q, randomUUID(), minsAgo(10), null, randomUUID())))).toMatch(
+      /La tarea no es de este equipo/,
+    );
+  });
+});
+
 describe('3. set_task_evidence con created_by nulo', () => {
   it('un colaborador no la elige; quien gestiona el proyecto sí', async () => {
     const task = await db.as(ana, (q) => createTask(q, 'Huérfana'));
