@@ -37,6 +37,12 @@ Dos aclaraciones que evitan confusiones con los clientes:
 La clave propia **nunca** pasa por los servidores de Pulso ni queda al alcance de la interfaz:
 `ai_config_get` responde `has_key: true/false`, no la clave.
 
+La configuración de Clave propia (URL, modelo y clave) es **de cada cuenta**, no del equipo de cómputo: la clave
+se guarda en el almacén seguro como `ai-key:<id de la cuenta>` y la URL y el modelo en los ajustes locales con
+el mismo sufijo. Sin sesión no hay configuración y guardarla falla con «Inicia sesión para configurar la IA.».
+La configuración de versiones anteriores (una sola por equipo, `ai-key`) pasa una vez a la primera cuenta que
+consulta la configuración de IA y se borra.
+
 ## 3. Recorrido anti-alucinación (igual en los tres modos)
 
 ```
