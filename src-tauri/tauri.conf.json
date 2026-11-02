@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Pulso",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "identifier": "co.pulso.desktop",
   "build": {
     "frontendDist": "../dist",
@@ -45,10 +45,20 @@
     "shortDescription": "Pulso: actividad y tareas de tu equipo, con tus datos privados",
     "linux": {
       "deb": {
-        "depends": ["libxss1"]
+        "depends": [
+          "libxss1"
+        ],
+        "recommends": [
+          "gnome-keyring"
+        ]
       },
       "rpm": {
-        "depends": ["libXScrnSaver"]
+        "depends": [
+          "libXScrnSaver"
+        ],
+        "recommends": [
+          "gnome-keyring"
+        ]
       }
     },
     "windows": {
