@@ -123,7 +123,10 @@ export const es = {
       readOnlyHint: 'Esta tarea es de otra persona: puedes verla, pero no cambiarla.',
       deleteTitle: '¿Borrar «{title}»?',
       deleteHint: 'Se borran sus criterios, revisiones e historial. El tiempo registrado se conserva sin tarea.',
-      deleteWithSubtasks: 'También se borran sus {n} subtareas, criterios, revisiones e historial. El tiempo registrado se conserva sin tarea.',
+      deleteWithSubtasks: {
+        one: 'También se borran su subtarea, sus criterios, revisiones e historial. El tiempo registrado se conserva sin tarea.',
+        other: 'También se borran sus {n} subtareas, criterios, revisiones e historial. El tiempo registrado se conserva sin tarea.',
+      },
     },
     filters: {
       assignee: 'Responsable',
