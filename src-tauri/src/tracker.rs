@@ -129,6 +129,8 @@ struct Inner {
   last_alert: Option<(String, DateTime<Utc>)>,
   /// Tope diario de pausa de privacidad del equipo en minutos (F5 D-11); 0 = sin tope.
   pause_cap_minutes: u32,
+  /// Última lectura con una app «sin teclado» delante (ADR-0013): la inactividad no retrocede antes de ella.
+  last_keep_active: Option<DateTime<Utc>>,
 }
 
 fn default_true() -> bool {
@@ -441,6 +443,7 @@ impl Tracker {
         alert_repeat_minutes,
         last_alert: None,
         pause_cap_minutes,
+        last_keep_active: None,
       }),
     })
   }
@@ -537,10 +540,18 @@ impl Tracker {
     let obs = seen.map(|(o, _, _)| o);
     // Leer o estar en una reunión no usa teclado: con esas apps delante el umbral sube a 30 min (ADR-0013).
     let thr = if keep_active { g.idle_threshold().max(KEEP_ACTIVE_IDLE_SECS) } else { g.idle_threshold() };
+    // Al dejar una reunión sin tocar nada, la inactividad se cuenta desde que dejó de estar delante:
+    // si no, empezaría en la última entrada y se comería la reunión.
+    let mut idle_secs = idle_secs.unwrap_or(0);
+    if keep_active {
+      g.last_keep_active = Some(now);
+    } else if let Some(k) = g.last_keep_active {
+      idle_secs = idle_secs.min(u64::try_from((now - k).num_seconds()).unwrap_or(0));
+    }
     // Sin uso de teclado ni ratón por encima del umbral no se avisa: la persona no está ahí.
-    let idle = idle_secs.unwrap_or(0) >= thr;
+    let idle = idle_secs >= thr;
     let alert = g.alert_for(now, obs.as_ref().filter(|_| !idle), not_allowed);
-    let changes = g.engine.tick(now, obs.as_ref(), idle_secs.unwrap_or(0), mode, thr);
+    let changes = g.engine.tick(now, obs.as_ref(), idle_secs, mode, thr);
     g.record(changes);
     if g.last_flush.is_none_or(|t| now - t >= FLUSH_EVERY) {
       g.flush(now)?;
@@ -1835,5 +1846,33 @@ mod tests {
     let g = t.inner.lock().unwrap();
     assert_eq!(g.store.setting_get(KEY_TEAM_RULES).unwrap(), None);
     assert!(g.team_rules.is_empty());
+  }
+
+  // ---- Auditoría: la inactividad no retrocede sobre una reunión (ADR-0013) ----
+
+  #[test]
+  fn idle_after_a_meeting_does_not_eat_the_meeting() {
+    // 25 min en Zoom sin teclado (umbral personal de 3 min) y luego pasa al frente VS Code, aún sin tocar nada.
+    let t = tracker();
+    t.settings_set(SettingsPatch { idle_minutes: Some(3), ..Default::default() }).unwrap();
+    feed_without_input(&t, 0, 25 * 60, win("Zoom", "Reunión"));
+    let switch = 25 * 60 + 2;
+    let mut s = switch;
+    while s <= switch + 60 {
+      t.tick(at(12, s / 60, s % 60), win("code", "main.rs"), Some(u64::from(s))).unwrap();
+      s += 2;
+    }
+    let d = day(&t, at(12, 27, 0));
+    let zoom = d.blocks.iter().find(|b| b.app_name == "Zoom").expect("bloque de Zoom");
+    assert!(parse_ts(&zoom.ended_at).unwrap() >= at(12, 25, 0), "la reunión no se recorta: {:?}", d.blocks);
+    assert_eq!(d.totals["idle"], 0, "un minuto después del cambio aún no hay inactividad: {:?}", d.blocks);
+    // Pasado el umbral normal desde el cambio, la inactividad empieza en el cambio, no antes.
+    while s <= switch + 240 {
+      t.tick(at(12, s / 60, s % 60), win("code", "main.rs"), Some(u64::from(s))).unwrap();
+      s += 2;
+    }
+    let d = day(&t, at(12, 30, 0));
+    let idle = d.blocks.iter().find(|b| b.category == Category::Idle).expect("bloque de inactividad");
+    assert!(parse_ts(&idle.started_at).unwrap() >= at(12, 25, 0), "{:?}", d.blocks);
   }
 }
