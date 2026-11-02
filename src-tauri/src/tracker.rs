@@ -950,7 +950,7 @@ impl Tracker {
     self.lock()?.store.setting_delete(KEY_SESSION)
   }
 
-  /// CU-08 (spec F7): tras eliminar la cuenta en la nube, borra lo local de esa cuenta, la sesión y lo del equipo
+  /// CU-08 (spec eliminar-cuenta): tras eliminar la cuenta en la nube, borra lo local de esa cuenta, la sesión y lo del equipo
   /// (equipo activo, reglas y política) y su configuración de IA. Las preferencias de la app (umbral, apps ocultas, idioma) se quedan.
   pub fn local_data_clear(&self, now: DateTime<Utc>) -> Result<()> {
     let mut g = self.lock()?;
@@ -1815,7 +1815,7 @@ mod tests {
     assert!(!dir.exists());
   }
 
-  // ---- CU-08: eliminar mi cuenta (spec F7, AC-5) ----
+  // ---- CU-08: eliminar mi cuenta (spec eliminar-cuenta, AC-5) ----
 
   #[test]
   fn local_data_clear_removes_the_account_data_and_keeps_app_preferences() {

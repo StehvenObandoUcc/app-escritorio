@@ -1,7 +1,7 @@
-# Spec F7 · Eliminar mi cuenta
+# Spec · Eliminar mi cuenta
 
 Funcionalidades: CU-08.
-Estado: borrador. Decisiones de producto tomadas por el responsable el 30 oct: el tiempo registrado de la persona
+Estado: implementada. Decisiones de producto tomadas por el responsable el 30 oct: el tiempo registrado de la persona
 se borra con la cuenta; si es la única propietaria de un equipo con más personas, no puede eliminarla hasta ceder
 la propiedad; si está sola en un equipo, ese equipo se borra con la cuenta. El despliegue lo hace el responsable.
 

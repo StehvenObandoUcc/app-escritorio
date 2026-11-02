@@ -8,7 +8,7 @@ import { ReportesPage } from './ReportesPage';
 
 afterEach(() => vi.restoreAllMocks());
 
-describe('Reportes · un solo aviso de error (F7)', () => {
+describe('Reportes · un solo aviso de error', () => {
   it('un fallo al guardar en Manual se muestra una vez, en el panel Manual', async () => {
     const user = userEvent.setup();
     const cloud = createMockCloud();

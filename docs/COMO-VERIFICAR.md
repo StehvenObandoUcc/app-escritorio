@@ -102,7 +102,7 @@ Para usar el sensor real en lugar de los datos de ejemplo (desde F1): crea `.env
 |---|---|
 | `npm run dev` dice que el puerto 1420 está ocupado | Hay otra instancia abierta. Ciérrala |
 | `npm run tauri dev` falla con `link.exe not found` | Faltan las C++ Build Tools |
-| *Mi día* muestra "Datos de ejemplo" dentro de la app | Falta `VITE_BRIDGE=tauri` en `.env`, o aún no está F1 |
+| *Mi día* muestra "Datos de ejemplo" dentro de la app | Falta `VITE_BRIDGE=tauri` en `.env` |
 | `check:tokens` falla | Hay un color o medida escrita a mano: usa un token (`docs/DISENO.md`) |
 | El lint dice "Atomic design: esta capa no puede importar…" | El componente está en la capa equivocada o importa hacia arriba |
 | `test:db` falla con "La migración … falló" | Error de SQL en esa migración: el mensaje indica cuál |

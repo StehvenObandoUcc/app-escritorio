@@ -7,7 +7,7 @@ Fecha: 2026-10-05 · Estado: aceptado
 pide «memoria total por debajo de 120 MB». No decía qué se suma ni cuándo se mide. En Windows, la app son
 varios procesos: `pulso.exe` y los de WebView2 (seis en la medición del 2026-10-05). Con el conjunto de
 trabajo (*working set*) esos procesos cuentan varias veces las mismas páginas compartidas: 395 MB. Con la
-memoria privada: 83,5 MB (`docs/spikes/F1-medicion-app-real.md`).
+memoria privada: 83,5 MB.
 
 ## Decisión
 La métrica oficial es la **memoria privada** (*working set* privado): la parte de memoria que ningún otro

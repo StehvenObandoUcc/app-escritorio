@@ -262,7 +262,7 @@ export interface Bridge {
   sessionSet(json: string): Promise<void>;
   sessionClear(): Promise<void>;
   /**
-   * CU-08 (spec F7): tras eliminar la cuenta en la nube, borra lo local de la cuenta activa (bloques, tiempo,
+   * CU-08 (spec eliminar-cuenta): tras eliminar la cuenta en la nube, borra lo local de la cuenta activa (bloques, tiempo,
    * cierres, copia de tareas), la sesión y lo del equipo activo. Conserva las preferencias de la app.
    */
   localDataClear(): Promise<void>;

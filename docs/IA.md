@@ -19,12 +19,12 @@ consumo se cobra en **su** cuenta de ese proveedor.
 | Ollama (local) | `http://localhost:11434/v1` | Sin clave. Los datos no salen del equipo. |
 | Otro | la que indique el proveedor | Cualquier servicio compatible. |
 
-> Las URL se confirman en la documentación de cada proveedor al implementar F4 (regla R2).
+> Las URL salen de la documentación de cada proveedor.
 > **El nombre del modelo lo escribe el usuario**: no se fija en el código, porque los modelos cambian cada pocos meses.
 
 Dos aclaraciones que evitan confusiones con los clientes:
 - **Una suscripción de chat no es una clave de API.** ChatGPT Plus, Gemini Advanced o Claude Pro no incluyen clave. La API se paga aparte, por consumo.
-- Para aprovechar una suscripción de chat existe el **modo Manual** (copiar y pegar). Conectar la suscripción de ChatGPT directamente queda fuera de v1 (`RI-14`).
+- Para aprovechar una suscripción de chat existe el **modo Manual** (copiar y pegar).
 
 ## 2. Tres modos, el mismo recorrido
 
@@ -152,8 +152,3 @@ código (```` ```json ````) y texto antes o después.
 
 La genera el código, igual con cualquier proveedor: Markdown, JSON (hechos + narrativa),
 CSV (solo hechos) y una vista de impresión para guardar como PDF.
-
-## 8. Fuera de v1
-
-Asistente conversacional (`RI-12`), tareas desde texto (`RI-11`), clave compartida por el equipo
-(`RI-13`), plan de ChatGPT (`RI-14`). Están en `docs/FUNCIONALIDADES.md` con su fase.

@@ -1,7 +1,7 @@
 # Spec F1 · Sensor y *Mi día*
 
 Funcionalidades: TA-01 a TA-09, IA-01 a IA-03, PS-03, PS-04, SY-01
-Estado: aprobada (por StehvenObando, 2026-10-05). Evidencia de cada criterio en `docs/spikes/F1-medicion-app-real.md`.
+Estado: aprobada (por StehvenObando, 2026-10-05). Implementada.
 
 ## Objetivo
 Al terminar, Pulso registra en Windows la actividad real del usuario y *Mi día* la muestra,
@@ -76,7 +76,7 @@ Rendimiento
 - Sesión, equipos y sincronización (F2).
 - Asociar el temporizador a una tarea real (F3): por ahora `task_id` es siempre nulo.
 - Editor de reglas del equipo (F5).
-- macOS y Linux.
+- macOS y Linux (los cubre ADR-0024).
 
 ## Cómo se comprueba
-Puerta G1 de `docs/PLAN.md`.
+`npm run verify` y `npm run verify:rust` en verde.

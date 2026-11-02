@@ -118,7 +118,7 @@ Criterios nuevos:
 - AC-35 Todo mensaje de error del servidor y de Rust tiene traducción.
 
 ## Fuera de alcance
-- Editar tareas sin conexión (PT-10, F8).
+- Editar tareas sin conexión: sin red, las tareas son de solo lectura (PT-09).
 - Borrar tareas (D-12), comentarios, adjuntos y subtareas.
 - Arrastrar y soltar en el tablero (D-11).
 - Uso de IA por proyecto (D-13, F5).
@@ -172,10 +172,9 @@ Versión 4 (ADR-0018 y ADR-0019):
 | AC-49, AC-50 | `supabase/tests/evidencia_por_campo.test.ts` y `Proyectos.test.tsx` |
 | AC-51 | `src/app/keyboard.test.tsx` |
 | AC-53, AC-54 | `supabase/tests/evidencia_por_tarea.test.ts`, `src/lib/evidence.test.ts` y `Proyectos.test.tsx` |
-| Prueba real con dos cuentas | **Pendiente**: requiere aplicar `20261008000003`, `20261008000004` y `20261008000005` en `pulso-dev` |
 
 ## Cómo se comprueba
-Puerta G3 de `docs/PLAN.md` más estos pasos con dos cuentas reales:
+`npm run verify` y `npm run verify:rust` en verde, más estos pasos con dos cuentas reales:
 1. La cuenta `owner` crea un proyecto, añade a la otra como `contributor` y le asigna una tarea.
 2. La otra cuenta ve la tarea en «Mis tareas», no puede editar una tarea ajena y mueve la suya a *En curso*.
 3. Inicia el temporizador sobre su tarea, lo detiene a los 2 min: el tiempo de la tarea y el del proyecto suben.

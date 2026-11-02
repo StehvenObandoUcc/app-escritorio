@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { handleDeleteAccount, type DeleteDeps } from '../functions/delete-account/handler.ts';
 
-/** Edge Function delete-account con dobles (spec F7, AC-4). */
+/** Edge Function delete-account con dobles (spec eliminar-cuenta, AC-4). */
 const USER = '22222222-2222-4222-8222-222222222222';
 const BLOCKED = 'Antes de eliminar tu cuenta, pasa la propiedad de «Compartido» a otra persona';
 

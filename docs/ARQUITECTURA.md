@@ -8,8 +8,7 @@
 App de escritorio para equipos que trabajan con IA. Registra tiempo y actividad, gestiona
 tareas y genera reportes con IA. Promesa: *entiende cómo trabaja tu equipo con IA, sin vigilarlo*.
 
-- Entrega: **lunes 19 de octubre de 2026**. Congelamiento: jueves 15 a las 23:59.
-- Plataformas: **Windows 10/11** (v1). Desde F7, también **macOS** y **Linux con X11**, con sensor básico: sin dominio del navegador ni Wayland (ADR-0024).
+- Plataformas: **Windows 10/11**, **macOS** y **Linux con X11**. En macOS y Linux el sensor es básico: sin dominio del navegador ni Wayland (ADR-0024).
 
 ## 2. Glosario (vocabulario cerrado)
 
@@ -117,7 +116,7 @@ Comandos (nombres exactos; `src/bridge/contract.ts` es su espejo en TypeScript):
 | F4 | `ai_chat(messages)` | texto de la respuesta |
 | F4 | `block_set_ai_usage(id, usage)` (ADR-0022) | — (etiqueta un bloque de IA: `code` · `writing` · `analysis` · `other` · `null`) |
 | F5 | `export_my_data()` (ADR-0023) | ruta del archivo en Descargas |
-| F7 | `local_data_clear()` (spec F7, CU-08) | — (borra lo local de la cuenta activa, la sesión y lo del equipo; conserva las preferencias) |
+| — | `local_data_clear()` (spec de eliminar cuenta, CU-08) | — (borra lo local de la cuenta activa, la sesión y lo del equipo; conserva las preferencias) |
 
 Agregar un comando exige actualizar esta tabla, `contract.ts` y `mock.ts` en el mismo cambio.
 

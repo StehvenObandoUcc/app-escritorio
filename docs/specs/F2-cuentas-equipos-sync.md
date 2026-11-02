@@ -8,7 +8,7 @@ Al terminar, dos personas con cuenta propia forman un equipo: una lo crea e invi
 consentimiento, y la actividad y el tiempo de ambas llegan a Supabase —sin títulos de ventana— aunque
 hayan trabajado sin conexión. Cada persona ve solo lo que su rol permite.
 
-## Decisiones que esta spec cierra (A-1 y A-3 de `docs/PLAN.md` §8.4)
+## Decisiones que esta spec cierra (A-1 y A-3)
 
 | # | Decisión | Propuesta |
 |---|---|---|
@@ -75,7 +75,6 @@ Los tipos nuevos (`SyncBatch`, `SessionJson`, reglas) se validan con zod.
 - `docs/ROLES.md`: fila 26 (cierres) y nota de A-3 ya vigente.
 - `docs/ARQUITECTURA.md`: §5 (acceso obligatorio: sin sesión solo se ve la pantalla de acceso), §6 (comandos), §7.1 (`app_closures`) y §9.
 - `docs/adr/0007-equipo-activo-en-rust.md`.
-- `docs/STACK.lock.md`: versiones instaladas de `@supabase/supabase-js` y `@tanstack/react-query`.
 
 ## Criterios de aceptación
 
@@ -130,9 +129,10 @@ y un cliente de Supabase falso en pruebas.
 ## Fuera de alcance
 - Pantalla de ajustes del equipo, jornada editable y pantalla de auditoría (F5).
 - Proyectos, tareas y `task_id` real (F3).
-- Foto de perfil, eliminar cuenta (F7). Inicio con proveedores externos.
+- Foto de perfil. Inicio con proveedores externos.
+- Eliminar cuenta (tiene su propia spec).
 - Tiempo real y Edge Functions (F4 en adelante).
-- Descartar localmente las filas pendientes de un equipo al que ya no se pertenece: quedan en SQLite sin subirse.
+- Descartar localmente las filas sin subir de un equipo al que ya no se pertenece: quedan en SQLite.
 
 ## Estado de cada criterio (7 oct)
 
@@ -151,7 +151,7 @@ y un cliente de Supabase falso en pruebas.
 | AC-34, AC-35 | Pruebas de Rust; prueba real del 7 oct: Readest se cuenta sin teclado y dos cuentas en el mismo PC no se mezclan |
 
 ## Cómo se comprueba
-Puerta G2 de `docs/PLAN.md` más los pasos manuales con dos cuentas reales de `pulso-dev`:
+`npm run verify` y `npm run verify:rust` en verde, más los pasos manuales con dos cuentas reales de `pulso-dev`:
 1. Una cuenta crea el equipo, acepta el consentimiento e invita a la otra.
 2. La otra acepta y trabaja unos minutos; su actividad aparece en Supabase sin títulos.
 3. Treinta minutos sin red y luego con red: llega todo, sin duplicados.

@@ -25,7 +25,7 @@ basta para saber el sitio, y D-05 impide que salga del equipo.
 
 ## Consecuencias
 - Migración `20261007000001` con su prueba, y migración local 3 en SQLite (`activity_blocks_local.domain`).
-- *Features* nuevas del crate `windows` (ya aprobado), anotadas en `docs/STACK.lock.md`.
+- *Features* nuevas del crate `windows` (ya aprobado).
 - Se adelanta a F2 una parte de la fila 23 de `docs/ROLES.md` (dominios y política de apps ocultas).
   El editor general de reglas sigue en F5 (TA-11).
 - Firefox no está medido. Si el texto de la barra no es una dirección (se está escribiendo), el bloque queda sin dominio.

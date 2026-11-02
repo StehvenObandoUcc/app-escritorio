@@ -14,3 +14,18 @@ supabase/.branches/
 
 # Críticas y capturas de /impeccable (locales)
 .impeccable/
+
+# Notas de trabajo locales (no forman parte del repositorio)
+CLAUDE.md
+AGENTS.md
+.claude/
+docs/PLAN.md
+docs/AUDITORIA-UX-ESTADO.md
+docs/VALIDACION.md
+docs/spikes/
+docs/specs/_PLANTILLA.md
+docs/STACK.lock.md
+scripts/f3-*.mjs
+scripts/f4-*.mjs
+prompts/report.v1.md
+.github/pull_request_template.md

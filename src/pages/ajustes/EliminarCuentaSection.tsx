@@ -7,7 +7,7 @@ import { Button, Heading, Input, Surface } from '@/ui/atoms';
 import { ConfirmDialog } from '@/ui/molecules';
 
 /**
- * *Ajustes → Cuenta*: eliminar mi cuenta (CU-08, spec F7). Orden (D-5): nube → datos locales → cerrar sesión.
+ * *Ajustes → Cuenta*: eliminar mi cuenta (CU-08, spec eliminar-cuenta). Orden (D-5): nube → datos locales → cerrar sesión.
  * Si la nube falla o lo bloquea, el error se ve en el diálogo y no se borra nada local.
  */
 export function EliminarCuentaSection({ bridge }: { bridge: Bridge }) {

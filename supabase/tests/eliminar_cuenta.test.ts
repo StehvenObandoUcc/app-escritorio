@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createTestDb, failure, type TestDb } from './harness';
 
 /**
- * CU-08, spec F7 (AC-1 a AC-3): `delete_my_account_data` y el borrado de la cuenta de acceso.
+ * CU-08, spec eliminar-cuenta (AC-1 a AC-3): `delete_my_account_data` y el borrado de la cuenta de acceso.
  * - «Compartido»: ana (única owner) y beto (member) → ana no puede eliminar su cuenta.
  * - «Solo de Dani»: dani sola → se borra con su cuenta.
  * - «Con Eva»: eva (owner) y dani (admin), con proyecto, tarea, regla, actividad, tiempo y evidencia de dani.

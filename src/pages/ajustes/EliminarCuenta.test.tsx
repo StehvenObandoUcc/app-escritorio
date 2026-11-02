@@ -8,7 +8,7 @@ import { createMockBridge } from '@/bridge/mock';
 import { createMockCloud } from '@/cloud/mock';
 import { EliminarCuentaSection } from './EliminarCuentaSection';
 
-/** CU-08, spec F7 (AC-6): eliminar mi cuenta desde Ajustes. */
+/** CU-08, spec eliminar-cuenta (AC-6): eliminar mi cuenta desde Ajustes. */
 async function setup({ withOthers = false } = {}) {
   const cloud = createMockCloud();
   const ana = cloud.debug.addAccount('ana@pulso.test', 'secreto-123', 'Ana');

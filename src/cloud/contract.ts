@@ -511,7 +511,7 @@ export interface Cloud {
   signIn(email: string, password: string): Promise<void>;
   signOut(): Promise<void>;
   /**
-   * CU-08 (spec F7): elimina la cuenta en la nube (Edge Function `delete-account`). No cierra la sesión local:
+   * CU-08 (spec eliminar-cuenta): elimina la cuenta en la nube (Edge Function `delete-account`). No cierra la sesión local:
    * eso lo hace quien llama después de borrar lo local. Falla con `invalid` si es la única propietaria de un
    * equipo con más personas.
    */

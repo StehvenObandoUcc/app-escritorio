@@ -1,5 +1,5 @@
 /**
- * Lógica de la Edge Function `delete-account` (CU-08, spec F7), sin Deno ni red: todo llega en `DeleteDeps`.
+ * Lógica de la Edge Function `delete-account` (CU-08, spec eliminar-cuenta), sin Deno ni red: todo llega en `DeleteDeps`.
  * Con la persona del JWT ya comprobada, primero `delete_my_account_data` (la base decide si se puede y prepara el
  * borrado) y después se borra la cuenta de acceso. Ambas con la clave de servicio: una sesión no llama a la RPC.
  */

@@ -18,5 +18,5 @@ Fecha: 2026-10-07 · Estado: aceptado (por StehvenObando)
   - `font-src 'self'`.
 
 ## Consecuencias
-- Una fila nueva en ARQUITECTURA §6 y en `docs/STACK.lock.md`.
-- La revisión de F6 comprueba la CSP con la app compilada.
+- Una fila nueva en ARQUITECTURA §6.
+- La revisión de seguridad comprueba la CSP con la app compilada.

@@ -1,9 +1,9 @@
 # ADR-0024 · macOS y Linux (X11): sensor por sistema e instaladores en GitHub
 
-Fecha: 2026-11-02 · Estado: propuesto (pendiente de aprobación de StehvenObando).
+Fecha: 2026-11-02 · Estado: aceptado (por StehvenObando).
 
 ## Contexto
-- TA-13 (F7) pide Pulso en macOS y Linux. La v1 era solo Windows (`docs/ARQUITECTURA.md` §1).
+- TA-13 pide Pulso en macOS y Linux. La v1 era solo Windows (`docs/ARQUITECTURA.md` §1).
 - El código ya aislaba Windows con `#[cfg(windows)]`: en otros sistemas el sensor devolvía `None` y Pulso no registraba nada.
 - No hay equipos con macOS ni Linux: todo se verifica en los runners de GitHub Actions.
 - Lo demás ya funciona fuera de Windows: `keyring` 4.2.0 (modo `v1`) trae el Llavero de macOS y Secret Service de Linux; `reqwest` con `native-tls` usa Security.framework en macOS y OpenSSL en Linux; el bloqueo de instancia usa `File::try_lock`.

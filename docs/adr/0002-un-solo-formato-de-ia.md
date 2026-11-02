@@ -14,5 +14,5 @@ Se mantiene el modo Manual para quien solo tiene una suscripción de chat.
 ## Consecuencias
 - Un solo camino de código que probar.
 - Los modelos de Anthropic se usan a través de OpenRouter o del modo Manual.
-- El webhook propio y el plan de ChatGPT quedan fuera de v1.
+- No hay webhook propio ni conexión con el plan de ChatGPT.
 - El nombre del modelo no se fija en el código.
