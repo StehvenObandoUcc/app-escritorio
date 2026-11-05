@@ -8,7 +8,7 @@
 App de escritorio para equipos que trabajan con IA. Registra tiempo y actividad, gestiona
 tareas y genera reportes con IA. Promesa: *entiende cómo trabaja tu equipo con IA, sin vigilarlo*.
 
-- Plataformas: **Windows 10/11**, **macOS** y **Linux con X11**. En macOS y Linux el sensor es básico: sin dominio del navegador ni Wayland (ADR-0024).
+- Plataformas: **Windows 10/11**, **macOS** y **Linux** (ADR-0024).
 
 ## 2. Glosario (vocabulario cerrado)
 

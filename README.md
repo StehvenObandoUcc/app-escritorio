@@ -140,10 +140,7 @@ Elige el archivo de tu sistema. Los instaladores no están firmados con certific
 |---|---|---|
 | Windows 10/11 | `Pulso_<versión>_x64-setup.exe` o `.msi` | SmartScreen: «Más información» → «Ejecutar de todas formas» |
 | macOS (Apple Silicon e Intel) | `Pulso_<versión>_universal.dmg` | Clic derecho sobre Pulso → «Abrir» (o `xattr -cr /Applications/Pulso.app`). Para ver títulos de ventana, da el permiso «Grabación de pantalla» |
-| Linux | `.deb`, `.rpm` o `.AppImage` | Requiere una sesión **X11** y un almacén de claves (gnome-keyring o KWallet) |
-
-En macOS y Linux no se registra el dominio del navegador, y en Wayland no se registra actividad
-([ADR-0024](docs/adr/0024-macos-y-linux.md)).
+| Linux | `.deb`, `.rpm` o `.AppImage` | Requiere un almacén de claves (gnome-keyring o KWallet) |
 
 ## Arquitectura
 
@@ -222,6 +219,4 @@ supabase/     migraciones SQL, pruebas de permisos y Edge Functions
 ## Notas de plataforma
 
 - Los instaladores no llevan firma de código: Windows y macOS piden confirmar la apertura la primera vez.
-- En Linux el sensor necesita una sesión X11; en una sesión Wayland no registra actividad.
-- En macOS y Linux no se registra el dominio del navegador; solo en Windows.
 - El plan gratuito de Supabase pausa los proyectos sin uso.

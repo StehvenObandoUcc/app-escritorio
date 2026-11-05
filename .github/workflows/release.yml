@@ -75,6 +75,4 @@ jobs:
 
             **macOS (Apple Silicon e Intel)** · `Pulso_*_universal.dmg`. Sin firma ni notarización: la primera vez haz clic derecho sobre Pulso → «Abrir», o en Terminal `xattr -cr /Applications/Pulso.app`. Para ver los títulos de ventana, dale a Pulso el permiso «Grabación de pantalla» en Ajustes del Sistema → Privacidad y seguridad.
 
-            **Linux** · `.deb`, `.rpm` o `.AppImage`. Requiere una sesión **X11** (en Wayland la actividad no se registra) y un almacén de claves del sistema (gnome-keyring o KWallet); sin él Pulso no abre.
-
-            En macOS y Linux no se registra el dominio del navegador (solo la app y el título).
+            **Linux** · `.deb`, `.rpm` o `.AppImage`. Requiere un almacén de claves del sistema (gnome-keyring o KWallet); sin él Pulso no abre.

@@ -46,7 +46,7 @@ Resumen: 90 funcionalidades.
 | TA-09 | *Mi día*: franja de pulso, reparto por categoría y lista de bloques | 06 | Pantalla |
 | TA-10 | *Mi semana* y *Mi mes* | 17 | Pantalla con totales por día |
 | TA-11 | Editor de reglas de clasificación del equipo (reglas por app; aplican a lo nuevo, spec F5 D-13) | 05 | Marcar una app como distracción y ver que los bloques nuevos salen así |
-| TA-13 | macOS y Linux (X11): sensor básico sin dominio del navegador; instaladores en GitHub Releases (ADR-0024) | — | El job «Núcleo Rust (Linux)» ve la xterm activa bajo Xvfb; «Núcleo Rust (macOS)» lee la inactividad |
+| TA-13 | macOS y Linux: sensor e instaladores en GitHub Releases (ADR-0024) | — | El job «Núcleo Rust (Linux)» ve la xterm activa bajo Xvfb; «Núcleo Rust (macOS)» lee la inactividad |
 | TA-14 | Tiempo por sitio web: solo el dominio, nunca la página ni la búsqueda (ADR-0009) | 05 | Abrir perplexity.ai: *Mi día → Por sitio* lo muestra |
 | TA-15 | Apps de lectura y reunión sin teclado no cuentan como inactividad hasta 30 min (ADR-0013), según una lista fija incluida en la app (spec F5 D-13) | 05 | Leer 10 min en Readest sin tocar nada: *Mi día* muestra 10 min de Readest |
 
