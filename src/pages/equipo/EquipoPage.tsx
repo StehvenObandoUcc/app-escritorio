@@ -513,7 +513,8 @@ function Invitations({ team }: { team: MyTeam }) {
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
-          <div className="min-w-0 flex-1">
+          {/* Ancho mínimo: en ventanas estrechas el rol y el botón bajan de línea en vez de aplastar el correo. */}
+          <div className="min-w-56 flex-1">
             <FormField name="email" label={t('access.fields.email')} type="email" maxLength={LIMITS.email.max} value={email} error={errors.email} onChange={(e) => setEmail(e.target.value)} />
           </div>
           <Select

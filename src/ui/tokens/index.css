@@ -24,6 +24,11 @@
     outline: 2px solid var(--sem-focus);
     outline-offset: 2px;
   }
+  /* Un <fieldset> no encoge por debajo de su contenido (min-width: min-content): en ventanas
+     estrechas sacaba listas como «Apps ocultas» fuera de la pantalla. */
+  fieldset {
+    min-width: 0;
+  }
   /* WebView2 (Edge) añade su propio botón de «ver contraseña» y de borrar: chocan con los de Pulso. */
   input::-ms-reveal,
   input::-ms-clear {

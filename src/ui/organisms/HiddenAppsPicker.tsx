@@ -85,7 +85,7 @@ export function HiddenAppsPicker({
               <p className="text-xs font-medium tracking-wide text-fg-muted uppercase">
                 {g.title} · {g.items.length}
               </p>
-              <ul className="grid gap-1 md:grid-cols-2" aria-label={g.title}>
+              <ul className="grid grid-cols-1 gap-1 md:grid-cols-2" aria-label={g.title}>
                 {g.items.map((c) => (
                   <li key={c.process}>
                     <label className="flex min-h-touch items-center gap-3 rounded-md px-2 hover:bg-sunken md:min-h-control">

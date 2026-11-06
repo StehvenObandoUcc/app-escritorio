@@ -100,6 +100,20 @@ function NavTimer() {
 }
 
 /**
+ * Sin sesión, la ruta vuelve al inicio: así, al entrar, no asoma vacía la pantalla desde la que
+ * se cerró la sesión anterior (p. ej. Ajustes) antes de llegar a Mi día.
+ */
+function SignedOut() {
+  const { pathname } = useLocation();
+  return (
+    <>
+      {pathname !== '/' && <Navigate to="/" replace />}
+      <AccesoPage />
+    </>
+  );
+}
+
+/**
  * Sin sesión no se entra a la app: se muestra solo la pantalla de acceso, sin navegación.
  * El sensor de Rust sigue registrando en el equipo; nada se sube sin sesión ni consentimiento.
  */
@@ -119,7 +133,7 @@ function Gate() {
       </div>
     );
   }
-  if (user === null) return <AccesoPage />;
+  if (user === null) return <SignedOut />;
   return (
     <HelpContext.Provider value={openHelp}>
       <AppShell nav={<AppNav items={nav()} timer={<NavTimer />} footer={<NavFooter onHelp={openHelp} />} />}>

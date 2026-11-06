@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { App } from './App';
@@ -31,5 +31,18 @@ describe('puerta de entrada', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Cerrar sesión' }));
     expect(await screen.findByRole('heading', { name: 'Hola de nuevo' })).toBeInTheDocument();
     expect(screen.queryByRole('navigation', { name: 'Principal' })).not.toBeInTheDocument();
+  }, 30_000);
+
+  it('al cerrar sesión la ruta vuelve al inicio: al entrar no asoma la pantalla anterior vacía', async () => {
+    render(<App />);
+    await userEvent.click(await screen.findByRole('radio', { name: 'Crear cuenta' }));
+    await userEvent.type(screen.getByLabelText('Nombre visible'), 'Ana');
+    await userEvent.type(screen.getByLabelText('Correo'), 'ana2@pulso.test');
+    await userEvent.type(screen.getByLabelText('Contraseña'), 'secreto-123');
+    await userEvent.click(screen.getByRole('button', { name: 'Crear cuenta' }));
+    await userEvent.click(await screen.findByRole('link', { name: 'Ajustes' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Cerrar sesión' }));
+    expect(await screen.findByRole('heading', { name: 'Hola de nuevo' })).toBeInTheDocument();
+    await waitFor(() => expect(window.location.hash).toBe('#/'));
   }, 30_000);
 });
